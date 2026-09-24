@@ -6,9 +6,8 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/invitation/:token" element={<AcceptInvitation />} />
+        <Route path="/invitation/:token?" element={<AcceptInvitation />} />
       </Routes>
     </BrowserRouter>
   );
