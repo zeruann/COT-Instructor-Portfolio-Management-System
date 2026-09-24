@@ -3,6 +3,13 @@ import { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import cotLogo from '../../assets/COT-Orange.png';
 
+// Reads the JSON body (if any) and throws an Error using the server's message.
+async function parseResponse(res, fallbackMessage) {
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || fallbackMessage);
+  return data;
+}
+
 function AcceptInvitation() {
   const { token } = useParams();
   const navigate = useNavigate();
@@ -13,10 +20,7 @@ function AcceptInvitation() {
 
   useEffect(() => {
     fetch(`/api/invitations/token/${token}`)
-      .then((res) => {
-        if (!res.ok) throw new Error('Invalid or expired invitation');
-        return res.json();
-      })
+      .then((res) => parseResponse(res, 'Invalid or expired invitation'))
       .then(setInvitation)
       .catch((err) => setError(err.message));
   }, [token]);
@@ -26,7 +30,7 @@ function AcceptInvitation() {
     setStatus('accepting');
     try {
       const res = await fetch(`/api/invitations/${token}/accept`, { method: 'PATCH' });
-      if (!res.ok) throw new Error('Failed to accept invitation');
+      await parseResponse(res, 'Failed to accept invitation');
       setStatus('accepted');
     } catch (err) {
       setStatus('idle');
@@ -39,7 +43,7 @@ function AcceptInvitation() {
     setStatus('rejecting');
     try {
       const res = await fetch(`/api/invitations/${token}/reject`, { method: 'PATCH' });
-      if (!res.ok) throw new Error('Failed to reject invitation');
+      await parseResponse(res, 'Failed to reject invitation');
       setStatus('rejected');
     } catch (err) {
       setStatus('idle');
@@ -79,7 +83,7 @@ function AcceptInvitation() {
           </div>
           <h1 className="text-xl font-bold text-gray-900">Invitation accepted</h1>
           <p className="text-gray-500 text-sm mt-2 leading-relaxed">
-            Welcome aboard, {invitation.fullName || 'instructor'}. Let\u2019s finish setting up your profile
+            Welcome aboard, {invitation.fullName || 'instructor'}. Let’s finish setting up your profile
             for the {invitation.department} department.
           </p>
           <button
@@ -103,7 +107,7 @@ function AcceptInvitation() {
           </div>
           <h1 className="text-xl font-bold text-gray-900">Invitation declined</h1>
           <p className="text-gray-500 text-sm mt-2 leading-relaxed">
-            You\u2019ve declined this invitation to join as an instructor. No account was created, and
+            You’ve declined this invitation to join as an instructor. No account was created, and
             you can safely close this page.
           </p>
         </div>
@@ -135,7 +139,7 @@ function AcceptInvitation() {
           className="w-full bg-orange-500 text-white rounded-full py-2 mt-4 font-semibold hover:bg-orange-600 shadow-md disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {status === 'accepting' && <Loader2 size={16} className="animate-spin" />}
-          {status === 'accepting' ? 'Accepting\u2026' : 'Accept Invitation'}
+          {status === 'accepting' ? 'Accepting…' : 'Accept Invitation'}
         </button>
         <button
           onClick={handleReject}
@@ -143,7 +147,7 @@ function AcceptInvitation() {
           className="w-full border rounded-full py-2 mt-2 font-semibold hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {status === 'rejecting' && <Loader2 size={16} className="animate-spin" />}
-          {status === 'rejecting' ? 'Rejecting\u2026' : 'Reject Invitation'}
+          {status === 'rejecting' ? 'Rejecting…' : 'Reject Invitation'}
         </button>
       </div>
     </div>

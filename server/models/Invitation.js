@@ -1,24 +1,26 @@
 // server/models/Invitation.js
 const mongoose = require('mongoose');
-const crypto = require('crypto');
 
 const invitationSchema = new mongoose.Schema({
-  fullName: { type: String, required: true },
-  email: { type: String, required: true },
+  token: { type: String, required: true, unique: true, index: true },
+  fullName: { type: String, required: true, trim: true },
+  email: { type: String, required: true, lowercase: true, trim: true },
   department: { type: String, required: true },
+  invitedBy: { type: String, default: 'Administrator' },
+
+  // Capitalized to match the frontend (statusStyles, inv.status === 'Pending', etc.)
   status: {
     type: String,
-    enum: ['Pending', 'Accepted', 'Rejected'],
+    enum: ['Pending', 'Accepted', 'Rejected', 'Expired'],
     default: 'Pending',
   },
-  token: { type: String, required: true, unique: true },
-  invitedBy: { type: String, default: 'System Administrator' },
+
   dateSent: { type: Date, default: Date.now },
   expiresAt: { type: Date, required: true },
-});
+  respondedAt: Date,
 
-invitationSchema.statics.generateToken = function () {
-  return crypto.randomBytes(32).toString('hex');
-};
+  // How many times an admin has resent this invitation (server-side limit)
+  resendCount: { type: Number, default: 0 },
+});
 
 module.exports = mongoose.model('Invitation', invitationSchema);
