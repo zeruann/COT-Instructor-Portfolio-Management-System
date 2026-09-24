@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import AcceptInvitation from "./pages/auth/AcceptInvitation";
-import Login from "./pages/ins_login/login";
+import Login from "./pages/instructors/login";
 
 function App() {
   return (
