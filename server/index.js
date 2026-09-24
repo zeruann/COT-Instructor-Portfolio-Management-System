@@ -1,3 +1,6 @@
+const dns = require('dns');
+dns.setServers(['8.8.8.8', '8.8.4.4']);
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -20,3 +23,6 @@ app.get("/api/hello", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+const invitationRoutes = require('./routes/invitationRoutes');
+app.use('/api/invitations', invitationRoutes);
