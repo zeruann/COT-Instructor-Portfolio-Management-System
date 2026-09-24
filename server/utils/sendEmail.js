@@ -1,13 +1,22 @@
 // server/utils/sendEmail.js
-const nodemailer = require('nodemailer');
+const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // or use host/port for other providers
+  service: "gmail", // or use host/port for other providers
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS, // use an App Password, not your real Gmail password
   },
 });
+
+async function sendEmail({ to, subject, html }) {
+  await transporter.sendMail({
+    from: `"COT Instructor Portfolio" <${process.env.EMAIL_USER}>`,
+    to,
+    subject,
+    html,
+  });
+}
 
 const sendInvitationEmail = async (to, fullName, token) => {
   const inviteLink = `${process.env.CLIENT_URL}/accept-invitation/${token}`;
@@ -15,7 +24,7 @@ const sendInvitationEmail = async (to, fullName, token) => {
   await transporter.sendMail({
     from: `"COT Instructor Portfolio" <${process.env.EMAIL_USER}>`,
     to,
-    subject: 'You\'ve been invited to join as an Instructor',
+    subject: "You've been invited to join as an Instructor",
     html: `
       <div style="font-family: sans-serif; max-width: 480px; margin: auto;">
         <h2 style="color: #F97316;">COT Instructor Portfolio Management System</h2>
@@ -30,4 +39,4 @@ const sendInvitationEmail = async (to, fullName, token) => {
   });
 };
 
-module.exports = sendInvitationEmail;
+module.exports = { sendEmail, sendInvitationEmail };

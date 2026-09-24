@@ -2,7 +2,7 @@
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Invitation = require('../models/Invitation');
-const sendInvitationEmail = require('../utils/sendEmail');
+const { sendInvitationEmail } = require("../utils/sendEmail");
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (matches the email text)
 const MAX_RESENDS = 1; // an invitation can only be resent once
@@ -32,7 +32,6 @@ const STATUS_MESSAGES = {
 };
 
 /* ---------------------------- Admin side ---------------------------- */
-
 // POST /api/invitations
 exports.sendInvitation = async (req, res) => {
   try {
