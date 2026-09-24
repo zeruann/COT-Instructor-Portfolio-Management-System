@@ -15,20 +15,14 @@ function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
- const handleSubmit = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     try {
-      const res = await axios.post(${API_BASE}/login, { email, password });
+      const res = await axios.post(`${API_BASE}/login`, { email, password });
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
-
-      if(res.data.intructor.accountType === "Admin"){
-        navigate("/dashboard/admin");
-      }else{
-        navigate("/dashboard/instructor")
-      }
-
+      navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     }
@@ -42,6 +36,12 @@ function Login() {
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
       navigate("/dashboard");
+
+      if (res.data.instructor.accountType === "Admin") {
+  navigate("/dashboard/admin");
+} else {
+  navigate("/dashboard/instructor");
+}
     } catch (err) {
       setError("Google sign-in failed");
     }
