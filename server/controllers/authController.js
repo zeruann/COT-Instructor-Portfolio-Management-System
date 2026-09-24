@@ -52,18 +52,39 @@ exports.logout = (req, res) => {
   res.json({ message: "Logged out successfully" });
 };
 
+const sendEmail = require("../utils/sendEmail");
+
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
     const instructor = await Instructor.findOne({ email });
-    if (!instructor) return res.status(404).json({ message: "No account with that email" });
+
+    // Always respond the same way whether or not the account exists (avoids leaking which emails are registered)
+    if (!instructor) {
+      return res.json({ message: "If that email exists, a reset link has been sent." });
+    }
 
     const resetToken = crypto.randomBytes(32).toString("hex");
     instructor.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-    instructor.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+    instructor.resetPasswordExpires = Date.now() + 12 * 60 * 60 * 1000; // 12 hours, matches the email text
     await instructor.save();
 
-    res.json({ message: "Reset link sent", resetToken });
+    const resetLink = `${process.env.CLIENT_URL}/set-new-password/${resetToken}`;
+
+    await sendEmail({
+      to: instructor.email,
+      subject: "Set your COT Portfolio password",
+      html: `
+        <p>Hi ${instructor.fullName},</p>
+        <p>We received a request to create or update the password for your account.</p>
+        <p>If you initiated this request, click below to set your password:</p>
+        <p><a href="${resetLink}" style="background:#f97316;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Set Password</a></p>
+        <p>This link is unique to you and will expire in 12 hours.</p>
+        <p>If you did not request this, you can safely disregard this email.</p>
+      `,
+    });
+
+    res.json({ message: "If that email exists, a reset link has been sent." });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
