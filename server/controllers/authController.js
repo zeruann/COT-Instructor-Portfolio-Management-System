@@ -52,7 +52,7 @@ exports.logout = (req, res) => {
   res.json({ message: "Logged out successfully" });
 };
 
-const sendEmail = require("../utils/sendEmail");
+const { sendEmail } = require("../utils/sendEmail");
 
 exports.forgotPassword = async (req, res) => {
   try {
