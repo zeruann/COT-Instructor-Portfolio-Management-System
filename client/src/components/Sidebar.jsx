@@ -4,7 +4,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import cotLogo from '../assets/COT-Orange.png';
 
 const navItems = [
-  { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/admin/AdminDashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/invite-instructor', label: 'Invite Instructor', icon: UserPlus },
   { to: '/admin/instructors', label: 'Instructors', icon: Users },
   { to: '/admin/settings', label: 'Settings', icon: Settings },

@@ -15,6 +15,8 @@ function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+
+  //MANUAL LOGIN
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -22,12 +24,20 @@ function Login() {
       const res = await axios.post(`${API_BASE}/login`, { email, password });
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
-      navigate("/dashboard");
+  
+      if (res.data.instructor.accountType === "Administrator") {
+        navigate("/admin/AdminDashboard");
+      } else if (res.data.instructor.accountType === "Instructor") {
+        navigate("/instructor/dashboard");
+      } else {
+        setError("Invalid account type. - gsgg");
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     }
   };
 
+  //GOOGLE LOGIN
   const handleGoogleResponse = async (response) => {
     try {
       const res = await axios.post(`${API_BASE}/google`, {
@@ -35,17 +45,23 @@ function Login() {
       });
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
-      navigate("/dashboard");
 
-      if (res.data.instructor.accountType === "Admin") {
-  navigate("/dashboard/admin");
-} else {
-  navigate("/dashboard/instructor");
-}
-    } catch (err) {
-      setError("Google sign-in failed");
-    }
-  };
+      console.log("Logged in user:", res.data.instructor);
+      console.log("Account type:", res.data.instructor.accountType);
+
+        if (res.data.instructor.accountType === "Administrator") {
+          navigate("/admin/AdminDashboard");
+        } else if (res.data.instructor.accountType === "Instructor") {
+          navigate("/instructor/dashboard");
+        } else {
+          setError("Invalid account type - google.");
+        }
+        
+      } catch (err) {
+        setError("Google sign-in failed");
+      }
+      
+    };
 
   useEffect(() => {
     const script = document.createElement("script");

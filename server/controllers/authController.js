@@ -6,22 +6,93 @@ const Instructor = require("../models/Instructor");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const instructor = await Instructor.findOne({ email });
-    if (!instructor || !instructor.password) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-    const match = await bcrypt.compare(password, instructor.password);
-    if (!match) return res.status(401).json({ message: "Invalid credentials" });
 
-    const token = jwt.sign({ id: instructor._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
-    res.json({ token, instructor: { id: instructor._id, fullName: instructor.fullName, email: instructor.email } });
+    // 1. Find the account in MongoDB using the email
+    const instructor = await Instructor.findOne({ email });
+    console.log("LOGIN ACCOUNT:", instructor);
+
+    // Account does not exist
+    if (!instructor) {
+      return res.status(401).json({
+        message: "Invalid email or password",
+      });
+    }
+
+    // 2. Check if the account has a password
+    if (!instructor.password) {
+      return res.status(401).json({
+        message: "This account does not have a password.",
+      });
+    }
+
+    // 3. Check if the password is correct
+    const match = await bcrypt.compare(password, instructor.password);
+
+    if (!match) {
+      return res.status(401).json({
+        message: "Invalid email or password",
+      });
+    }
+
+    // 4. Check if the account is active
+    if (instructor.accountStatus !== "Active") {
+      return res.status(403).json({
+        message:
+          "Your account is not active. Please contact the administrator.",
+      });
+    }
+
+    // 5. Check if the account type is valid
+    if (
+      instructor.accountType !== "Administrator" &&
+      instructor.accountType !== "Instructor"
+    ) {
+      return res.status(403).json({
+        message: "Invalid account type.",
+      });
+    }
+
+    // 6. Create JWT token
+    const token = jwt.sign(
+      {
+        id: instructor._id,
+        accountType: instructor.accountType,
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1d",
+      }
+    );
+
+    // 7. Set account to Online
+    instructor.onlineStatus = "Online";
+    await instructor.save();
+
+    // 8. Return account information
+    res.json({
+      token,
+      instructor: {
+        id: instructor._id,
+        fullName: instructor.fullName,
+        email: instructor.email,
+        accountType: instructor.accountType,
+        accountStatus: instructor.accountStatus,
+        onlineStatus: instructor.onlineStatus,
+      },
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Login error:", err);
+
+    res.status(500).json({
+      message: err.message,
+    });
   }
 };
+
 
 exports.googleLogin = async (req, res) => {
   try {
@@ -41,8 +112,23 @@ exports.googleLogin = async (req, res) => {
       });
     }
 
-    const token = jwt.sign({ id: instructor._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
-    res.json({ token, instructor: { id: instructor._id, fullName: instructor.fullName, email: instructor.email } });
+    const token = jwt.sign(
+      { id: instructor._id, accountType: instructor.accountType },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.json({
+      token,
+      instructor: {
+        id: instructor._id,
+        fullName: instructor.fullName,
+        email: instructor.email,
+        accountType: instructor.accountType,
+        accountStatus: instructor.accountStatus,
+        onlineStatus: instructor.onlineStatus,
+      },
+    });
   } catch (err) {
     res.status(401).json({ message: "Google authentication failed" });
   }
