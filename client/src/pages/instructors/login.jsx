@@ -27,7 +27,7 @@ function Login() {
       if (res.data.instructor.accountType === "Administrator") {
         navigate("/admin/AdminDashboard");
       } else if (res.data.instructor.accountType === "Instructor") {
-        navigate("/instructor/dashboard");
+        navigate("/instructors/dashboard");
       } else {
         setError("Invalid account type.");
       }
