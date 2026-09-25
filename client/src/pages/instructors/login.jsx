@@ -15,6 +15,7 @@ function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  //MANUAL LOGIN
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -22,24 +23,39 @@ function Login() {
       const res = await axios.post(`${API_BASE}/login`, { email, password });
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
-      navigate("/dashboard");
+
+      if (res.data.instructor.accountType === "Administrator") {
+        navigate("/admin/AdminDashboard");
+      } else if (res.data.instructor.accountType === "Instructor") {
+        navigate("/instructor/dashboard");
+      } else {
+        setError("Invalid account type.");
+      }
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
     }
   };
 
+  //GOOGLE LOGIN
   const handleGoogleResponse = async (response) => {
-  try {
-    const res = await axios.post(`${API_BASE}/google`, {
-      credential: response.credential,
-    });
-    localStorage.setItem("token", res.data.token);
-    localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
-    navigate("/dashboard");
-  } catch (err) {
-    setError("Google sign-in failed");
-  }
-};
+    try {
+      const res = await axios.post(`${API_BASE}/google`, {
+        credential: response.credential,
+      });
+      localStorage.setItem("token", res.data.token);
+      localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
+
+      if (res.data.instructor.accountType === "Administrator") {
+        navigate("/admin/AdminDashboard");
+      } else if (res.data.instructor.accountType === "Instructor") {
+        navigate("/instructors/dashboard");
+      } else {
+        setError("Invalid account type.");
+      }
+    } catch (err) {
+      setError("Google sign-in failed");
+    }
+  };
 
   useEffect(() => {
     const script = document.createElement("script");
