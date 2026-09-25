@@ -16,7 +16,15 @@ const statusStyles = {
   Pending: 'bg-yellow-100 text-yellow-700',
   Accepted: 'bg-green-100 text-green-700',
   Rejected: 'bg-red-100 text-red-700',
+  Expired: 'bg-gray-100 text-gray-600',
 };
+
+const DEPARTMENTS = [
+  'Electronics Technology',
+  'Automotive Technology',
+  'Food Technology',
+  'IT Department',
+];
 
 /* ------------------------------------------------------------------ */
 /*  Modal system                                                       */
@@ -162,8 +170,7 @@ function InviteInstructor() {
   const [invitations, setInvitations] = useState([]);
   // Ids currently mid-request (blocks rapid double-clicks while waiting on the server)
   const [resendingIds, setResendingIds] = useState(() => new Set());
-  // Ids that have already had one resend go out (blocks further clicks even after the
-  // request finishes, so a rejected invitation can only ever be resent once)
+  // Ids that have already had one resend go out in this session
   const [resentIds, setResentIds] = useState(() => new Set());
   const { modal, close, notify, confirm } = useAppModal();
 
@@ -180,7 +187,7 @@ function InviteInstructor() {
 
   const handleSend = async () => {
     if (!form.fullName || !form.email || !form.department) {
-      notify('error', 'Missing information', 'Fill in the instructor\u2019s name, email, and department before sending the invitation.');
+      notify('error', 'Missing information', 'Fill in the instructor’s name, email, and department before sending the invitation.');
       return;
     }
     try {
@@ -193,7 +200,7 @@ function InviteInstructor() {
       const data = await res.json();
 
       if (!res.ok) {
-        notify('error', 'Invitation not sent', data.message || 'The server couldn\u2019t process this invitation. Try again.');
+        notify('error', 'Invitation not sent', data.message || 'The server couldn’t process this invitation. Try again.');
         return;
       }
 
@@ -202,7 +209,7 @@ function InviteInstructor() {
       notify('success', 'Invitation sent', `${data.fullName || form.fullName} will receive an email to join as an instructor.`);
     } catch (err) {
       console.error('Failed to send invitation:', err);
-      notify('error', 'Something went wrong', 'We couldn\u2019t reach the server. Check your connection and try again.');
+      notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
     }
   };
 
@@ -211,12 +218,12 @@ function InviteInstructor() {
   };
 
   const handleResend = async (id) => {
-    // Already sent once for this invitation \u2014 further clicks are no-ops.
+    // Already sent once for this invitation - further clicks are no-ops.
     if (resentIds.has(id)) {
       notify('warning', 'Already resent', 'This invitation has already been resent once. Wait for the instructor to respond before trying again.');
       return;
     }
-    // A request for this id is already in flight \u2014 ignore rapid repeat clicks.
+    // A request for this id is already in flight - ignore rapid repeat clicks.
     if (resendingIds.has(id)) return;
 
     setResendingIds((prev) => new Set(prev).add(id));
@@ -225,17 +232,16 @@ function InviteInstructor() {
       const res = await fetch(`/api/invitations/${id}/resend`, { method: 'PATCH' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        notify('error', 'Resend failed', data.message || 'This invitation couldn\u2019t be resent. Try again.');
+        notify('error', 'Resend failed', data.message || 'This invitation couldn’t be resent. Try again.');
         return;
       }
       const updated = await res.json();
       setInvitations((prev) => prev.map((inv) => (inv._id === id ? updated : inv)));
-      // Lock this id permanently once the resend succeeds, so it can only ever fire once.
       setResentIds((prev) => new Set(prev).add(id));
-      notify('success', 'Invitation resent', 'A fresh invitation email is on its way. You won\u2019t be able to resend this one again.');
+      notify('success', 'Invitation resent', 'A fresh invitation email is on its way. You won’t be able to resend this one again.');
     } catch (err) {
       console.error('Failed to resend invitation:', err);
-      notify('error', 'Something went wrong', 'We couldn\u2019t reach the server. Check your connection and try again.');
+      notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
     } finally {
       setResendingIds((prev) => {
         const next = new Set(prev);
@@ -250,20 +256,22 @@ function InviteInstructor() {
       const res = await fetch(`/api/invitations/${id}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        notify('error', 'Delete failed', data.message || 'This invitation couldn\u2019t be deleted. Try again.');
+        notify('error', 'Delete failed', data.message || 'This invitation couldn’t be deleted. Try again.');
         return;
       }
       setInvitations((prev) => prev.filter((inv) => inv._id !== id));
     } catch (err) {
       console.error('Failed to delete invitation:', err);
-      notify('error', 'Something went wrong', 'We couldn\u2019t reach the server. Check your connection and try again.');
+      notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
     }
   };
 
   const handleDelete = (inv) => {
+    const who = inv.fullName || inv.email;
+
     confirm({
       title: 'Delete this invitation?',
-      message: `This removes the pending invitation for ${inv.fullName || inv.email}. They\u2019ll need a new invite to join.`,
+      message: `This removes the declined invitation for ${who}. You can invite this email again afterward.`,
       confirmLabel: 'Delete invitation',
       onConfirm: () => deleteInvitation(inv._id),
     });
@@ -317,10 +325,11 @@ function InviteInstructor() {
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all"
               >
                 <option value="">Select Department</option>
-                <option value="Computer Science">Electronics Technology</option>
-                <option value="Engineering">Automotive Technology</option>
-                <option value="Liberal Arts">Food Technology</option>
-                <option value="Liberal Arts">IT Department</option>
+                {DEPARTMENTS.map((dept) => (
+                  <option key={dept} value={dept}>
+                    {dept}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -372,59 +381,70 @@ function InviteInstructor() {
                   </td>
                 </tr>
               ) : (
-                invitations.map((inv) => (
-                  <tr key={inv._id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors">
-                    <td className="py-3.5 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center">
-                        <User className="text-orange-400" size={18} />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-800">{inv.fullName}</p>
-                        <p className="text-gray-400 text-xs">{inv.email}</p>
-                      </div>
-                    </td>
-                    <td className="text-gray-600">{inv.department}</td>
-                    <td className="text-gray-600">{new Date(inv.dateSent).toLocaleDateString()}</td>
-                    <td>
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[inv.status]}`}
-                      >
-                        {inv.status?.toUpperCase()}
-                      </span>
-                    </td>
-                    <td>
-                      {inv.status === 'Pending' && (
-                        <button
-                          onClick={() => handleDelete(inv)}
-                          className="text-gray-400 hover:text-red-500 mr-3 transition-colors"
+                invitations.map((inv) => {
+                  const alreadyResent = resentIds.has(inv._id) || inv.resendCount >= 1;
+                  const isResending = resendingIds.has(inv._id);
+
+                  return (
+                    <tr key={inv._id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors">
+                      <td className="py-3.5 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center">
+                          <User className="text-orange-400" size={18} />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800">{inv.fullName}</p>
+                          <p className="text-gray-400 text-xs">{inv.email}</p>
+                        </div>
+                      </td>
+                      <td className="text-gray-600">{inv.department}</td>
+                      <td className="text-gray-600">{new Date(inv.dateSent).toLocaleDateString()}</td>
+                      <td>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[inv.status]}`}
                         >
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                      {inv.status === 'Accepted' && (
-                        <a href="#" className="text-blue-500 text-xs font-medium hover:underline">
-                          View Profile
-                        </a>
-                      )}
-                      {inv.status === 'Rejected' && (
-                        <button
-                          onClick={() => handleResend(inv._id)}
-                          disabled={resendingIds.has(inv._id) || resentIds.has(inv._id)}
-                          className={`flex items-center gap-1 text-xs font-medium transition-colors ${
-                            resentIds.has(inv._id)
-                              ? 'text-gray-300 cursor-not-allowed'
-                              : resendingIds.has(inv._id)
-                              ? 'text-orange-300 cursor-wait'
-                              : 'text-orange-500 hover:underline'
-                          }`}
-                        >
-                          <RotateCcw size={13} className={resendingIds.has(inv._id) ? 'animate-spin' : ''} />
-                          {resentIds.has(inv._id) ? 'Resent' : resendingIds.has(inv._id) ? 'Sending\u2026' : 'Resend'}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                          {inv.status?.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          {inv.status === 'Accepted' && (
+                            <a href="#" className="text-blue-500 text-xs font-medium hover:underline">
+                              View Profile
+                            </a>
+                          )}
+
+                          {(inv.status === 'Rejected' || inv.status === 'Expired') && (
+                            <button
+                              onClick={() => handleResend(inv._id)}
+                              disabled={isResending || alreadyResent}
+                              className={`flex items-center gap-1 text-xs font-medium transition-colors ${
+                                alreadyResent
+                                  ? 'text-gray-300 cursor-not-allowed'
+                                  : isResending
+                                  ? 'text-orange-300 cursor-wait'
+                                  : 'text-orange-500 hover:underline'
+                              }`}
+                            >
+                              <RotateCcw size={13} className={isResending ? 'animate-spin' : ''} />
+                              {alreadyResent ? 'Resent' : isResending ? 'Sending…' : 'Resend'}
+                            </button>
+                          )}
+
+                          {/* Delete is only available on rejected invitations */}
+                          {inv.status === 'Rejected' && (
+                            <button
+                              onClick={() => handleDelete(inv)}
+                              className="text-gray-400 hover:text-red-500 transition-colors"
+                              aria-label="Delete invitation"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

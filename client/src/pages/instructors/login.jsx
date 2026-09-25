@@ -29,23 +29,17 @@ function Login() {
   };
 
   const handleGoogleResponse = async (response) => {
-    try {
-      const res = await axios.post(`${API_BASE}/google`, {
-        credential: response.credential,
-      });
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
-      navigate("/dashboard");
-
-      if (res.data.instructor.accountType === "Admin") {
-  navigate("/dashboard/admin");
-} else {
-  navigate("/dashboard/instructor");
-}
-    } catch (err) {
-      setError("Google sign-in failed");
-    }
-  };
+  try {
+    const res = await axios.post(`${API_BASE}/google`, {
+      credential: response.credential,
+    });
+    localStorage.setItem("token", res.data.token);
+    localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
+    navigate("/dashboard");
+  } catch (err) {
+    setError("Google sign-in failed");
+  }
+};
 
   useEffect(() => {
     const script = document.createElement("script");
