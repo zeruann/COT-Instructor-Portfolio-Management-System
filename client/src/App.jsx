@@ -4,11 +4,15 @@ import InviteInstructor from "./pages/admin/InviteInstructor";
 import Login from "./pages/instructors/login";
 import ResetPassword from "./pages/instructors/ResetPassword";
 import SetNewPassword from "./pages/instructors/SetNew_Password";
+import ViewInstructors from "./pages/auth/ViewInstructors";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Set ViewInstructors as the main page at http://localhost:5173/ */}
+        <Route path="/" element={<ViewInstructors />} />
+
         <Route path="/login" element={<Login />} />
 
         <Route path="/reset-password" element={<ResetPassword />} />
@@ -25,4 +29,3 @@ function App() {
 }
 
 export default App;
-
