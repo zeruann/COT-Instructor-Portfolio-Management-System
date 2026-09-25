@@ -1,4 +1,3 @@
-// server/controllers/invitationController.js
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const Invitation = require('../models/Invitation');
@@ -101,6 +100,20 @@ exports.getInvitations = async (req, res) => {
   }
 };
 
+// GET /api/invitations/accepted
+exports.getAcceptedInvitations = async (req, res) => {
+  try {
+    await expireStale();
+    const invitations = await Invitation.find({ status: 'Accepted' })
+      .select('-token -__v')
+      .sort({ dateSent: -1 });
+    res.json(invitations);
+  } catch (err) {
+    console.error('getAcceptedInvitations error:', err);
+    res.status(500).json({ message: 'Failed to load accepted invitations.' });
+  }
+};
+
 // PATCH /api/invitations/:id/resend
 // Only Rejected or Expired invitations, and only MAX_RESENDS times.
 // Rotates the token so the old link stops working.
@@ -173,7 +186,7 @@ exports.resendInvitation = async (req, res) => {
   }
 };
 
-// DELETE /api/invitations/:id  (Rejected only, same as the UI)
+// DELETE /api/invitations/:id (Rejected only)
 exports.deleteInvitation = async (req, res) => {
   try {
     const { id } = req.params;
@@ -198,7 +211,6 @@ exports.deleteInvitation = async (req, res) => {
 /* -------------------------- Instructor side -------------------------- */
 
 // GET /api/invitations/token/:token
-// Only returns data while the invitation is still Pending and not expired.
 exports.getInvitationByToken = async (req, res) => {
   try {
     const invitation = await Invitation.findOne({ token: req.params.token });
