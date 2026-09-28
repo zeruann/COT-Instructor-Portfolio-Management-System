@@ -9,11 +9,11 @@ const invitationSchema = new mongoose.Schema({
   invitedBy: { type: String, default: 'Administrator' },
 
   // Capitalized to match the frontend (statusStyles, inv.status === 'Pending', etc.)
-  status: {
-    type: String,
-    enum: ['Pending', 'Accepted', 'Rejected', 'Expired'],
-    default: 'Pending',
-  },
+status: {
+  type: String,
+  enum: ['Pending', 'Accepted', 'Rejected', 'Expired', 'Cancelled'],
+  default: 'Pending',
+},
 
   dateSent: { type: Date, default: Date.now },
   expiresAt: { type: Date, required: true },

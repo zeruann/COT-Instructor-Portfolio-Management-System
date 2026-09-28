@@ -3,7 +3,7 @@ import Sidebar from '../../components/Sidebar';
 import Header from '../../components/Header';
 import {
   Mail,
-  Trash2,
+  Ban,
   RotateCcw,
   User,
   CircleAlert,
@@ -17,6 +17,7 @@ const statusStyles = {
   Accepted: 'bg-green-100 text-green-700',
   Rejected: 'bg-red-100 text-red-700',
   Expired: 'bg-gray-100 text-gray-600',
+  Cancelled: 'bg-slate-100 text-slate-500',
 };
 
 const DEPARTMENTS = [
@@ -251,31 +252,34 @@ function InviteInstructor() {
     }
   };
 
-  const deleteInvitation = async (id) => {
-    try {
-      const res = await fetch(`/api/invitations/${id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        notify('error', 'Delete failed', data.message || 'This invitation couldn’t be deleted. Try again.');
-        return;
-      }
-      setInvitations((prev) => prev.filter((inv) => inv._id !== id));
-    } catch (err) {
-      console.error('Failed to delete invitation:', err);
-      notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
+  const cancelInvitation = async (id) => {
+  try {
+    const res = await fetch(`/api/invitations/${id}/cancel`, { method: 'PATCH' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      notify('error', 'Cancel failed', data.message || 'This invitation couldn’t be cancelled. Try again.');
+      return;
     }
-  };
+    const updated = await res.json();
+    setInvitations((prev) => prev.map((inv) => (inv._id === id ? updated : inv)));
+    notify('success', 'Invitation cancelled', 'The invitation link no longer works. You can send a new one to the correct email.');
+  } catch (err) {
+    console.error('Failed to cancel invitation:', err);
+    notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
+  }
+};
 
-  const handleDelete = (inv) => {
-    const who = inv.fullName || inv.email;
+const handleCancelInvitation = (inv) => {
+  const who = inv.fullName || inv.email;
 
-    confirm({
-      title: 'Delete this invitation?',
-      message: `This removes the declined invitation for ${who}. You can invite this email again afterward.`,
-      confirmLabel: 'Delete invitation',
-      onConfirm: () => deleteInvitation(inv._id),
-    });
-  };
+  confirm({
+    title: 'Cancel this invitation?',
+    message: `${who} will no longer be able to accept this invitation. The record stays in your list as Cancelled.`,
+    confirmLabel: 'Cancel invitation',
+    cancelLabel: 'Keep it',
+    onConfirm: () => cancelInvitation(inv._id),
+  });
+};
 
   return (
     <div className="flex">
@@ -430,14 +434,14 @@ function InviteInstructor() {
                             </button>
                           )}
 
-                          {/* Delete is only available on rejected invitations */}
-                          {inv.status === 'Rejected' && (
+
+                          {inv.status === 'Pending' && (
                             <button
-                              onClick={() => handleDelete(inv)}
-                              className="text-gray-400 hover:text-red-500 transition-colors"
-                              aria-label="Delete invitation"
+                              onClick={() => handleCancelInvitation(inv)}
+                              className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors"
                             >
-                              <Trash2 size={16} />
+                              <Ban size={13} />
+                              Cancel
                             </button>
                           )}
                         </div>

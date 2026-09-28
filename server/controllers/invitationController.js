@@ -28,8 +28,8 @@ const STATUS_MESSAGES = {
   Accepted: 'This invitation has already been accepted.',
   Rejected: 'This invitation was already declined.',
   Expired: 'This invitation has expired.',
+  Cancelled: 'This invitation was cancelled by the administrator.',
 };
-
 /* ---------------------------- Admin side ---------------------------- */
 // POST /api/invitations
 exports.sendInvitation = async (req, res) => {
@@ -51,31 +51,59 @@ exports.sendInvitation = async (req, res) => {
       strength: 2,
     });
 
-    if (existing) {
-      const messages = {
-        Pending: 'This email already has a pending invitation.',
-        Accepted: 'This instructor has already accepted an invitation.',
-        Rejected: 'This email was already invited and declined. Use Resend on the existing invitation instead.',
-        Expired: 'This email was already invited and the invitation expired. Use Resend on the existing invitation instead.',
-      };
-      return res.status(409).json({ message: messages[existing.status] });
-    }
+if (existing && existing.status !== 'Cancelled') {
+  const messages = {
+    Pending: 'This email already has a pending invitation.',
+    Accepted: 'This instructor has already accepted an invitation.',
+    Rejected: 'This email was already invited and declined. Use Resend on the existing invitation instead.',
+    Expired: 'This email was already invited and the invitation expired. Use Resend on the existing invitation instead.',
+  };
+  return res.status(409).json({ message: messages[existing.status] });
+}
 
-    const invitation = await Invitation.create({
-      token: newToken(),
-      fullName,
-      email,
-      department,
-      invitedBy: req.user?.name || 'Administrator', // adjust if you have auth
-      expiresAt: newExpiry(),
-    });
+let invitation;
+if (existing) {
+  // Re-inviting a cancelled email: reuse the record (keeps the unique email index happy)
+  invitation = await Invitation.findByIdAndUpdate(
+    existing._id,
+    {
+      $set: {
+        token: newToken(),
+        fullName,
+        email,
+        department,
+        status: 'Pending',
+        dateSent: new Date(),
+        expiresAt: newExpiry(),
+        respondedAt: null,
+        resendCount: 0,
+      },
+    },
+    { new: true }
+  );
+} else {
+  invitation = await Invitation.create({
+    token: newToken(),
+    fullName,
+    email,
+    department,
+    invitedBy: req.user?.name || 'Administrator',
+    expiresAt: newExpiry(),
+  });
+}
+
+
 
     try {
       await sendInvitationEmail(invitation.email, invitation.fullName, invitation.token);
     } catch (emailErr) {
       console.error('Failed to send invitation email:', emailErr);
       // Don't leave an invitation behind that nobody received
-      await Invitation.findByIdAndDelete(invitation._id);
+       if (existing) {
+    await Invitation.updateOne({ _id: existing._id }, { $set: { status: 'Cancelled' } });
+  } else {
+    await Invitation.findByIdAndDelete(invitation._id);
+  }
       return res
         .status(502)
         .json({ message: 'The invitation email could not be sent. Check the email address and try again.' });
@@ -186,25 +214,34 @@ exports.resendInvitation = async (req, res) => {
   }
 };
 
-// DELETE /api/invitations/:id (Rejected only)
-exports.deleteInvitation = async (req, res) => {
+// PATCH /api/invitations/:id/cancel (Pending only)
+// Rotates the token so the emailed link stops working immediately.
+exports.cancelInvitation = async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: 'Invalid invitation id.' });
     }
 
-    const deleted = await Invitation.findOneAndDelete({ _id: id, status: 'Rejected' });
-    if (!deleted) {
-      return res
-        .status(404)
-        .json({ message: 'Only rejected invitations can be deleted, or it no longer exists.' });
+    // Atomic: can't cancel an invitation that was just accepted/rejected
+    const cancelled = await Invitation.findOneAndUpdate(
+      { _id: id, status: 'Pending' },
+      { $set: { status: 'Cancelled', token: newToken() } },
+      { new: true }
+    );
+
+    if (!cancelled) {
+      const current = await Invitation.findById(id);
+      if (!current) return res.status(404).json({ message: 'Invitation not found.' });
+      return res.status(409).json({
+        message: `This invitation is already ${current.status.toLowerCase()} and can't be cancelled.`,
+      });
     }
 
-    res.json({ message: 'Invitation deleted.' });
+    res.json(withoutToken(cancelled));
   } catch (err) {
-    console.error('deleteInvitation error:', err);
-    res.status(500).json({ message: 'Failed to delete the invitation.' });
+    console.error('cancelInvitation error:', err);
+    res.status(500).json({ message: 'Something went wrong while cancelling the invitation.' });
   }
 };
 

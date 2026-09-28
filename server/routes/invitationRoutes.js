@@ -8,7 +8,7 @@ const {
   acceptInvitation,
   rejectInvitation,
   resendInvitation,
-  deleteInvitation,
+  cancelInvitation,
 } = require('../controllers/invitationController');
 
 router.post('/', sendInvitation);
@@ -18,6 +18,6 @@ router.get('/token/:token', getInvitationByToken);
 router.patch('/:token/accept', acceptInvitation);
 router.patch('/:token/reject', rejectInvitation);
 router.patch('/:id/resend', resendInvitation);
-router.delete('/:id', deleteInvitation);
+router.patch('/:id/cancel', cancelInvitation); 
 
 module.exports = router;
