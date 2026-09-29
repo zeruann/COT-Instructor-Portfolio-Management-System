@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { OAuth2Client } = require("google-auth-library");
 const Instructor = require("../models/Instructor");
+const { sendEmail } = require("../utils/sendEmail");
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -138,48 +139,70 @@ exports.logout = (req, res) => {
   res.json({ message: "Logged out successfully" });
 };
 
-const { sendEmail } = require("../utils/sendEmail");
-
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
     const instructor = await Instructor.findOne({ email });
 
-    // Always respond the same way whether or not the account exists (avoids leaking which emails are registered)
     if (!instructor) {
-      return res.json({ message: "If that email exists, a reset link has been sent." });
+      return res.status(404).json({ message: "Email not registered" });
     }
 
     const resetToken = crypto.randomBytes(32).toString("hex");
+    const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour from now
+
     instructor.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
-    instructor.resetPasswordExpires = Date.now() + 12 * 60 * 60 * 1000; // 12 hours, matches the email text
+    instructor.resetPasswordExpires = expiresAt;
     await instructor.save();
 
     const resetLink = `${process.env.CLIENT_URL}/set-new-password/${resetToken}`;
+
+    const expiryText = new Date(expiresAt).toLocaleString("en-PH", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "Asia/Manila",
+    });
 
     await sendEmail({
       to: instructor.email,
       subject: "Set your COT Portfolio password",
       html: `
         <p>Hi ${instructor.fullName},</p>
-        <p>We received a request to create or update the password for your account.</p>
+        <p>We received a request to update the password for your account.</p>
         <p>If you initiated this request, click below to set your password:</p>
         <p><a href="${resetLink}" style="background:#f97316;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Set Password</a></p>
-        <p>This link is unique to you and will expire in 12 hours.</p>
+        <p>This link is valid for <strong>1 hour</strong> and will expire at ${expiryText}.</p>
         <p>If you did not request this, you can safely disregard this email.</p>
       `,
     });
 
-    res.json({ message: "If that email exists, a reset link has been sent." });
+    res.json({ message: "Reset link sent to your email" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
+
 exports.resetPassword = async (req, res) => {
   try {
     const { token } = req.params;
     const { newPassword } = req.body;
+
+    // Server-side password rule enforcement
+    const passwordRules = [
+      { test: (pw) => pw.length >= 8, message: "Password must be at least 8 characters" },
+      { test: (pw) => /[A-Z]/.test(pw), message: "Password must contain an uppercase letter" },
+      { test: (pw) => /[a-z]/.test(pw), message: "Password must contain a lowercase letter" },
+      { test: (pw) => /[0-9]/.test(pw), message: "Password must contain a number" },
+      { test: (pw) => /[^A-Za-z0-9]/.test(pw), message: "Password must contain a special character" },
+    ];
+
+    for (const rule of passwordRules) {
+      if (!rule.test(newPassword)) {
+        return res.status(400).json({ message: rule.message });
+      }
+    }
+
     const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
     const instructor = await Instructor.findOne({

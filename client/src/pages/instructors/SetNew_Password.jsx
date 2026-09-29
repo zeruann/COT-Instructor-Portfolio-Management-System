@@ -17,6 +17,14 @@ const EyeIcon = ({ off, ...props }) =>
     </svg>
   );
 
+const rules = [
+  { label: "At least 8 characters", test: (pw) => pw.length >= 8 },
+  { label: "One uppercase letter", test: (pw) => /[A-Z]/.test(pw) },
+  { label: "One lowercase letter", test: (pw) => /[a-z]/.test(pw) },
+  { label: "One number", test: (pw) => /[0-9]/.test(pw) },
+  { label: "One special character", test: (pw) => /[^A-Za-z0-9]/.test(pw) },
+];
+
 function SetNewPassword() {
   const { token } = useParams();
   const navigate = useNavigate();
@@ -24,13 +32,23 @@ function SetNewPassword() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [touched, setTouched] = useState(false);
+
+  const failedRules = rules.filter((r) => !r.test(newPassword));
+  const isValid = failedRules.length === 0;
+  const passwordsMatch = newPassword === confirmPassword && confirmPassword.length > 0;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setTouched(true);
 
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
+    if (!isValid) {
+      setError("Password does not meet the requirements below.");
+      return;
+    }
+    if (!passwordsMatch) {
+      setError("Passwords do not match.");
       return;
     }
 
@@ -47,14 +65,17 @@ function SetNewPassword() {
       <h2 className="text-3xl font-bold text-[#575488] mb-1">Set New Password</h2>
       <p className="text-gray-500 mb-6">Choose a strong password that you have not used before.</p>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="relative">
           <label className="block text-sm font-medium text-gray-600 mb-1">New Password</label>
           <input
             type={showPassword ? "text" : "password"}
             required
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e) => {
+              setNewPassword(e.target.value);
+              setTouched(true);
+            }}
             className="w-full border border-indigo-200 rounded-lg px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <button
@@ -67,6 +88,23 @@ function SetNewPassword() {
           </button>
         </div>
 
+        {/* Live rule checklist */}
+        {touched && (
+          <ul className="text-sm space-y-1">
+            {rules.map((rule) => {
+              const passed = rule.test(newPassword);
+              return (
+                <li
+                  key={rule.label}
+                  className={passed ? "text-green-600" : "text-gray-400"}
+                >
+                  {passed ? "✓" : "○"} {rule.label}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
         <div className="relative">
           <label className="block text-sm font-medium text-gray-600 mb-1">Confirm Password</label>
           <input
@@ -76,6 +114,11 @@ function SetNewPassword() {
             onChange={(e) => setConfirmPassword(e.target.value)}
             className="w-full border border-indigo-200 rounded-lg px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
+          {confirmPassword.length > 0 && (
+            <p className={`text-sm mt-1 ${passwordsMatch ? "text-green-600" : "text-red-500"}`}>
+              {passwordsMatch ? "✓ Passwords match" : "Passwords do not match"}
+            </p>
+          )}
         </div>
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
