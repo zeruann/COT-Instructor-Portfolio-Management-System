@@ -20,7 +20,7 @@ function Sidebar() {
   };
 
   return (
-    <div className="w-64 min-h-screen bg-white border-r border-gray-100 flex flex-col p-4">
+    <div className="w-64 h-screen sticky top-0 shrink-0 overflow-y-auto bg-white border-r border-gray-100 flex flex-col p-4">
       <div className="flex justify-center py-6">
         <img src={cotLogo} alt="Logo" className="w-30"/>
       </div>

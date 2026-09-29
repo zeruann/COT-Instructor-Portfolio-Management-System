@@ -1,10 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
+// INSTRUCTORS
 import AcceptInvitation from "./pages/auth/AcceptInvitation";
-import InviteInstructor from "./pages/admin/InviteInstructor";
-import AdminDashboard from "./pages/admin/AdminDashboard";
+import SetupProfile from './pages/instructors/SetupProfile';
 import InstructorDashboard from "./pages/instructors/dashboard";
 import ViewInstructors from "./pages/auth/ViewInstructors";
+import Profile from "./pages/instructors/Profile";
+
+// ADMIN
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import InviteInstructor from "./pages/admin/InviteInstructor";
 
 import Login from "./pages/instructors/login";
 import ResetPassword from "./pages/instructors/ResetPassword";
@@ -58,6 +63,9 @@ function App() {
         />
 
         {/* Instructor */}
+        <Route path="/profile-setup" element={<SetupProfile />} />
+        
+
         <Route
           path="/instructors/dashboard"
           element={
@@ -66,6 +74,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        <Route path="/instructors/profile" element={<Profile />} />
 
         {/* Invitations */}
         <Route

@@ -6,6 +6,8 @@ const invitationSchema = new mongoose.Schema({
   fullName: { type: String, required: true, trim: true },
   email: { type: String, required: true, lowercase: true, trim: true },
   department: { type: String, required: true },
+  position: String,
+  contactNumber: String,
   invitedBy: { type: String, default: 'Administrator' },
 
   // Capitalized to match the frontend (statusStyles, inv.status === 'Pending', etc.)

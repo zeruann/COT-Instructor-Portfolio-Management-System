@@ -1,6 +1,6 @@
 function InstructorHeader({ instructor }) {
   return (
-    <div className="flex items-center justify-between mb-8">
+    <header className="shrink-0 flex items-center justify-between px-8 py-4 bg-white border-b border-gray-100">
       <div className="flex items-center gap-3">
         <img src="/cot_ornge.svg" alt="Logo" className="w-10" />
         <h1 className="text-orange-600 font-bold text-lg">
@@ -19,7 +19,7 @@ function InstructorHeader({ instructor }) {
           className="w-10 h-10 rounded-full object-cover"
         />
       </div>
-    </div>
+    </header>
   );
 }
 

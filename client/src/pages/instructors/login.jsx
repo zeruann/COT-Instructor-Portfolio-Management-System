@@ -53,8 +53,8 @@ function Login() {
         setError("Invalid account type.");
       }
     } catch (err) {
-      setError("Google sign-in failed");
-    }
+        setError(err.response?.data?.message || "Google sign-in failed");
+      }
   };
 
   useEffect(() => {

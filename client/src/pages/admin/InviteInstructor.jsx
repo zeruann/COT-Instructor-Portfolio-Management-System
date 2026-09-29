@@ -172,7 +172,6 @@ function InviteInstructor() {
   // Ids currently mid-request (blocks rapid double-clicks while waiting on the server)
   const [resendingIds, setResendingIds] = useState(() => new Set());
   // Ids that have already had one resend go out in this session
-  const [resentIds, setResentIds] = useState(() => new Set());
   const { modal, close, notify, confirm } = useAppModal();
 
   useEffect(() => {
@@ -218,39 +217,33 @@ function InviteInstructor() {
     setForm({ fullName: '', email: '', department: '' });
   };
 
-  const handleResend = async (id) => {
-    // Already sent once for this invitation - further clicks are no-ops.
-    if (resentIds.has(id)) {
-      notify('warning', 'Already resent', 'This invitation has already been resent once. Wait for the instructor to respond before trying again.');
+const handleResend = async (id) => {
+  // A request for this id is already in flight - ignore rapid repeat clicks.
+  if (resendingIds.has(id)) return;
+
+  setResendingIds((prev) => new Set(prev).add(id));
+
+  try {
+    const res = await fetch(`/api/invitations/${id}/resend`, { method: 'PATCH' });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      notify('error', 'Resend failed', data.message || 'This invitation couldn’t be resent. Try again.');
       return;
     }
-    // A request for this id is already in flight - ignore rapid repeat clicks.
-    if (resendingIds.has(id)) return;
-
-    setResendingIds((prev) => new Set(prev).add(id));
-
-    try {
-      const res = await fetch(`/api/invitations/${id}/resend`, { method: 'PATCH' });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        notify('error', 'Resend failed', data.message || 'This invitation couldn’t be resent. Try again.');
-        return;
-      }
-      const updated = await res.json();
-      setInvitations((prev) => prev.map((inv) => (inv._id === id ? updated : inv)));
-      setResentIds((prev) => new Set(prev).add(id));
-      notify('success', 'Invitation resent', 'A fresh invitation email is on its way. You won’t be able to resend this one again.');
-    } catch (err) {
-      console.error('Failed to resend invitation:', err);
-      notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
-    } finally {
-      setResendingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    }
-  };
+    const updated = await res.json();
+    setInvitations((prev) => prev.map((inv) => (inv._id === id ? updated : inv)));
+    notify('success', 'Invitation resent', 'A fresh invitation email is on its way.');
+  } catch (err) {
+    console.error('Failed to resend invitation:', err);
+    notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
+  } finally {
+    setResendingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+};
 
   const cancelInvitation = async (id) => {
   try {
@@ -386,7 +379,6 @@ const handleCancelInvitation = (inv) => {
                 </tr>
               ) : (
                 invitations.map((inv) => {
-                  const alreadyResent = resentIds.has(inv._id) || inv.resendCount >= 1;
                   const isResending = resendingIds.has(inv._id);
 
                   return (
@@ -412,25 +404,25 @@ const handleCancelInvitation = (inv) => {
                       <td>
                         <div className="flex items-center gap-3">
                           {inv.status === 'Accepted' && (
+                          inv.accountStatus === 'Active' ? (
                             <a href="#" className="text-blue-500 text-xs font-medium hover:underline">
                               View Profile
                             </a>
-                          )}
+                          ) : (
+                            <span className="text-xs font-medium text-gray-400">Setting up…</span>
+                          )
+                        )}
 
                           {(inv.status === 'Rejected' || inv.status === 'Expired') && (
                             <button
                               onClick={() => handleResend(inv._id)}
-                              disabled={isResending || alreadyResent}
+                              disabled={isResending}
                               className={`flex items-center gap-1 text-xs font-medium transition-colors ${
-                                alreadyResent
-                                  ? 'text-gray-300 cursor-not-allowed'
-                                  : isResending
-                                  ? 'text-orange-300 cursor-wait'
-                                  : 'text-orange-500 hover:underline'
+                                isResending ? 'text-orange-300 cursor-wait' : 'text-orange-500 hover:underline'
                               }`}
                             >
                               <RotateCcw size={13} className={isResending ? 'animate-spin' : ''} />
-                              {alreadyResent ? 'Resent' : isResending ? 'Sending…' : 'Resend'}
+                              {isResending ? 'Sending…' : 'Resend'}
                             </button>
                           )}
 
