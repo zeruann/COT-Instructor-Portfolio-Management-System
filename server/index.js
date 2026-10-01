@@ -14,6 +14,7 @@ app.use(cors());
 app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/invitations", invitationRoutes);
+app.use('/api/profile', require('./routes/profileRoutes'));
 
 mongoose
   .connect(process.env.MONGO_URI)
