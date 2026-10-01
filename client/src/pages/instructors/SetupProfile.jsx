@@ -1,5 +1,44 @@
+import PasswordChecklist from '../../components/PasswordChecklist';
+import { isPasswordValid } from '../../utils/passwordRules';
+
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+
+function PasswordInput({ name, value, onChange, placeholder, className }) {
+  const [show, setShow] = useState(false);
+
+  return (
+    <div className="relative">
+      <input
+        name={name}
+        type={show ? 'text' : 'password'}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={`${className} pr-11`}
+      />
+      <button
+        type="button"
+        onClick={() => setShow((s) => !s)}
+        aria-label={show ? 'Hide password' : 'Show password'}
+        className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
+      >
+        {show ? (
+          // eye-off
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.1A9.7 9.7 0 0112 5c5 0 9 4.5 10 7a11.8 11.8 0 01-3.2 4.3M6.1 6.1A11.8 11.8 0 002 12c1 2.5 5 7 10 7a9.6 9.6 0 004.1-.9" />
+          </svg>
+        ) : (
+          // eye
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+}
 
 function SetupProfile() {
   const [params] = useSearchParams();
@@ -13,36 +52,35 @@ function SetupProfile() {
   const [form, setForm] = useState({
     password: '',
     confirmPassword: '',
-    position: '',
-    contactNumber: '',
   });
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
-  useEffect(() => {
-    if (!token) {
-      setLoadError('This setup link is missing its token.');
-      setLoading(false);
-      return;
-    }
-    fetch(`/api/invitations/token/${token}`)
-      .then(async (res) => {
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || 'This link is not valid.');
-        if (!data.needsSetup) throw new Error('This account has no setup pending.');
-        setInfo(data);
-      })
-      .catch((err) => setLoadError(err.message))
-      .finally(() => setLoading(false));
-  }, [token]);
+useEffect(() => {
+  if (!token) {
+    setLoadError('This setup link is missing a token.');
+    setLoading(false);
+    return;
+  }
+
+  fetch(`/api/invitations/token/${token}`)
+    .then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || 'Link unavailable.');
+      if (!data.needsSetup) throw new Error('This account is already set up. Please log in.');
+      setInfo(data);
+    })
+    .catch((err) => setLoadError(err.message))
+    .finally(() => setLoading(false));
+}, [token]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
   const handleSubmit = async () => {
     setFormError('');
-    if (form.password.length < 8) {
-      setFormError('Password must be at least 8 characters.');
+    if (!isPasswordValid(form.password)) {
+      setFormError('Password does not meet all the requirements.');
       return;
     }
     if (form.password !== form.confirmPassword) {
@@ -57,8 +95,6 @@ function SetupProfile() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           password: form.password,
-          position: form.position,
-          contactNumber: form.contactNumber,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -101,7 +137,7 @@ function SetupProfile() {
           <>
             <h1 className="text-xl font-semibold text-gray-800 mb-1">Set up your account</h1>
             <p className="text-sm text-gray-500 mb-6">
-              Welcome, {info.fullName}. Create a password and finish your profile.
+              Welcome, {info.fullName}. Create a password to activate your account.
             </p>
 
             <div className="grid gap-4">
@@ -114,20 +150,18 @@ function SetupProfile() {
                 <input value={info.department} disabled className={`${inputClass} bg-gray-50 text-gray-400`} />
               </div>
               <div>
-                <label className="text-sm text-gray-500 block mb-1.5">Position</label>
-                <input name="position" value={form.position} onChange={handleChange} placeholder="e.g. Instructor I" className={inputClass} />
-              </div>
-              <div>
-                <label className="text-sm text-gray-500 block mb-1.5">Contact Number</label>
-                <input name="contactNumber" value={form.contactNumber} onChange={handleChange} placeholder="09XX XXX XXXX" className={inputClass} />
-              </div>
-              <div>
                 <label className="text-sm text-gray-500 block mb-1.5">Password</label>
-                <input name="password" type="password" value={form.password} onChange={handleChange} placeholder="At least 8 characters" className={inputClass} />
+                <PasswordInput name="password" value={form.password} onChange={handleChange} className={inputClass} />
+                <PasswordChecklist password={form.password} />
               </div>
               <div>
                 <label className="text-sm text-gray-500 block mb-1.5">Confirm Password</label>
-                <input name="confirmPassword" type="password" value={form.confirmPassword} onChange={handleChange} className={inputClass} />
+                <PasswordInput
+                  name="confirmPassword"
+                  value={form.confirmPassword}
+                  onChange={handleChange}
+                  className={inputClass}
+                />
               </div>
             </div>
 

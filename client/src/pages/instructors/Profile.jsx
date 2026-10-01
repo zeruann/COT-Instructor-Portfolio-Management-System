@@ -1,55 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Camera, Plus, Trash2 } from "lucide-react";
+import { Pencil } from "lucide-react";
 import InstructorHeader from "../../components/InstructorsHeader";
 import InstructorSidebar from "../../components/InstructorsSidebar";
-
-const RANKS = [
-  "Instructor I",
-  "Instructor II",
-  "Instructor III",
-  "Assistant Professor I",
-  "Assistant Professor II",
-  "Assistant Professor III",
-  "Assistant Professor IV",
-  "Associate Professor I",
-  "Associate Professor II",
-  "Associate Professor III",
-  "Associate Professor IV",
-  "Associate Professor V",
-  "Professor I",
-  "Professor II",
-  "Professor III",
-  "Professor IV",
-  "Professor V",
-  "Professor VI",
-];
-
-const emptyEducation = { level: "", degree: "", school: "", yearGraduated: "" };
-
-const emptyForm = {
-  // Basic information
-  firstName: "",
-  middleName: "",
-  lastName: "",
-  gender: "",
-  civilStatus: "",
-  birthdate: "",
-  // Contact info (IN-008)
-  contactNumber: "",
-  alternateEmail: "",
-  address: "",
-  // Educational background (IN-008)
-  education: [{ ...emptyEducation }],
-  // Position / rank (IN-008)
-  position: "",
-  rank: "",
-};
-
-const inputClass =
-  "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 placeholder-gray-400 " +
-  "focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400 " +
-  "disabled:bg-gray-50 disabled:text-gray-600 disabled:cursor-default";
 
 function getInitials(name = "") {
   return name
@@ -60,11 +13,25 @@ function getInitials(name = "") {
     .slice(0, 2);
 }
 
-function Field({ label, children, className = "" }) {
+// Shows a value, or a dash when the field is empty
+const show = (value) =>
+  value === undefined || value === null || value === "" ? "—" : value;
+
+const formatDate = (value) =>
+  value
+    ? new Date(value).toLocaleDateString("en-PH", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
+    : "—";
+
+// Read-only label + value
+function Info({ label, value, className = "" }) {
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-gray-600 mb-1">{label}</label>
-      {children}
+      <p className="text-sm font-medium text-gray-500 mb-1">{label}</p>
+      <p className="text-sm text-gray-800 break-words">{show(value)}</p>
     </div>
   );
 }
@@ -83,102 +50,74 @@ function Section({ title, action, children }) {
 
 function Profile() {
   const navigate = useNavigate();
-  const fileInputRef = useRef(null);
 
-  const [instructor, setInstructor] = useState(null);
-  const [form, setForm] = useState(emptyForm);
-  const [savedForm, setSavedForm] = useState(emptyForm); // restored on Cancel
-  const [isEditing, setIsEditing] = useState(false);
+  const [instructor, setInstructor] = useState(null); // from localStorage (login)
+  const [profile, setProfile] = useState(null);       // from GET /api/profile/me
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  // Profile photo (IN-010)
-  const [photoFile, setPhotoFile] = useState(null); // file to upload later
-  const [photoPreview, setPhotoPreview] = useState("");
-  const [photoError, setPhotoError] = useState("");
-
+  // 1. Check login
   useEffect(() => {
     const token = localStorage.getItem("token");
     const stored = localStorage.getItem("instructor");
+
     if (!token || !stored) {
       navigate("/login");
       return;
     }
+
     setInstructor(JSON.parse(stored));
   }, [navigate]);
 
-  // Free the temporary preview URL when it changes or the page unmounts
+  // 2. Load the saved profile
   useEffect(() => {
-    return () => {
-      if (photoPreview) URL.revokeObjectURL(photoPreview);
-    };
-  }, [photoPreview]);
+    if (!instructor) return;
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+    fetch("/api/profile/me", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((me) => {
+        setProfile(me.profile || {});
+        // Keep the displayed name in sync with the database
+        if (me.fullName) setInstructor((prev) => ({ ...prev, fullName: me.fullName }));
+      })
+      .catch(() => setLoadError("Couldn’t load your profile. Refresh the page to try again."))
+      .finally(() => setLoading(false));
+  }, [instructor?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const updateEducation = (index, field, value) =>
-    setForm({
-      ...form,
-      education: form.education.map((ed, i) => (i === index ? { ...ed, [field]: value } : ed)),
-    });
-
-  const addEducation = () =>
-    setForm({ ...form, education: [...form.education, { ...emptyEducation }] });
-
-  const removeEducation = (index) =>
-    setForm({ ...form, education: form.education.filter((_, i) => i !== index) });
-
-  const handlePhotoChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!["image/jpeg", "image/png"].includes(file.type)) {
-      setPhotoError("Use a JPG or PNG image.");
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setPhotoError("Image must be 2 MB or smaller.");
-      return;
-    }
-    setPhotoError("");
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
-  };
-
+  /* ------------------------------------------------------------------ */
+  /*  EDIT                                                               */
+  /*  TODO (groupmate): put the edit functionality here.                 */
+  /*  Suggested pieces:                                                  */
+  /*   - an `isEditing` state that switches this page to editable fields */
+  /*   - a form state pre-filled from `profile`                          */
+  /*   - save with PUT /api/profile/me, then update `profile` state      */
+  /* ------------------------------------------------------------------ */
   const handleEdit = () => {
-    setSavedForm(form);
-    setIsEditing(true);
-  };
-
-  const handleCancel = () => {
-    setForm(savedForm);
-    setPhotoFile(null);
-    setPhotoPreview("");
-    setPhotoError("");
-    setIsEditing(false);
-  };
-
-  const handleSave = () => {
-    // TODO: send `form` (and `photoFile`) to the backend
-    setSavedForm(form);
-    setIsEditing(false);
+    // TODO: edit functionality goes here
   };
 
   if (!instructor) return null;
 
-  return (
-  <div className="flex h-screen bg-gray-50">
-    <InstructorSidebar />
+  const p = profile || {};
+  const education = p.education || [];
 
-    <div className="flex-1 flex flex-col min-w-0">
-      <InstructorHeader instructor={instructor} />
+  return (
+    <div className="flex h-screen bg-gray-50">
+      <InstructorSidebar />
+
+      <div className="flex-1 flex flex-col min-w-0">
+        <InstructorHeader instructor={instructor} />
 
         <main className="flex-1 overflow-y-auto p-8">
-        <div className="space-y-6">
-          {/* Profile card: photo, account details, edit / save actions */}
-          <div className="bg-white rounded-2xl shadow p-6 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                {photoPreview ? (
+          <div className="space-y-6">
+            {/* Profile card */}
+            <div className="bg-white rounded-2xl shadow p-6 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {p.photoUrl ? (
                   <img
-                    src={photoPreview}
+                    src={p.photoUrl}
                     alt="Profile"
                     className="w-20 h-20 rounded-full object-cover"
                   />
@@ -187,188 +126,84 @@ function Profile() {
                     {getInitials(instructor.fullName)}
                   </div>
                 )}
-                {isEditing && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      aria-label="Change profile photo"
-                      className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-white border border-gray-200 shadow flex items-center justify-center text-gray-600 hover:text-orange-600"
-                    >
-                      <Camera size={16} />
-                    </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/png"
-                      onChange={handlePhotoChange}
-                      className="hidden"
-                    />
-                  </>
-                )}
+
+                <div>
+                  <p className="text-lg font-bold text-gray-800">{instructor.fullName}</p>
+                  <p className="text-gray-500 text-sm">{instructor.email}</p>
+                  <p className="text-gray-400 text-xs">id: {instructor.id}</p>
+                  {loadError && <p className="text-red-500 text-xs mt-1">{loadError}</p>}
+                </div>
               </div>
 
-              <div>
-                <p className="text-lg font-bold text-gray-800">{instructor.fullName}</p>
-                <p className="text-gray-500 text-sm">{instructor.email}</p>
-                <p className="text-gray-400 text-xs">id: {instructor.id}</p>
-                {photoError && <p className="text-red-500 text-xs mt-1">{photoError}</p>}
-              </div>
-            </div>
-
-            {isEditing ? (
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleCancel}
-                  className="px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600"
-                >
-                  Save changes
-                </button>
-              </div>
-            ) : (
+              {/* EDIT button (no functionality yet, see handleEdit above) */}
               <button
                 type="button"
                 onClick={handleEdit}
-                className="px-4 py-2 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50"
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600"
               >
-                Edit
+                <Pencil size={16} />
+                Edit Profile
               </button>
+            </div>
+
+            {loading ? (
+              <p className="text-sm text-gray-400">Loading profile…</p>
+            ) : (
+              <>
+                {/* Basic Information */}
+                <Section title="Basic Information">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <Info label="First Name" value={p.firstName} />
+                    <Info label="Middle Name" value={p.middleName} />
+                    <Info label="Last Name" value={p.lastName} />
+                    <Info label="Gender" value={p.gender} />
+                    <Info label="Civil Status" value={p.civilStatus} />
+                    <Info label="Birthdate" value={formatDate(p.birthdate)} />
+                  </div>
+                </Section>
+
+                {/* Contact Information */}
+                <Section title="Contact Information">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Info label="Contact Number" value={p.contactNumber} />
+                    <Info label="Alternate Email" value={p.alternateEmail} />
+                    <Info label="Address" value={p.address} className="md:col-span-2" />
+                  </div>
+                </Section>
+
+                {/* Educational Background */}
+                <Section title="Educational Background">
+                  {education.length === 0 ? (
+                    <p className="text-sm text-gray-400">No educational background added yet.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {education.map((ed, i) => (
+                        <div
+                          key={ed._id || i}
+                          className="border border-gray-100 rounded-xl p-4"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <Info label="Level" value={ed.level} />
+                            <Info label="Degree / Program" value={ed.degree} />
+                            <Info label="School / University" value={ed.school} />
+                            <Info label="Year Graduated" value={ed.yearGraduated} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Section>
+
+                {/* Position / Rank */}
+                <Section title="Position / Rank">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Info label="Position" value={p.position} />
+                    <Info label="Academic Rank" value={p.rank} />
+                  </div>
+                </Section>
+              </>
             )}
           </div>
-
-          {/* Basic information */}
-          <Section title="Basic Information">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Field label="First Name">
-                <input name="firstName" value={form.firstName} onChange={handleChange} disabled={!isEditing} className={inputClass} placeholder="First name" />
-              </Field>
-              <Field label="Middle Name">
-                <input name="middleName" value={form.middleName} onChange={handleChange} disabled={!isEditing} className={inputClass} placeholder="Middle name" />
-              </Field>
-              <Field label="Last Name">
-                <input name="lastName" value={form.lastName} onChange={handleChange} disabled={!isEditing} className={inputClass} placeholder="Last name" />
-              </Field>
-              <Field label="Gender">
-                <select name="gender" value={form.gender} onChange={handleChange} disabled={!isEditing} className={inputClass}>
-                  <option value="">Select gender</option>
-                  <option>Male</option>
-                  <option>Female</option>
-                  <option>Prefer not to say</option>
-                </select>
-              </Field>
-              <Field label="Civil Status">
-                <select name="civilStatus" value={form.civilStatus} onChange={handleChange} disabled={!isEditing} className={inputClass}>
-                  <option value="">Select civil status</option>
-                  <option>Single</option>
-                  <option>Married</option>
-                  <option>Widowed</option>
-                  <option>Separated</option>
-                </select>
-              </Field>
-              <Field label="Birthdate">
-                <input name="birthdate" type="date" value={form.birthdate} onChange={handleChange} disabled={!isEditing} className={inputClass} />
-              </Field>
-            </div>
-          </Section>
-
-          {/* Contact information */}
-          <Section title="Contact Information">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Contact Number">
-                <input name="contactNumber" type="tel" value={form.contactNumber} onChange={handleChange} disabled={!isEditing} className={inputClass} placeholder="09XX XXX XXXX" />
-              </Field>
-              <Field label="Alternate Email">
-                <input name="alternateEmail" type="email" value={form.alternateEmail} onChange={handleChange} disabled={!isEditing} className={inputClass} placeholder="name@example.com" />
-              </Field>
-              <Field label="Address" className="md:col-span-2">
-                <input name="address" value={form.address} onChange={handleChange} disabled={!isEditing} className={inputClass} placeholder="Street, Barangay, City, Province" />
-              </Field>
-            </div>
-          </Section>
-
-          {/* Educational background */}
-          <Section
-            title="Educational Background"
-            action={
-              isEditing && (
-                <button
-                  type="button"
-                  onClick={addEducation}
-                  className="flex items-center gap-1 text-sm font-medium text-orange-600 hover:text-orange-700"
-                >
-                  <Plus size={16} /> Add
-                </button>
-              )
-            }
-          >
-            {form.education.length === 0 && (
-              <p className="text-sm text-gray-400">
-                No educational background yet. Select Edit, then Add to create an entry.
-              </p>
-            )}
-
-            <div className="space-y-4">
-              {form.education.map((ed, i) => (
-                <div key={i} className="relative border border-gray-100 rounded-xl p-4 pr-10">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Field label="Level">
-                      <select value={ed.level} onChange={(e) => updateEducation(i, "level", e.target.value)} disabled={!isEditing} className={inputClass}>
-                        <option value="">Select level</option>
-                        <option>Bachelor's</option>
-                        <option>Master's</option>
-                        <option>Doctorate</option>
-                      </select>
-                    </Field>
-                    <Field label="Degree / Program">
-                      <input value={ed.degree} onChange={(e) => updateEducation(i, "degree", e.target.value)} disabled={!isEditing} className={inputClass} placeholder="e.g. BS Information Technology" />
-                    </Field>
-                    <Field label="School / University">
-                      <input value={ed.school} onChange={(e) => updateEducation(i, "school", e.target.value)} disabled={!isEditing} className={inputClass} placeholder="School name" />
-                    </Field>
-                    <Field label="Year Graduated">
-                      <input value={ed.yearGraduated} onChange={(e) => updateEducation(i, "yearGraduated", e.target.value)} disabled={!isEditing} className={inputClass} placeholder="YYYY" maxLength={4} inputMode="numeric" />
-                    </Field>
-                  </div>
-                  {isEditing && (
-                    <button
-                      type="button"
-                      onClick={() => removeEducation(i)}
-                      aria-label="Remove education entry"
-                      className="absolute top-3 right-3 text-gray-400 hover:text-red-500"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </Section>
-
-          {/* Position / rank */}
-          <Section title="Position / Rank">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Position">
-                <input name="position" value={form.position} onChange={handleChange} disabled={!isEditing} className={inputClass} placeholder="e.g. Program Chair" />
-              </Field>
-              <Field label="Academic Rank">
-                <select name="rank" value={form.rank} onChange={handleChange} disabled={!isEditing} className={inputClass}>
-                  <option value="">Select rank</option>
-                  {RANKS.map((r) => (
-                    <option key={r}>{r}</option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-          </Section>
-        </div>
         </main>
       </div>
     </div>
