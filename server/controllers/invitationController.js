@@ -1,25 +1,30 @@
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
-const Invitation = require('../models/Invitation');
-const { sendInvitationEmail } = require("../utils/sendEmail");
+const Instructor = require('../models/Instructor');
+const { sendInvitationEmail } = require('../utils/sendEmail');
 
-const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (matches the email text)
-const MAX_RESENDS = 1; // an invitation can only be resent once
+const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 const newToken = () => crypto.randomBytes(32).toString('hex');
 const newExpiry = () => new Date(Date.now() + INVITATION_TTL_MS);
 
-// Never send the token back to the admin UI
-const withoutToken = (doc) => {
-  const obj = doc.toObject ? doc.toObject() : doc;
-  delete obj.token;
-  delete obj.__v;
+const PRIVATE_FIELDS = ['token', '__v', 'password', 'googleId', 'resetPasswordToken', 'resetPasswordExpires'];
+const PRIVATE_SELECT = PRIVATE_FIELDS.map((f) => `-${f}`).join(' ');
+
+// Never send tokens or account secrets back to the admin UI
+const withoutPrivate = (doc) => {
+  const obj = doc.toObject ? doc.toObject() : { ...doc };
+  PRIVATE_FIELDS.forEach((f) => delete obj[f]);
   return obj;
 };
 
+// Only people who were invited belong in the invitations table
+const INVITED = { invitedBy: { $exists: true } };
+
 // Flip any Pending invitation past its expiry date to Expired
 const expireStale = () =>
-  Invitation.updateMany(
+  Instructor.updateMany(
     { status: 'Pending', expiresAt: { $lt: new Date() } },
     { $set: { status: 'Expired' } }
   );
@@ -30,11 +35,15 @@ const STATUS_MESSAGES = {
   Expired: 'This invitation has expired.',
   Cancelled: 'This invitation was cancelled by the administrator.',
 };
+
 /* ---------------------------- Admin side ---------------------------- */
+
 // POST /api/invitations
 exports.sendInvitation = async (req, res) => {
   try {
-    const { fullName, email, department } = req.body;
+    const fullName = (req.body.fullName || '').trim();
+    const email = (req.body.email || '').trim().toLowerCase();
+    const { department } = req.body;
 
     if (!fullName || !email || !department) {
       return res
@@ -44,72 +53,69 @@ exports.sendInvitation = async (req, res) => {
 
     await expireStale();
 
-    // One invitation per email, whatever its status (case-insensitive).
-    // Rejected/Expired ones are re-invited through Resend, not a new invitation.
-    const existing = await Invitation.findOne({ email: email.trim() }).collation({
-      locale: 'en',
-      strength: 2,
-    });
+    // One document per email. Only a Cancelled invitation can be re-invited.
+    const existing = await Instructor.findOne({ email });
 
-if (existing && existing.status !== 'Cancelled') {
-  const messages = {
-    Pending: 'This email already has a pending invitation.',
-    Accepted: 'This instructor has already accepted an invitation.',
-    Rejected: 'This email was already invited and declined. Use Resend on the existing invitation instead.',
-    Expired: 'This email was already invited and the invitation expired. Use Resend on the existing invitation instead.',
-  };
-  return res.status(409).json({ message: messages[existing.status] });
-}
+    if (existing && existing.status !== 'Cancelled') {
+      const messages = {
+        Pending: 'This email already has a pending invitation.',
+        Accepted:
+          existing.accountStatus === 'Pending'
+            ? 'This instructor accepted the invitation but has not finished setting up their account.'
+            : 'This email already belongs to an instructor account.',
+        Rejected: 'This email was already invited and declined. Use Resend on the existing invitation instead.',
+        Expired: 'This email was already invited and the invitation expired. Use Resend on the existing invitation instead.',
+      };
+      return res
+        .status(409)
+        .json({ message: messages[existing.status] || 'This email already belongs to an account.' });
+    }
 
-let invitation;
-if (existing) {
-  // Re-inviting a cancelled email: reuse the record (keeps the unique email index happy)
-  invitation = await Invitation.findByIdAndUpdate(
-    existing._id,
-    {
-      $set: {
-        token: newToken(),
-        fullName,
-        email,
-        department,
-        status: 'Pending',
-        dateSent: new Date(),
-        expiresAt: newExpiry(),
-        respondedAt: null,
-        resendCount: 0,
-      },
-    },
-    { new: true }
-  );
-} else {
-  invitation = await Invitation.create({
-    token: newToken(),
-    fullName,
-    email,
-    department,
-    invitedBy: req.user?.name || 'Administrator',
-    expiresAt: newExpiry(),
-  });
-}
+    const inviteFields = {
+      token: newToken(),
+      fullName,
+      department,
+      invitedBy: req.user?.name || 'Administrator',
+      status: 'Pending',
+      accountStatus: 'Pending',
+      accountType: 'Instructor',
+      dateSent: new Date(),
+      expiresAt: newExpiry(),
+      respondedAt: null,
+      resendCount: 0,
+    };
 
-
+    let invitation;
+    if (existing) {
+      // Re-inviting a cancelled email: reuse the document
+      invitation = await Instructor.findByIdAndUpdate(
+        existing._id,
+        { $set: inviteFields },
+        { new: true }
+      );
+    } else {
+      invitation = await Instructor.create({ ...inviteFields, email });
+    }
 
     try {
       await sendInvitationEmail(invitation.email, invitation.fullName, invitation.token);
     } catch (emailErr) {
       console.error('Failed to send invitation email:', emailErr);
       // Don't leave an invitation behind that nobody received
-       if (existing) {
-    await Invitation.updateOne({ _id: existing._id }, { $set: { status: 'Cancelled' } });
-  } else {
-    await Invitation.findByIdAndDelete(invitation._id);
-  }
+      if (existing) {
+        await Instructor.updateOne(
+          { _id: existing._id },
+          { $set: { status: 'Cancelled', token: newToken() } }
+        );
+      } else {
+        await Instructor.findByIdAndDelete(invitation._id);
+      }
       return res
         .status(502)
         .json({ message: 'The invitation email could not be sent. Check the email address and try again.' });
     }
 
-    res.status(201).json(withoutToken(invitation));
+    res.status(201).json(withoutPrivate(invitation));
   } catch (err) {
     console.error('sendInvitation error:', err);
     res.status(500).json({ message: 'Something went wrong while sending the invitation.' });
@@ -120,7 +126,9 @@ if (existing) {
 exports.getInvitations = async (req, res) => {
   try {
     await expireStale();
-    const invitations = await Invitation.find().select('-token -__v').sort({ dateSent: -1 });
+    const invitations = await Instructor.find(INVITED)
+      .select(PRIVATE_SELECT)
+      .sort({ dateSent: -1 });
     res.json(invitations);
   } catch (err) {
     console.error('getInvitations error:', err);
@@ -132,8 +140,8 @@ exports.getInvitations = async (req, res) => {
 exports.getAcceptedInvitations = async (req, res) => {
   try {
     await expireStale();
-    const invitations = await Invitation.find({ status: 'Accepted' })
-      .select('-token -__v')
+    const invitations = await Instructor.find({ ...INVITED, status: 'Accepted' })
+      .select(PRIVATE_SELECT)
       .sort({ dateSent: -1 });
     res.json(invitations);
   } catch (err) {
@@ -143,7 +151,7 @@ exports.getAcceptedInvitations = async (req, res) => {
 };
 
 // PATCH /api/invitations/:id/resend
-// Only Rejected or Expired invitations, and only MAX_RESENDS times.
+// Rejected or Expired only. No limit on how many times.
 // Rotates the token so the old link stops working.
 exports.resendInvitation = async (req, res) => {
   try {
@@ -155,12 +163,8 @@ exports.resendInvitation = async (req, res) => {
     const token = newToken();
 
     // Atomic: two quick clicks can't both pass this filter
-    const original = await Invitation.findOneAndUpdate(
-      {
-        _id: id,
-        status: { $in: ['Rejected', 'Expired'] },
-        resendCount: { $lt: MAX_RESENDS },
-      },
+    const original = await Instructor.findOneAndUpdate(
+      { _id: id, status: { $in: ['Rejected', 'Expired'] } },
       {
         $set: {
           token,
@@ -175,11 +179,8 @@ exports.resendInvitation = async (req, res) => {
     );
 
     if (!original) {
-      const current = await Invitation.findById(id);
+      const current = await Instructor.findById(id);
       if (!current) return res.status(404).json({ message: 'Invitation not found.' });
-      if (current.resendCount >= MAX_RESENDS) {
-        return res.status(409).json({ message: 'This invitation has already been resent once.' });
-      }
       return res
         .status(409)
         .json({ message: 'Only rejected or expired invitations can be resent.' });
@@ -189,8 +190,7 @@ exports.resendInvitation = async (req, res) => {
       await sendInvitationEmail(original.email, original.fullName, token);
     } catch (emailErr) {
       console.error('Failed to resend invitation email:', emailErr);
-      // Roll back so the admin can try again
-      await Invitation.updateOne(
+      await Instructor.updateOne(
         { _id: id },
         {
           $set: {
@@ -206,8 +206,8 @@ exports.resendInvitation = async (req, res) => {
       return res.status(502).json({ message: 'The invitation email could not be sent. Try again.' });
     }
 
-    const updated = await Invitation.findById(id);
-    res.json(withoutToken(updated));
+    const updated = await Instructor.findById(id);
+    res.json(withoutPrivate(updated));
   } catch (err) {
     console.error('resendInvitation error:', err);
     res.status(500).json({ message: 'Something went wrong while resending the invitation.' });
@@ -215,7 +215,6 @@ exports.resendInvitation = async (req, res) => {
 };
 
 // PATCH /api/invitations/:id/cancel (Pending only)
-// Rotates the token so the emailed link stops working immediately.
 exports.cancelInvitation = async (req, res) => {
   try {
     const { id } = req.params;
@@ -223,22 +222,21 @@ exports.cancelInvitation = async (req, res) => {
       return res.status(400).json({ message: 'Invalid invitation id.' });
     }
 
-    // Atomic: can't cancel an invitation that was just accepted/rejected
-    const cancelled = await Invitation.findOneAndUpdate(
+    const cancelled = await Instructor.findOneAndUpdate(
       { _id: id, status: 'Pending' },
       { $set: { status: 'Cancelled', token: newToken() } },
       { new: true }
     );
 
     if (!cancelled) {
-      const current = await Invitation.findById(id);
+      const current = await Instructor.findById(id);
       if (!current) return res.status(404).json({ message: 'Invitation not found.' });
       return res.status(409).json({
         message: `This invitation is already ${current.status.toLowerCase()} and can't be cancelled.`,
       });
     }
 
-    res.json(withoutToken(cancelled));
+    res.json(withoutPrivate(cancelled));
   } catch (err) {
     console.error('cancelInvitation error:', err);
     res.status(500).json({ message: 'Something went wrong while cancelling the invitation.' });
@@ -248,20 +246,29 @@ exports.cancelInvitation = async (req, res) => {
 /* -------------------------- Instructor side -------------------------- */
 
 // GET /api/invitations/token/:token
+// Works for a Pending invitation, and also for someone who accepted
+// but hasn't finished setup yet (needsSetup = true).
 exports.getInvitationByToken = async (req, res) => {
   try {
-    const invitation = await Invitation.findOne({ token: req.params.token });
+    const invitation = await Instructor.findOne({ token: req.params.token });
     if (!invitation) {
       return res.status(404).json({ message: 'Invitation not found.' });
     }
 
     if (invitation.status === 'Pending' && invitation.expiresAt < new Date()) {
+      await Instructor.updateOne({ _id: invitation._id }, { $set: { status: 'Expired' } });
       invitation.status = 'Expired';
-      await invitation.save();
     }
 
-    if (invitation.status !== 'Pending') {
-      return res.status(410).json({ message: STATUS_MESSAGES[invitation.status] });
+    const awaitingSetup =
+      invitation.status === 'Accepted' && invitation.accountStatus === 'Pending';
+    const needsSetup = awaitingSetup && invitation.expiresAt > new Date();
+
+    if (invitation.status !== 'Pending' && !needsSetup) {
+      const message = awaitingSetup
+        ? 'This setup link has expired. Ask the administrator for a new one.'
+        : STATUS_MESSAGES[invitation.status];
+      return res.status(410).json({ message });
     }
 
     res.json({
@@ -269,6 +276,7 @@ exports.getInvitationByToken = async (req, res) => {
       email: invitation.email,
       department: invitation.department,
       invitedBy: invitation.invitedBy,
+      needsSetup,
     });
   } catch (err) {
     console.error('getInvitationByToken error:', err);
@@ -279,13 +287,13 @@ exports.getInvitationByToken = async (req, res) => {
 // Shared by accept / reject. Atomic, so it can only succeed once.
 const respondToInvitation = (newStatus) => async (req, res) => {
   try {
-    const invitation = await Invitation.findOneAndUpdate(
-      {
-        token: req.params.token,
-        status: 'Pending',
-        expiresAt: { $gt: new Date() },
-      },
-      { $set: { status: newStatus, respondedAt: new Date() } },
+    const update = { status: newStatus, respondedAt: new Date() };
+    // Give the instructor a fresh 7 days to finish account setup
+    if (newStatus === 'Accepted') update.expiresAt = newExpiry();
+
+    const invitation = await Instructor.findOneAndUpdate(
+      { token: req.params.token, status: 'Pending', expiresAt: { $gt: new Date() } },
+      { $set: update },
       { new: true }
     );
 
@@ -293,11 +301,10 @@ const respondToInvitation = (newStatus) => async (req, res) => {
       return res.status(410).json({ message: 'This invitation is no longer valid.' });
     }
 
-    if (newStatus === 'Accepted') {
-      // TODO: create the instructor account / attach the department here
-    }
-
-    res.json({ message: `Invitation ${newStatus.toLowerCase()}.` });
+    res.json({
+      message: `Invitation ${newStatus.toLowerCase()}.`,
+      needsSetup: newStatus === 'Accepted',
+    });
   } catch (err) {
     console.error(`${newStatus} invitation error:`, err);
     res.status(500).json({ message: 'Something went wrong.' });
@@ -306,3 +313,58 @@ const respondToInvitation = (newStatus) => async (req, res) => {
 
 exports.acceptInvitation = respondToInvitation('Accepted');
 exports.rejectInvitation = respondToInvitation('Rejected');
+
+// POST /api/invitations/token/:token/setup
+// Final step: password + profile, then the account becomes Active.
+exports.completeSetup = async (req, res) => {
+  try {
+    const { password, position, contactNumber } = req.body;
+
+    if (!password || password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+
+    // Atomic: only an accepted, unfinished, unexpired account can complete setup, once.
+    const instructor = await Instructor.findOneAndUpdate(
+      {
+        token: req.params.token,
+        status: 'Accepted',
+        accountStatus: 'Pending',
+        expiresAt: { $gt: new Date() },
+      },
+      {
+        $set: { password: hashed, position, contactNumber, accountStatus: 'Active' },
+        $unset: { token: 1 }, // burn the link
+      },
+      { new: true }
+    );
+
+    if (!instructor) {
+      return res.status(410).json({ message: 'This setup link is no longer valid.' });
+    }
+
+    res.json({ message: 'Account created. You can now log in.' });
+  } catch (err) {
+    console.error('completeSetup error:', err);
+    res.status(500).json({ message: 'Something went wrong.' });
+  }
+};
+
+
+// GET /api/invitations/active
+exports.getActiveInstructors = async (req, res) => {
+  try {
+    const instructors = await Instructor.find({
+      accountType: 'Instructor',
+      accountStatus: { $in: ['Active', 'Inactive'] },
+    })
+      .select(PRIVATE_SELECT)
+      .sort({ createdAt: -1 });
+    res.json(instructors);
+  } catch (err) {
+    console.error('getActiveInstructors error:', err);
+    res.status(500).json({ message: 'Failed to load instructors.' });
+  }
+};

@@ -18,12 +18,18 @@ function AcceptInvitation() {
   // 'idle' | 'accepting' | 'rejecting' | 'accepted' | 'rejected'
   const [status, setStatus] = useState('idle');
 
-  useEffect(() => {
-    fetch(`/api/invitations/token/${token}`)
-      .then((res) => parseResponse(res, 'Invalid or expired invitation'))
-      .then(setInvitation)
-      .catch((err) => setError(err.message));
-  }, [token]);
+useEffect(() => {
+  fetch(`/api/invitations/token/${token}`)
+    .then((res) => parseResponse(res, 'Invalid or expired invitation'))
+    .then((data) => {
+      if (data.needsSetup) {
+        navigate(`/profile-setup?token=${token}`, { replace: true });
+        return;
+      }
+      setInvitation(data);
+    })
+    .catch((err) => setError(err.message));
+}, [token, navigate]);
 
   const handleAccept = async () => {
     if (status === 'accepting' || status === 'rejecting') return;
@@ -87,11 +93,11 @@ function AcceptInvitation() {
             for the {invitation.department} department.
           </p>
           <button
-            onClick={() => navigate('/profile-setup')}
-            className="w-full bg-orange-500 text-white rounded-full py-2.5 mt-6 font-semibold hover:bg-orange-600 shadow-md shadow-orange-200 transition-colors"
-          >
-            Continue to profile setup
-          </button>
+              onClick={() => navigate(`/profile-setup?token=${token}`)}
+              className="w-full bg-orange-500 text-white rounded-full py-2.5 mt-6 font-semibold hover:bg-orange-600 shadow-md shadow-orange-200 transition-colors"
+            >
+              Continue to profile setup
+            </button>
         </div>
       </div>
     );

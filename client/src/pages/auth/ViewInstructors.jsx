@@ -19,7 +19,7 @@ export default function ViewInstructors() {
     const fetchAcceptedInstructors = async () => {
       try {
         setLoading(true);
-        const res = await fetch('http://localhost:5000/api/invitations/accepted');
+const res = await fetch('http://localhost:5000/api/invitations/active');
         if (!res.ok) {
           throw new Error('Failed to load accepted instructors.');
         }
@@ -67,19 +67,15 @@ export default function ViewInstructors() {
   // Account Status Badge — this page only ever lists accepted invitations
 // Account Status Badge — derived from the invitation's status
 const renderStatusBadge = (item) => {
-  const invitationStatus = (item.status || item.invitationStatus || '').toLowerCase();
-
-  if (invitationStatus === 'accepted') {
-    return (
-      <span className="px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-100 text-emerald-600 tracking-wider">
-        ACTIVE
-      </span>
-    );
-  }
-
+  const styles = {
+    active: 'bg-emerald-100 text-emerald-600',
+    inactive: 'bg-gray-100 text-gray-500',
+    pending: 'bg-amber-100 text-amber-600',
+  };
+  const key = (item.accountStatus || '').toLowerCase();
   return (
-    <span className="px-3 py-1 text-[11px] font-bold rounded-full bg-gray-100 text-gray-500 tracking-wider">
-      N/A
+    <span className={`px-3 py-1 text-[11px] font-bold rounded-full tracking-wider ${styles[key] || styles.inactive}`}>
+      {(item.accountStatus || 'N/A').toUpperCase()}
     </span>
   );
 };
