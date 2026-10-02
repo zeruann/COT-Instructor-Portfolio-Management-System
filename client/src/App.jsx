@@ -10,6 +10,7 @@ import Profile from "./pages/instructors/Profile";
 // ADMIN
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import InviteInstructor from "./pages/admin/InviteInstructor";
+import AdminInstructorProfile from "./pages/admin/AdminInstructorProfile";
 
 import Login from "./pages/instructors/login";
 import ResetPassword from "./pages/instructors/ResetPassword";
@@ -29,6 +30,7 @@ function App() {
 
         {/* Password Reset */}
         <Route path="/reset-password" element={<ResetPassword />} />
+
         <Route
           path="/set-new-password/:token"
           element={<SetNewPassword />}
@@ -62,9 +64,21 @@ function App() {
           }
         />
 
+        {/* Individual Instructor Profile */}
+        <Route
+          path="/admin/instructors/:id"
+          element={
+            <ProtectedRoute>
+              <AdminInstructorProfile />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Instructor */}
-        <Route path="/profile-setup" element={<SetupProfile />} />
-        
+        <Route
+          path="/profile-setup"
+          element={<SetupProfile />}
+        />
 
         <Route
           path="/instructors/dashboard"
@@ -75,7 +89,10 @@ function App() {
           }
         />
 
-        <Route path="/instructors/profile" element={<Profile />} />
+        <Route
+          path="/instructors/profile"
+          element={<Profile />}
+        />
 
         {/* Invitations */}
         <Route

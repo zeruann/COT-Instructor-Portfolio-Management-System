@@ -387,3 +387,35 @@ exports.getActiveInstructors = async (req, res) => {
     res.status(500).json({ message: 'Failed to load instructors.' });
   }
 };
+
+
+// GET /api/invitations/:id
+exports.getInstructorById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        message: 'Invalid instructor id.',
+      });
+    }
+
+    const instructor = await Instructor.findOne({
+      _id: id,
+      accountType: 'Instructor',
+    }).select(PRIVATE_SELECT);
+
+    if (!instructor) {
+      return res.status(404).json({
+        message: 'Instructor not found.',
+      });
+    }
+
+    res.json(instructor);
+  } catch (err) {
+    console.error('getInstructorById error:', err);
+    res.status(500).json({
+      message: 'Failed to load instructor profile.',
+    });
+  }
+};
