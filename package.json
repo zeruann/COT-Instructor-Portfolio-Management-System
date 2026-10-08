@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
-    "axios": "^1.20.0"
+    "axios": "^1.20.0",
+    "mongodb": "^7.6.0"
   }
 }
