@@ -1,3 +1,6 @@
+import PasswordChecklist from "../../components/PasswordChecklist";
+import { isPasswordValid } from "../../utils/passwordRules";
+
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -17,13 +20,6 @@ const EyeIcon = ({ off, ...props }) =>
     </svg>
   );
 
-const rules = [
-  { label: "At least 8 characters", test: (pw) => pw.length >= 8 },
-  { label: "One uppercase letter", test: (pw) => /[A-Z]/.test(pw) },
-  { label: "One lowercase letter", test: (pw) => /[a-z]/.test(pw) },
-  { label: "One number", test: (pw) => /[0-9]/.test(pw) },
-  { label: "One special character", test: (pw) => /[^A-Za-z0-9]/.test(pw) },
-];
 
 function SetNewPassword() {
   const { token } = useParams();
@@ -34,8 +30,7 @@ function SetNewPassword() {
   const [error, setError] = useState("");
   const [touched, setTouched] = useState(false);
 
-  const failedRules = rules.filter((r) => !r.test(newPassword));
-  const isValid = failedRules.length === 0;
+  const isValid = isPasswordValid(newPassword);
   const passwordsMatch = newPassword === confirmPassword && confirmPassword.length > 0;
 
   const handleSubmit = async (e) => {
@@ -89,21 +84,7 @@ function SetNewPassword() {
         </div>
 
         {/* Live rule checklist */}
-        {touched && (
-          <ul className="text-sm space-y-1">
-            {rules.map((rule) => {
-              const passed = rule.test(newPassword);
-              return (
-                <li
-                  key={rule.label}
-                  className={passed ? "text-green-600" : "text-gray-400"}
-                >
-                  {passed ? "✓" : "○"} {rule.label}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        {touched && <PasswordChecklist password={newPassword} />}
 
         <div className="relative">
           <label className="block text-sm font-medium text-gray-600 mb-1">Confirm Password</label>
@@ -127,7 +108,7 @@ function SetNewPassword() {
           type="submit"
           className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 rounded-lg transition"
         >
-          Back to Login
+          Reset Password
         </button>
       </form>
     </AuthLayout>

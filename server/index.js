@@ -16,6 +16,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/instructors", instructorRoutes);
+app.use('/api/profile', require('./routes/profileRoutes'));
 
 mongoose
   .connect(process.env.MONGO_URI)

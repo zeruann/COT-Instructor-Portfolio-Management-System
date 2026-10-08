@@ -1,20 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 import Sidebar from "../../components/Sidebar";
 import Header from "../../components/Header";
 
 const API_URL = 'http://localhost:5000/api/instructors';
-
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All statuses' },
-  { value: 'active', label: 'Active' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'deactivated', label: 'Deactivated' },
-];
-
-// Default table order: Active first, then Pending, then Deactivated
-const STATUS_ORDER = { active: 0, pending: 1, deactivated: 2, inactive: 3 };
 
 export default function ViewInstructors() {
   const [instructors, setInstructors] = useState([]);
@@ -22,7 +12,6 @@ export default function ViewInstructors() {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [updatingId, setUpdatingId] = useState(null);
-  const [statusFilter, setStatusFilter] = useState('all');
 
   // Fetch instructors from backend API
   useEffect(() => {
@@ -57,32 +46,13 @@ export default function ViewInstructors() {
     fetchInstructors();
   }, []);
 
-  // Search (name / email) + status filter, then sort by status group (newest first inside each group)
-  const filteredInstructors = instructors
-    .filter((inst) => {
-      const name = inst.fullName || '';
-      const email = inst.email || '';
-      const query = searchQuery.toLowerCase();
-      const matchesSearch = name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
-
-      const status = (inst.accountStatus || '').toLowerCase();
-      const matchesStatus = statusFilter === 'all' || status === statusFilter;
-
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      const rankA = STATUS_ORDER[(a.accountStatus || '').toLowerCase()] ?? 99;
-      const rankB = STATUS_ORDER[(b.accountStatus || '').toLowerCase()] ?? 99;
-      if (rankA !== rankB) return rankA - rankB;
-      return (new Date(b.createdAt) || 0) - (new Date(a.createdAt) || 0);
-    });
-
-  const hasActiveFilters = statusFilter !== 'all' || searchQuery !== '';
-
-  const clearFilters = () => {
-    setStatusFilter('all');
-    setSearchQuery('');
-  };
+  // Live search (name / email)
+  const filteredInstructors = instructors.filter((inst) => {
+    const name = inst.fullName || '';
+    const email = inst.email || '';
+    const query = searchQuery.toLowerCase();
+    return name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
+  });
 
   // Delete (local only, same as before)
   const handleDelete = (id) => {
@@ -153,7 +123,7 @@ export default function ViewInstructors() {
   const renderOnlineStatus = (onlineStatus = '') => {
     const isOnline = onlineStatus.toLowerCase() === 'online';
     return (
-      <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-gray-500">
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-600">
         <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-gray-300'}`} />
         {onlineStatus || 'Offline'}
       </span>
@@ -210,37 +180,20 @@ export default function ViewInstructors() {
       <div className="flex-1 bg-[#F8F9FB] min-h-screen p-8">
         <Header />
 
-        {/* FILTER + SEARCH */}
-        <div className="flex items-center mb-6 gap-3">
-          <div className="relative w-48 shrink-0">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              aria-label="Filter by account status"
-              className="w-full appearance-none bg-white border border-gray-200 rounded-full py-3 pl-4 pr-9 text[11px] text-gray-700 focus:outline-none focus:border-orange-500 transition cursor-pointer"
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-
+        {/* SEARCH BAR */}
+        <div className="flex justify-between items-center mb-6 gap-4">
           <div className="relative flex-1 max-w-xl">
             <input
               type="text"
               placeholder="Search by name or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-full py-3 pl-4 pr-10 text[11px] text-gray-700 placeholder-gray-400 focus:outline-none focus:border-orange-500 transition"
+              className="w-full bg-white border border-gray-200 rounded-full py-3 pl-4 pr-10 text-xs text-gray-700 placeholder-gray-400 focus:outline-none focus:border-orange-500 transition"
             />
             <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
           </div>
         </div>
-        
-        
+
         {/* TABLE CARD */}
         <div className="bg-white rounded-2xl shadow-xs border border-gray-100 p-6">
           <div className="flex items-center justify-between gap-4 mb-6">
@@ -248,11 +201,10 @@ export default function ViewInstructors() {
             <button className="text-xs font-semibold text-orange-500 hover:underline">View All</button>
           </div>
 
-
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="text-xs text-gray-600 uppercase tracking-wider border-b border-gray-100">
+                <tr className="text-[11px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
                   <th className="pb-3">INSTRUCTOR</th>
                   <th className="pb-3">CREATED AT</th>
                   <th className="pb-3">ACCOUNT STATUS</th>
@@ -285,8 +237,8 @@ export default function ViewInstructors() {
                           <div className="flex items-center gap-3">
                             <img src={avatar} alt={name} className="w-10 h-10 rounded-full object-cover" />
                             <div>
-                              <p className="text-[16px] text-gray-800 leading-tight">{name}</p>
-                              <p className="text-[14px]  text-gray-400 leading-tight">{item.email}</p>
+                              <p className="font-bold text-gray-800 leading-tight">{name}</p>
+                              <p className="text-xs text-gray-400 leading-tight">{item.email}</p>
                             </div>
                           </div>
                         </td>
@@ -300,15 +252,7 @@ export default function ViewInstructors() {
                 ) : (
                   <tr>
                     <td colSpan="5" className="py-8 text-center text-xs text-gray-400">
-                      {hasActiveFilters ? 'No instructors match your filters.' : 'No instructors found.'}
-                      {hasActiveFilters && (
-                        <button
-                          onClick={clearFilters}
-                          className="ml-2 font-semibold text-orange-500 hover:underline"
-                        >
-                          Clear filters
-                        </button>
-                      )}
+                      No instructors found.
                     </td>
                   </tr>
                 )}

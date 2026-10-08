@@ -166,8 +166,25 @@ function useAppModal() {
 
 /* ------------------------------------------------------------------ */
 
+
+const EMPTY_FORM = { firstName: '', middleName: '', lastName: '', email: '', department: '' };
+
+const inputClass =
+  'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all';
+
+// Falls back to fullName so old records still display
+const getDisplayName = (inv) => {
+  const p = inv.profile || {};
+  if (p.firstName || p.lastName) {
+    return [p.firstName, p.middleName, p.lastName].filter(Boolean).join(' ');
+  }
+  return inv.fullName || inv.email;
+};
+
+
+
 function InviteInstructor() {
-  const [form, setForm] = useState({ fullName: '', email: '', department: '' });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [invitations, setInvitations] = useState([]);
   // Ids currently mid-request (blocks rapid double-clicks while waiting on the server)
   const [resendingIds, setResendingIds] = useState(() => new Set());
@@ -185,37 +202,35 @@ function InviteInstructor() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSend = async () => {
-    if (!form.fullName || !form.email || !form.department) {
-      notify('error', 'Missing information', 'Fill in the instructor’s name, email, and department before sending the invitation.');
+const handleSend = async () => {
+  if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.department) {
+    notify('error', 'Missing information', 'Fill in the instructor’s first name, last name, email, and department before sending the invitation.');
+    return;
+  }
+  try {
+    const res = await fetch('/api/invitations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      notify('error', 'Invitation not sent', data.message || 'The server couldn’t process this invitation. Try again.');
       return;
     }
-    try {
-      const res = await fetch('/api/invitations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
 
-      const data = await res.json();
+    setInvitations([data, ...invitations]);
+    setForm(EMPTY_FORM);
+    notify('success', 'Invitation sent', `${getDisplayName(data)} will receive an email to join as an instructor.`);
+  } catch (err) {
+    console.error('Failed to send invitation:', err);
+    notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
+  }
+};
 
-      if (!res.ok) {
-        notify('error', 'Invitation not sent', data.message || 'The server couldn’t process this invitation. Try again.');
-        return;
-      }
-
-      setInvitations([data, ...invitations]);
-      setForm({ fullName: '', email: '', department: '' });
-      notify('success', 'Invitation sent', `${data.fullName || form.fullName} will receive an email to join as an instructor.`);
-    } catch (err) {
-      console.error('Failed to send invitation:', err);
-      notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
-    }
-  };
-
-  const handleCancel = () => {
-    setForm({ fullName: '', email: '', department: '' });
-  };
+const handleCancel = () => setForm(EMPTY_FORM);
 
 const handleResend = async (id) => {
   // A request for this id is already in flight - ignore rapid repeat clicks.
@@ -263,7 +278,7 @@ const handleResend = async (id) => {
 };
 
 const handleCancelInvitation = (inv) => {
-  const who = inv.fullName || inv.email;
+  const who = getDisplayName(inv);
 
   confirm({
     title: 'Cancel this invitation?',
@@ -276,9 +291,9 @@ const handleCancelInvitation = (inv) => {
 
   return (
     <div className="flex">
-      <Sidebar />
+      <Sidebar role="admin" />
       <div className="flex-1 bg-[#F8F9FB] min-h-screen p-8">
-        <Header />
+        <Header role="admin" />
 
         {/* Invite Form */}
         <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-6 mb-6 hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-shadow">
@@ -289,47 +304,43 @@ const handleCancelInvitation = (inv) => {
             <h2 className="font-semibold text-lg text-gray-800">Invite New Instructor</h2>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div>
-              <label className="text-sm text-gray-500 block mb-1.5">Full Name</label>
-              <input
-                name="fullName"
-                value={form.fullName}
-                onChange={handleChange}
-                placeholder="Enter full name"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-500 block mb-1.5">Email Address</label>
-              <input
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="instructor@university.edu"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-500 block mb-1.5">Department</label>
-              <select
-                name="department"
-                value={form.department}
-                onChange={handleChange}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all"
-              >
-                <option value="">Select Department</option>
-                {DEPARTMENTS.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">First Name</label>
+            <input name="firstName" value={form.firstName} onChange={handleChange}
+              placeholder="First name" className={inputClass} />
           </div>
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">
+              Middle Name <span className="text-gray-300">(optional)</span>
+            </label>
+            <input name="middleName" value={form.middleName} onChange={handleChange}
+              placeholder="Middle name" className={inputClass} />
+          </div>
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">Last Name</label>
+            <input name="lastName" value={form.lastName} onChange={handleChange}
+              placeholder="Last name" className={inputClass} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">Email Address</label>
+            <input name="email" type="email" value={form.email} onChange={handleChange}
+              placeholder="instructor@university.edu" className={inputClass} />
+          </div>
+          <div>
+            <label className="text-sm text-gray-500 block mb-1.5">Department</label>
+            <select name="department" value={form.department} onChange={handleChange}
+              className={`${inputClass} text-gray-500`}>
+              <option value="">Select Department</option>
+              {DEPARTMENTS.map((dept) => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
           <div className="flex justify-end gap-3">
             <button
@@ -388,7 +399,7 @@ const handleCancelInvitation = (inv) => {
                           <User className="text-orange-400" size={18} />
                         </div>
                         <div>
-                          <p className="font-medium text-gray-800">{inv.fullName}</p>
+                          <p className="font-medium text-gray-800">{getDisplayName(inv)}</p>
                           <p className="text-gray-400 text-xs">{inv.email}</p>
                         </div>
                       </td>

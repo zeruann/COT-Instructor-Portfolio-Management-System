@@ -1,171 +1,172 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
-const { OAuth2Client } = require("google-auth-library");
-const Instructor = require("../models/Instructor");
-const { sendEmail } = require("../utils/sendEmail");
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
+const Instructor = require('../models/Instructor');
+const { sendEmail } = require('../utils/sendEmail');
+const { isPasswordValid } = require('../utils/passwordRules');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// Shared by login, googleLogin and forgotPassword.
+// Admins and Google users were never invited, so `status` is empty for them.
+const canSignIn = (user) =>
+  user.accountStatus === 'Active' && (!user.status || user.status === 'Accepted');
+
+// One place to build the token so login and googleLogin stay identical.
+// `name` is what sendInvitation reads as req.user.name for "invited by".
+const signToken = (user) =>
+  jwt.sign(
+    { id: user._id, accountType: user.accountType, name: user.fullName },
+    process.env.JWT_SECRET,
+    { expiresIn: '1d' }
+  );
+
+const publicInstructor = (user) => ({
+  id: user._id,
+  fullName: user.fullName,
+  email: user.email,
+  accountType: user.accountType,
+  accountStatus: user.accountStatus,
+  onlineStatus: user.onlineStatus,
+});
+
+/* ------------------------------ Login ------------------------------ */
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const email = (req.body.email || '').trim().toLowerCase();
+    const { password } = req.body;
 
-    // 1. Find the account in MongoDB using the email
     const instructor = await Instructor.findOne({ email });
-    console.log("LOGIN ACCOUNT:", instructor);
 
-    // Account does not exist
-    if (!instructor) {
-      return res.status(401).json({
-        message: "Invalid email or password",
-      });
+    // Same message for unknown email, no password set, or wrong password
+    if (!instructor || !instructor.password || !password) {
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // 2. Check if the account has a password
-    if (!instructor.password) {
-      return res.status(401).json({
-        message: "This account does not have a password.",
-      });
-    }
-
-    // 3. Check if the password is correct
     const match = await bcrypt.compare(password, instructor.password);
-
     if (!match) {
-      return res.status(401).json({
-        message: "Invalid email or password",
-      });
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // 4. Check if the account is active
-    if (instructor.accountStatus !== "Active") {
+    // Only after the password is correct do we reveal account state
+    if (!canSignIn(instructor)) {
       return res.status(403).json({
-        message:
-          "Your account is not active. Please contact the administrator.",
+        message: 'Your account is not active. Please contact the administrator.',
       });
     }
 
-    // 5. Check if the account type is valid
-    if (
-      instructor.accountType !== "Administrator" &&
-      instructor.accountType !== "Instructor"
-    ) {
-      return res.status(403).json({
-        message: "Invalid account type.",
-      });
+    if (!['Administrator', 'Instructor'].includes(instructor.accountType)) {
+      return res.status(403).json({ message: 'Invalid account type.' });
     }
 
-    // 6. Create JWT token
-    const token = jwt.sign(
-      {
-        id: instructor._id,
-        accountType: instructor.accountType,
-      },
-      process.env.JWT_SECRET,
-      {
-        expiresIn: "1d",
-      }
-    );
+    const token = signToken(instructor);
 
-    // 7. Set account to Online
-    instructor.onlineStatus = "Online";
+    instructor.onlineStatus = 'Online';
     await instructor.save();
 
-    // 8. Return account information
-    res.json({
-      token,
-      instructor: {
-        id: instructor._id,
-        fullName: instructor.fullName,
-        email: instructor.email,
-        accountType: instructor.accountType,
-        accountStatus: instructor.accountStatus,
-        onlineStatus: instructor.onlineStatus,
-      },
-    });
+    res.json({ token, instructor: publicInstructor(instructor) });
   } catch (err) {
-    console.error("Login error:", err);
-
-    res.status(500).json({
-      message: err.message,
-    });
+    console.error('Login error:', err);
+    res.status(500).json({ message: 'Something went wrong. Please try again.' });
   }
 };
-
 
 exports.googleLogin = async (req, res) => {
   try {
     const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ message: 'Missing Google credential.' });
+    }
+
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
+
     const payload = ticket.getPayload();
 
-    let instructor = await Instructor.findOne({ email: payload.email });
-    if (!instructor) {
-      instructor = await Instructor.create({
-        fullName: payload.name,
-        email: payload.email,
-        googleId: payload.sub,
+    if (!payload.email_verified) {
+      return res.status(403).json({ message: 'Your Google email is not verified.' });
+    }
+
+    const email = payload.email.toLowerCase();
+    const instructor = await Instructor.findOne({ email });
+
+    // No auto-creating accounts: Google sign-in is only for people already set up
+    if (!instructor || !canSignIn(instructor)) {
+      return res.status(403).json({
+        message:
+          'This Google account is not registered or has not finished setup. Use your invitation link.',
       });
     }
 
-    const token = jwt.sign(
-      { id: instructor._id, accountType: instructor.accountType },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    if (!instructor.googleId) {
+      instructor.googleId = payload.sub;
+    }
+    instructor.onlineStatus = 'Online';
+    await instructor.save();
 
-    res.json({
-      token,
-      instructor: {
-        id: instructor._id,
-        fullName: instructor.fullName,
-        email: instructor.email,
-        accountType: instructor.accountType,
-        accountStatus: instructor.accountStatus,
-        onlineStatus: instructor.onlineStatus,
-      },
-    });
+    const token = signToken(instructor);
+
+    res.json({ token, instructor: publicInstructor(instructor) });
   } catch (err) {
-    res.status(401).json({ message: "Google authentication failed" });
+    console.error('Google login error:', err);
+    res.status(401).json({ message: 'Google authentication failed' });
   }
 };
 
-exports.logout = (req, res) => {
-  res.json({ message: "Logged out successfully" });
+// Add the auth middleware to this route so req.user exists:
+// router.post('/logout', auth, logout)
+exports.logout = async (req, res) => {
+  try {
+    if (req.user?.id) {
+      await Instructor.updateOne({ _id: req.user.id }, { $set: { onlineStatus: 'Offline' } });
+    }
+    res.json({ message: 'Logged out successfully' });
+  } catch (err) {
+    console.error('Logout error:', err);
+    res.json({ message: 'Logged out successfully' });
+  }
 };
+
+/* ------------------------- Password reset -------------------------- */
 
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = (req.body.email || '').trim().toLowerCase();
     const instructor = await Instructor.findOne({ email });
 
-    if (!instructor) {
-      return res.status(404).json({ message: "Email not registered" });
+    // Same answer whether or not the email exists, so this can't be used
+    // to find out who is registered. Pending/rejected/cancelled invitees
+    // don't get a reset email either; they use their invitation link.
+    const genericReply = {
+      message: 'If that email is registered, a reset link has been sent.',
+    };
+
+    if (!instructor || !canSignIn(instructor)) {
+      return res.json(genericReply);
     }
 
-    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour from now
 
-    instructor.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+    instructor.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
     instructor.resetPasswordExpires = expiresAt;
     await instructor.save();
 
     const resetLink = `${process.env.CLIENT_URL}/set-new-password/${resetToken}`;
 
-    const expiryText = new Date(expiresAt).toLocaleString("en-PH", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: "Asia/Manila",
+    const expiryText = new Date(expiresAt).toLocaleString('en-PH', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'Asia/Manila',
     });
 
     await sendEmail({
       to: instructor.email,
-      subject: "Set your COT Portfolio password",
+      subject: 'Set your COT Portfolio password',
       html: `
         <p>Hi ${instructor.fullName},</p>
         <p>We received a request to update the password for your account.</p>
@@ -176,48 +177,44 @@ exports.forgotPassword = async (req, res) => {
       `,
     });
 
-    res.json({ message: "Reset link sent to your email" });
+    res.json(genericReply);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('forgotPassword error:', err);
+    res.status(500).json({ message: 'Something went wrong. Please try again.' });
   }
 };
-
 
 exports.resetPassword = async (req, res) => {
   try {
     const { token } = req.params;
     const { newPassword } = req.body;
 
-    // Server-side password rule enforcement
-    const passwordRules = [
-      { test: (pw) => pw.length >= 8, message: "Password must be at least 8 characters" },
-      { test: (pw) => /[A-Z]/.test(pw), message: "Password must contain an uppercase letter" },
-      { test: (pw) => /[a-z]/.test(pw), message: "Password must contain a lowercase letter" },
-      { test: (pw) => /[0-9]/.test(pw), message: "Password must contain a number" },
-      { test: (pw) => /[^A-Za-z0-9]/.test(pw), message: "Password must contain a special character" },
-    ];
-
-    for (const rule of passwordRules) {
-      if (!rule.test(newPassword)) {
-        return res.status(400).json({ message: rule.message });
-      }
+    // Server-side password rule enforcement (same rules as the checklist)
+    if (!isPasswordValid(newPassword)) {
+      return res.status(400).json({
+        message:
+          'Password must be at least 8 characters and include an uppercase letter, a lowercase letter, a number, and a special character.',
+      });
     }
 
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     const instructor = await Instructor.findOne({
       resetPasswordToken: hashedToken,
       resetPasswordExpires: { $gt: Date.now() },
     });
-    if (!instructor) return res.status(400).json({ message: "Token invalid or expired" });
+    if (!instructor) {
+      return res.status(400).json({ message: 'Token invalid or expired' });
+    }
 
     instructor.password = await bcrypt.hash(newPassword, 10);
     instructor.resetPasswordToken = undefined;
     instructor.resetPasswordExpires = undefined;
     await instructor.save();
 
-    res.json({ message: "Password reset successful" });
+    res.json({ message: 'Password reset successful' });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('resetPassword error:', err);
+    res.status(500).json({ message: 'Something went wrong. Please try again.' });
   }
 };

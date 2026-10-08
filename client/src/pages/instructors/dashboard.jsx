@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import InstructorHeader from "../../components/InstructorsHeader";
-import InstructorSidebar from "../../components/InstructorsSidebar";
+import Header from '../../components/Header';
+import Sidebar from '../../components/Sidebar';
 
 function getInitials(name = "") {
   return name
@@ -30,10 +30,10 @@ function Dashboard() {
 
   return (
 <div className="flex h-screen bg-gray-50">
-    <InstructorSidebar />
+    <Sidebar role="instructor" />
 
     <div className="flex-1 flex flex-col min-w-0">
-      <InstructorHeader instructor={instructor} />
+      <Header role="instructor" user={instructor} />
 
         <main className="flex-1 overflow-y-auto p-8">
         <div className="bg-white rounded-2xl shadow p-6">

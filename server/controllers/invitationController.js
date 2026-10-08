@@ -9,6 +9,9 @@ const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 const newToken = () => crypto.randomBytes(32).toString('hex');
 const newExpiry = () => new Date(Date.now() + INVITATION_TTL_MS);
 
+const buildFullName = ({ firstName, middleName, lastName }) =>
+  [firstName, middleName, lastName].filter(Boolean).join(' ');
+
 const PRIVATE_FIELDS = ['token', '__v', 'password', 'googleId', 'resetPasswordToken', 'resetPasswordExpires'];
 const PRIVATE_SELECT = PRIVATE_FIELDS.map((f) => `-${f}`).join(' ');
 
@@ -41,16 +44,18 @@ const STATUS_MESSAGES = {
 // POST /api/invitations
 exports.sendInvitation = async (req, res) => {
   try {
-    const fullName = (req.body.fullName || '').trim();
+    const firstName = (req.body.firstName || '').trim();
+    const middleName = (req.body.middleName || '').trim();
+    const lastName = (req.body.lastName || '').trim();
+    const fullName = buildFullName({ firstName, middleName, lastName });
     const email = (req.body.email || '').trim().toLowerCase();
     const { department } = req.body;
 
-    if (!fullName || !email || !department) {
+    if (!firstName || !lastName || !email || !department) {
       return res
         .status(400)
-        .json({ message: 'Full name, email, and department are required.' });
+        .json({ message: 'First name, last name, email, and department are required.' });
     }
-
     await expireStale();
 
     // One document per email. Only a Cancelled invitation can be re-invited.
@@ -87,14 +92,26 @@ exports.sendInvitation = async (req, res) => {
 
     let invitation;
     if (existing) {
-      // Re-inviting a cancelled email: reuse the document
+      // Re-inviting a cancelled email: reuse the document.
+      // Dotted keys so other profile fields are not wiped.
       invitation = await Instructor.findByIdAndUpdate(
         existing._id,
-        { $set: inviteFields },
+        {
+          $set: {
+            ...inviteFields,
+            'profile.firstName': firstName,
+            'profile.middleName': middleName,
+            'profile.lastName': lastName,
+          },
+        },
         { new: true }
       );
     } else {
-      invitation = await Instructor.create({ ...inviteFields, email });
+      invitation = await Instructor.create({
+        ...inviteFields,
+        email,
+        profile: { firstName, middleName, lastName },
+      });
     }
 
     try {
@@ -314,11 +331,13 @@ const respondToInvitation = (newStatus) => async (req, res) => {
 exports.acceptInvitation = respondToInvitation('Accepted');
 exports.rejectInvitation = respondToInvitation('Rejected');
 
+
+
 // POST /api/invitations/token/:token/setup
 // Final step: password + profile, then the account becomes Active.
 exports.completeSetup = async (req, res) => {
   try {
-    const { password, position, contactNumber } = req.body;
+    const { password } = req.body;
 
     if (!password || password.length < 8) {
       return res.status(400).json({ message: 'Password must be at least 8 characters.' });
@@ -335,7 +354,7 @@ exports.completeSetup = async (req, res) => {
         expiresAt: { $gt: new Date() },
       },
       {
-        $set: { password: hashed, position, contactNumber, accountStatus: 'Active' },
+        $set: { password: hashed, accountStatus: 'Active' },
         $unset: { token: 1 }, // burn the link
       },
       { new: true }
@@ -366,5 +385,37 @@ exports.getActiveInstructors = async (req, res) => {
   } catch (err) {
     console.error('getActiveInstructors error:', err);
     res.status(500).json({ message: 'Failed to load instructors.' });
+  }
+};
+
+
+// GET /api/invitations/:id
+exports.getInstructorById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        message: 'Invalid instructor id.',
+      });
+    }
+
+    const instructor = await Instructor.findOne({
+      _id: id,
+      accountType: 'Instructor',
+    }).select(PRIVATE_SELECT);
+
+    if (!instructor) {
+      return res.status(404).json({
+        message: 'Instructor not found.',
+      });
+    }
+
+    res.json(instructor);
+  } catch (err) {
+    console.error('getInstructorById error:', err);
+    res.status(500).json({
+      message: 'Failed to load instructor profile.',
+    });
   }
 };
