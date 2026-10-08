@@ -238,10 +238,10 @@ export default function ViewInstructors() {
 
   return (
     <div className="flex">
-      <Sidebar />
+<Sidebar role="admin" />
 
       <div className="flex-1 bg-[#F8F9FB] min-h-screen p-8">
-        <Header />
+        <Header role="admin" />
 
         {/* SEARCH BAR */}
         <div className="flex justify-between items-center mb-6 gap-4">

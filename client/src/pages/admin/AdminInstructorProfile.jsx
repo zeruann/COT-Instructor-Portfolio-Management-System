@@ -62,9 +62,9 @@ function AdminInstructorProfile() {
   if (loading) {
     return (
       <div className="flex">
-        <Sidebar />
+        <Sidebar role="admin" />
         <div className="flex-1 bg-[#F8F9FB] min-h-screen p-8">
-          <Header />
+          <Header role="admin" />
           <div className="mt-8 text-gray-500">
             Loading instructor profile...
           </div>
@@ -76,9 +76,9 @@ function AdminInstructorProfile() {
   if (error) {
     return (
       <div className="flex">
-        <Sidebar />
+        <Sidebar role="admin" />
         <div className="flex-1 bg-[#F8F9FB] min-h-screen p-8">
-          <Header />
+          <Header role="admin" />
           <div className="mt-8 bg-white rounded-2xl p-6">
             <p className="text-red-500">{error}</p>
             <button
@@ -105,10 +105,10 @@ function AdminInstructorProfile() {
 
   return (
     <div className="flex">
-      <Sidebar />
+      <Sidebar role="admin" />
 
       <div className="flex-1 bg-[#F8F9FB] min-h-screen p-8">
-        <Header />
+        <Header role="admin" />
 
         {/* MAIN CARD CONTAINER */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8 mt-6">

@@ -291,9 +291,9 @@ const handleCancelInvitation = (inv) => {
 
   return (
     <div className="flex">
-      <Sidebar />
+      <Sidebar role="admin" />
       <div className="flex-1 bg-[#F8F9FB] min-h-screen p-8">
-        <Header />
+        <Header role="admin" />
 
         {/* Invite Form */}
         <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-6 mb-6 hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-shadow">

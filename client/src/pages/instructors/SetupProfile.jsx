@@ -1,6 +1,5 @@
 import PasswordChecklist from '../../components/PasswordChecklist';
 import { isPasswordValid } from '../../utils/passwordRules';
-
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 

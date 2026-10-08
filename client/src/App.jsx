@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AcceptInvitation from "./pages/auth/AcceptInvitation";
 import SetupProfile from './pages/instructors/SetupProfile';
 import InstructorDashboard from "./pages/instructors/dashboard";
-import ViewInstructors from "./pages/auth/ViewInstructors";
+import ViewInstructors from "./pages/admin/ViewInstructors";
 import Profile from "./pages/instructors/Profile";
 
 // ADMIN
