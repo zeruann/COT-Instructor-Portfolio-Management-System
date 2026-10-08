@@ -6,6 +6,7 @@ import Sidebar from "../../components/Sidebar";
 import Header from "../../components/Header";
 
 const API_URL = 'http://localhost:5000/api/instructors';
+const ACTIVE_INSTRUCTORS_URL = 'http://localhost:5000/api/invitations/active';
 
 export default function ViewInstructors() {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ export default function ViewInstructors() {
         setLoading(true);
         setError(null);
 
-        const res = await fetch(API_URL);
+        const res = await fetch(ACTIVE_INSTRUCTORS_URL);
 
         if (!res.ok) {
           throw new Error(
