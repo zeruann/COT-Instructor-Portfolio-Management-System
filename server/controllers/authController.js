@@ -135,52 +135,44 @@ exports.logout = async (req, res) => {
 
 exports.forgotPassword = async (req, res) => {
   try {
-    const email = (req.body.email || '').trim().toLowerCase();
+    const { email } = req.body;
     const instructor = await Instructor.findOne({ email });
 
-    // Same answer whether or not the email exists, so this can't be used
-    // to find out who is registered. Pending/rejected/cancelled invitees
-    // don't get a reset email either; they use their invitation link.
-    const genericReply = {
-      message: 'If that email is registered, a reset link has been sent.',
-    };
-
-    if (!instructor || !canSignIn(instructor)) {
-      return res.json(genericReply);
+    if (!instructor) {
+      return res.status(404).json({ message: "Email not registered" });
     }
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetToken = crypto.randomBytes(32).toString("hex");
     const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour from now
 
-    instructor.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    instructor.resetPasswordToken = crypto.createHash("sha256").update(resetToken).digest("hex");
     instructor.resetPasswordExpires = expiresAt;
     await instructor.save();
 
     const resetLink = `${process.env.CLIENT_URL}/set-new-password/${resetToken}`;
 
-    const expiryText = new Date(expiresAt).toLocaleString('en-PH', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-      timeZone: 'Asia/Manila',
+    const expiryText = new Date(expiresAt).toLocaleString("en-PH", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "Asia/Manila",
     });
 
     await sendEmail({
       to: instructor.email,
-      subject: 'Set your COT Portfolio password',
+      subject: "Set your COT Portfolio password",
       html: `
         <p>Hi ${instructor.fullName},</p>
         <p>We received a request to update the password for your account.</p>
         <p>If you initiated this request, click below to set your password:</p>
         <p><a href="${resetLink}" style="background:#f97316;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">Set Password</a></p>
-        <p>This link is valid for <strong>1 hour</strong> and will expire at ${expiryText}.</p>
+        <p>This link will expire on <strong>${expiryText}</strong> (1 hour from this request).</p>
         <p>If you did not request this, you can safely disregard this email.</p>
       `,
     });
 
-    res.json(genericReply);
+    res.json({ message: "Reset link sent to your email" });
   } catch (err) {
-    console.error('forgotPassword error:', err);
-    res.status(500).json({ message: 'Something went wrong. Please try again.' });
+    res.status(500).json({ message: err.message });
   }
 };
 
