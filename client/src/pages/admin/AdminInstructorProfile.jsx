@@ -17,7 +17,7 @@ function AdminInstructorProfile() {
         setLoading(true);
         setError("");
 
-        const res = await fetch(`http://localhost:5000/api/invitations/${id}`);
+        const res = await fetch(`http://localhost:5000/api/instructors/${id}`);
         const data = await res.json();
 
         if (!res.ok) {
