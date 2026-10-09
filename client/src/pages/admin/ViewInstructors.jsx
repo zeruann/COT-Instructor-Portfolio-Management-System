@@ -354,9 +354,10 @@ export default function ViewInstructors() {
                     <td colSpan="6" className="py-8 text-center text-xs text-gray-400">
                       {hasActiveFilters ? 'No instructors match your filters.' : 'No instructors found.'}
                       {hasActiveFilters && (
+                     
                         <button
                           onClick={clearFilters}
-                          className="ml-2 font-semibold text-orange-500 hover:underline"
+                          className="ml-2 font-semibold text-orange-500 hover:underline "
                         >
                           Clear filters
                         </button>
