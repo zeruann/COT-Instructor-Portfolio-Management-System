@@ -5,7 +5,10 @@
 // link, and MongoDB should store only the returned `fileId`.
 //
 // Auth:    OAuth2 refresh token of the team-owned storage account, scope drive.file
-// Layout:  <ROOT folder>/instructor-<instructorId>/<file>
+// Layout:  <ROOT>/<Department>/<Name [instructorId]>/Faculty Portfolio/<item>/<file>
+//          <ROOT>/<Department>/<Name [instructorId]>/Class Portfolio/SY .../1st Sem/<class>/<file>
+//          Folder paths are built by utils/driveNaming.js and passed in as `folderPath`.
+//          The old flat layout (<ROOT>/instructor-<id>/) still works when `folderPath` is not given.
 //
 // Required env vars (server/.env, never commit, never send to the frontend):
 //   GOOGLE_DRIVE_CLIENT_ID
@@ -15,6 +18,8 @@
 //
 // Authorization (who may upload/view/delete) is NOT decided here. The calling
 // controller must check ownership/role first, then call this service.
+
+require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 
 const { google } = require('googleapis');
 const { Readable } = require('stream');
@@ -153,6 +158,53 @@ function ensureInstructorFolder(instructorId) {
   return folderCache.get(key);
 }
 
+
+// Drive allows almost anything in a name, but these characters cause trouble for people and scripts.
+function sanitizeName(value, max = 80) {
+  const cleaned = String(value ?? '')
+    .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned.slice(0, max).trim();
+}
+
+// Finds or creates a nested folder path under the root, e.g.
+//   ensureFolderPath(['Information Technology', 'Maria Santos [665f...]', 'Faculty Portfolio'])
+// Each level is cached by (parent, name) as an in-flight promise, so simultaneous uploads
+// do not create duplicate folders. Protects a single server process only.
+// Returns the id of the last folder.
+const pathCache = new Map();
+
+function ensureFolderPath(segments) {
+  if (!Array.isArray(segments) || segments.length === 0) {
+    return Promise.reject(new StorageError('BAD_INPUT', 'folderPath must be a non-empty array of folder names.'));
+  }
+  const names = segments.map((s) => sanitizeName(s));
+  if (names.some((n) => !n)) {
+    return Promise.reject(new StorageError('BAD_INPUT', 'folderPath contains an empty folder name.'));
+  }
+
+  const walk = async () => {
+    let parentId = getRootFolderId();
+    for (const name of names) {
+      const key = `${parentId}/${name}`;
+      if (!pathCache.has(key)) {
+        const pending = findOrCreateFolder(name, parentId).catch((err) => {
+          pathCache.delete(key); // do not cache failures
+          throw err;
+        });
+        pathCache.set(key, pending);
+      }
+      parentId = await pathCache.get(key);
+    }
+    return parentId;
+  };
+
+  return walk().catch((err) => {
+    throw toStorageError(err);
+  });
+}
+
 // ---------- public API ----------
 
 // Confirms credentials work and the root folder is reachable by this app.
@@ -171,11 +223,12 @@ async function checkConnection() {
   }
 }
 
-// Uploads one file into the instructor's folder.
-// `fileName` should be unique per version (e.g. "<requirementKey>_v2_<original>")
-// because Drive allows duplicate names and does not overwrite.
-// Returns { fileId, name, mimeType, size } -> store these on the document version.
-async function uploadFile({ instructorId, buffer, fileName, mimeType }) {
+// Uploads one file. Pass `folderPath` (array of folder names, see utils/driveNaming.js) to use the
+// agreed tree. Without it, the old flat <ROOT>/instructor-<id>/ folder is used.
+// `fileName` should be unique per version (e.g. "<slot>_v2_<original>_<shortId>") because Drive
+// allows duplicate names and does not overwrite.
+// Returns { fileId, name, mimeType, size, checksum, folderId } -> store these on the document version.
+async function uploadFile({ instructorId, folderPath, buffer, fileName, mimeType }) {
   if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
     throw new StorageError('BAD_INPUT', 'buffer must be a non-empty Buffer.');
   }
@@ -183,17 +236,19 @@ async function uploadFile({ instructorId, buffer, fileName, mimeType }) {
   requireNonEmptyString(mimeType, 'mimeType');
 
   try {
-    const folderId = await ensureInstructorFolder(instructorId);
+    const folderId = folderPath ? await ensureFolderPath(folderPath) : await ensureInstructorFolder(instructorId);
     const res = await getDrive().files.create({
-      requestBody: { name: fileName, parents: [folderId] },
+      requestBody: { name: sanitizeName(fileName, 150), parents: [folderId] },
       media: { mimeType, body: Readable.from(buffer) },
-      fields: 'id, name, mimeType, size',
+      fields: 'id, name, mimeType, size, md5Checksum',
     });
     return {
       fileId: res.data.id,
       name: res.data.name,
       mimeType: res.data.mimeType,
       size: Number(res.data.size),
+      checksum: res.data.md5Checksum,
+      folderId,
     };
   } catch (err) {
     throw toStorageError(err, 'UPLOAD_FAILED');
@@ -237,11 +292,43 @@ async function deleteFile(fileId) {
   }
 }
 
+// Moves a folder under a different parent (for example when an instructor changes department).
+// Drive keeps all file IDs, so nothing stored in MongoDB changes.
+async function moveFolder(folderId, newParentId) {
+  requireNonEmptyString(folderId, 'folderId');
+  requireNonEmptyString(newParentId, 'newParentId');
+  try {
+    const drive = getDrive();
+    const meta = await drive.files.get({ fileId: folderId, fields: 'parents' });
+    await drive.files.update({
+      fileId: folderId,
+      addParents: newParentId,
+      removeParents: (meta.data.parents || []).join(','),
+      fields: 'id',
+    });
+    pathCache.clear(); // cached (parent, name) pairs may now be wrong
+    return true;
+  } catch (err) {
+    throw toStorageError(err);
+  }
+}
+
+// For tests only: lets a test replace the Drive client with a fake.
+function __setDriveClientForTests(client) {
+  driveClient = client;
+  pathCache.clear();
+  folderCache.clear();
+}
+
 module.exports = {
   StorageError,
+  sanitizeName,
   checkConnection,
   ensureInstructorFolder,
+  ensureFolderPath,
   uploadFile,
   getFile,
   deleteFile,
+  moveFolder,
+  __setDriveClientForTests,
 };
