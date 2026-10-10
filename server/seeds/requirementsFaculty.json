@@ -1,0 +1,454 @@
+[
+    {
+      "key": "FAC_A_PDS",
+      "checklistRef": "A 1.0",
+      "card": "Faculty Profile (Updated PDS)",
+      "cardOrder": 1,
+      "label": "Updated PDS (Personal Data Sheet)",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "required",
+      "periodScope": "none",
+      "order": 1,
+      "inChecklist": true,
+      "active": true
+    },
+    {
+      "key": "FAC_B_BACHELORS_TOR",
+      "checklistRef": "B 1.0",
+      "card": "Educational Attainment",
+      "cardOrder": 2,
+      "label": "Bachelor's Transcript of Records (TOR)",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "required",
+      "periodScope": "none",
+      "order": 2,
+      "inChecklist": true,
+      "active": true
+    },
+    {
+      "key": "FAC_B_BACHELORS_DIPLOMA",
+      "checklistRef": "B 1.0",
+      "card": "Educational Attainment",
+      "cardOrder": 2,
+      "label": "Bachelor's Diploma or Certificate of Units Earned",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "required",
+      "periodScope": "none",
+      "order": 3,
+      "inChecklist": true,
+      "active": true
+    },
+    {
+      "key": "FAC_B_MASTERS_TOR",
+      "checklistRef": "B 1.0",
+      "card": "Educational Attainment",
+      "cardOrder": 2,
+      "label": "Master's Transcript of Records (TOR)",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "ifApplicable",
+      "periodScope": "none",
+      "order": 4,
+      "inChecklist": true,
+      "active": true,
+      "appliesWhen": {
+        "educationLevel": "Master's"
+      }
+    },
+    {
+      "key": "FAC_B_MASTERS_DIPLOMA",
+      "checklistRef": "B 1.0",
+      "card": "Educational Attainment",
+      "cardOrder": 2,
+      "label": "Master's Diploma or Certificate of Units Earned",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "ifApplicable",
+      "periodScope": "none",
+      "order": 5,
+      "inChecklist": true,
+      "active": true,
+      "appliesWhen": {
+        "educationLevel": "Master's"
+      }
+    },
+    {
+      "key": "FAC_B_PHD_TOR",
+      "checklistRef": "B 1.0",
+      "card": "Educational Attainment",
+      "cardOrder": 2,
+      "label": "PhD Transcript of Records (TOR)",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "ifApplicable",
+      "periodScope": "none",
+      "order": 6,
+      "inChecklist": true,
+      "active": true,
+      "appliesWhen": {
+        "educationLevel": "PhD"
+      }
+    },
+    {
+      "key": "FAC_B_PHD_DIPLOMA",
+      "checklistRef": "B 1.0",
+      "card": "Educational Attainment",
+      "cardOrder": 2,
+      "label": "PhD Diploma or Certificate of Units Earned",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "ifApplicable",
+      "periodScope": "none",
+      "order": 7,
+      "inChecklist": true,
+      "active": true,
+      "appliesWhen": {
+        "educationLevel": "PhD"
+      }
+    },
+    {
+      "key": "FAC_C_SERVICE_RECORD",
+      "checklistRef": "C 1.0",
+      "card": "Service Records",
+      "cardOrder": 3,
+      "label": "Service records",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "required",
+      "periodScope": "none",
+      "order": 8,
+      "inChecklist": true,
+      "active": true
+    },
+    {
+      "key": "FAC_D_SEMINAR",
+      "checklistRef": "D 1.0",
+      "card": "List of Seminars and Workshops",
+      "cardOrder": 4,
+      "label": "Seminar or workshop (certificate or proof)",
+      "scope": "faculty",
+      "multiple": true,
+      "required": "required",
+      "periodScope": "none",
+      "order": 9,
+      "inChecklist": true,
+      "active": true,
+      "metaFields": [
+        {
+          "name": "title",
+          "label": "Title",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "dateFrom",
+          "label": "Start date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "dateTo",
+          "label": "End date",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "provider",
+          "label": "Organizer",
+          "type": "text",
+          "required": false
+        },
+        {
+          "name": "type",
+          "label": "Type",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Seminar",
+            "Workshop",
+            "Training",
+            "Conference"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "FAC_E_AWARD",
+      "checklistRef": "E 1.0",
+      "card": "Grants, Awards and Certifications of Commendation",
+      "cardOrder": 5,
+      "label": "Grant, award or certification of commendation",
+      "scope": "faculty",
+      "multiple": true,
+      "required": "required",
+      "periodScope": "none",
+      "order": 10,
+      "inChecklist": true,
+      "active": true,
+      "metaFields": [
+        {
+          "name": "title",
+          "label": "Title",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "date",
+          "label": "Date",
+          "type": "date",
+          "required": true
+        },
+        {
+          "name": "type",
+          "label": "Type",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Grant",
+            "Award",
+            "Speakership",
+            "Commendation"
+          ]
+        },
+        {
+          "name": "issuer",
+          "label": "Issued by",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "FAC_F_RESEARCH",
+      "checklistRef": "F 1.0",
+      "card": "Research",
+      "cardOrder": 6,
+      "label": "Research entry (with supporting document)",
+      "scope": "faculty",
+      "multiple": true,
+      "required": "required",
+      "periodScope": "none",
+      "order": 11,
+      "inChecklist": true,
+      "active": true,
+      "metaFields": [
+        {
+          "name": "title",
+          "label": "Title",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "type",
+          "label": "Type",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Proposal",
+            "Finished",
+            "Published",
+            "Presented"
+          ]
+        },
+        {
+          "name": "date",
+          "label": "Date",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "abstract",
+          "label": "Abstract",
+          "type": "longtext",
+          "required": false
+        },
+        {
+          "name": "publicationCertificateNote",
+          "label": "Certificate of publication (note)",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "FAC_G_EXTENSION",
+      "checklistRef": "G 1.0",
+      "card": "Extension Involvement",
+      "cardOrder": 7,
+      "label": "Extension involvement document",
+      "scope": "faculty",
+      "multiple": true,
+      "required": "required",
+      "periodScope": "none",
+      "order": 12,
+      "inChecklist": true,
+      "active": true,
+      "metaFields": [
+        {
+          "name": "title",
+          "label": "Activity",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "date",
+          "label": "Date",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "role",
+          "label": "Role",
+          "type": "text",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "FAC_H_PRODUCTION",
+      "checklistRef": "H 1.0",
+      "card": "Production",
+      "cardOrder": 8,
+      "label": "Production document with certificate",
+      "scope": "faculty",
+      "multiple": true,
+      "required": "ifApplicable",
+      "periodScope": "none",
+      "order": 13,
+      "inChecklist": true,
+      "active": true,
+      "metaFields": [
+        {
+          "name": "title",
+          "label": "Title",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "type",
+          "label": "Type",
+          "type": "select",
+          "required": true,
+          "options": [
+            "Published IM",
+            "Copyright",
+            "Patent",
+            "Utility Model"
+          ]
+        },
+        {
+          "name": "date",
+          "label": "Date",
+          "type": "date",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "FAC_I_MEMBERSHIP",
+      "checklistRef": "I 1.0",
+      "card": "Membership to Professional Organization",
+      "cardOrder": 9,
+      "label": "Professional membership",
+      "scope": "faculty",
+      "multiple": true,
+      "required": "required",
+      "periodScope": "none",
+      "order": 14,
+      "inChecklist": true,
+      "active": true,
+      "metaFields": [
+        {
+          "name": "organization",
+          "label": "Organization",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "link",
+          "label": "Link",
+          "type": "url",
+          "required": false
+        },
+        {
+          "name": "since",
+          "label": "Member since",
+          "type": "date",
+          "required": false
+        }
+      ]
+    },
+    {
+      "key": "FAC_J_LICENSURE",
+      "checklistRef": "J 1.0",
+      "card": "Passed Licensure Examinations",
+      "cardOrder": 10,
+      "label": "Sample copy of PRC ID",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "ifApplicable",
+      "periodScope": "none",
+      "order": 15,
+      "inChecklist": true,
+      "active": true
+    },
+    {
+      "key": "FAC_L_IPCR",
+      "checklistRef": "L 1.0",
+      "card": "IPCR",
+      "cardOrder": 11,
+      "label": "IPCR (photocopy)",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "required",
+      "periodScope": "semester",
+      "order": 16,
+      "inChecklist": true,
+      "active": true
+    },
+    {
+      "key": "FAC_X_PERFORMANCE_EVAL",
+      "checklistRef": null,
+      "card": "Other Documents",
+      "cardOrder": 12,
+      "label": "Performance evaluation",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "optional",
+      "periodScope": "none",
+      "order": 17,
+      "inChecklist": false,
+      "active": true
+    },
+    {
+      "key": "FAC_X_EMPLOYMENT_CONTRACT",
+      "checklistRef": null,
+      "card": "Other Documents",
+      "cardOrder": 12,
+      "label": "Employment contract",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "optional",
+      "periodScope": "none",
+      "order": 18,
+      "inChecklist": false,
+      "active": true
+    },
+    {
+      "key": "FAC_X_MEDICAL_CLEARANCE",
+      "checklistRef": null,
+      "card": "Other Documents",
+      "cardOrder": 12,
+      "label": "Medical clearance",
+      "scope": "faculty",
+      "multiple": false,
+      "required": "optional",
+      "periodScope": "none",
+      "order": 19,
+      "inChecklist": false,
+      "active": true
+    }
+  ]
