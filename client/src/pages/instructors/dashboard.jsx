@@ -1,16 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Header from '../../components/Header';
-import Sidebar from '../../components/Sidebar';
-
-function getInitials(name = "") {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -29,21 +18,11 @@ function Dashboard() {
   if (!instructor) return null;
 
   return (
-<div className="flex h-screen bg-gray-50">
-    <Sidebar role="instructor" />
-
-    <div className="flex-1 flex flex-col min-w-0">
-      <Header role="instructor" user={instructor} />
-
-        <main className="flex-1 overflow-y-auto p-8">
-        <div className="bg-white rounded-2xl shadow p-6">
-          <h2 className="text-orange-500 font-bold mb-2">
-            Welcome, {instructor.fullName}
-          </h2>
-          <p className="text-gray-500 text-sm">Your portfolio overview will appear here.</p>
-        </div>
-        </main>
-      </div>
+    <div className="bg-white rounded-2xl shadow p-6">
+      <h2 className="text-orange-500 font-bold mb-2">
+        Welcome, {instructor.fullName}
+      </h2>
+      <p className="text-gray-500 text-sm">Your portfolio overview will appear here.</p>
     </div>
   );
 }

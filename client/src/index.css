@@ -1,1 +1,27 @@
 @import "tailwindcss";
+
+/* Brand colors from the design.
+   Use them like: bg-brand-orange, text-brand-purple, text-brand-gray, text-brand-muted, bg-brand-bg */
+@theme {
+  --color-brand-orange: #ff6900; /* buttons, active menu item */
+  --color-brand-purple: #575488; /* page titles, logo text, menu hover */
+  --color-brand-gray: #696969;   /* text and menu headings */
+  --color-brand-muted: #969292;  /* inactive menu items */
+  --color-brand-bg: #fbfbfb;     /* page background */
+
+  /* Height of the top bar AND the sidebar logo block. Both use h-header,
+     so their bottom lines always line up. Change it here, in one place. */
+  --spacing-header: 89px;
+}
+
+/* "short:" works like "lg:", but for screens that are not tall (under 700px).
+   Example: py-5 short:py-3 -> less padding on short screens. */
+@custom-variant short (@media (max-height: 700px));
+
+/* Hides the scrollbar but keeps scrolling working (mouse wheel, touch). */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

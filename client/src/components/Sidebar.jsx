@@ -1,104 +1,117 @@
-import { useState } from 'react';
-import { LayoutDashboard, UserPlus, Users, User, FolderOpen, Settings, LogOut } from 'lucide-react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import cotLogo from '../assets/COT-Orange.png';
-import ConfirmLogoutModal from './ConfirmLogoutModal';
+import { useEffect } from 'react';
+import { LogOut, X } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import useLogout from '../hooks/useLogout';
+import { NAV } from '../config/navigation';
 
-const API_BASE = 'http://localhost:5000/api/auth';
+// The seal shown next to the "COT FACULTY PORTFOLIO" text.
+// Change this path when a new seal is added to the public folder.
+const LOGO = '/cot_ornge.svg';
 
-const ROLE_CONFIG = {
-  admin: {
-    logo: cotLogo,
-    navItems: [
-      { to: '/admin/AdminDashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { to: '/admin/invite-instructor', label: 'Invite Instructor', icon: UserPlus },
-      { to: '/admin/instructors', label: 'Instructors', icon: Users },
-      { to: '/admin/settings', label: 'Settings', icon: Settings },
-    ],
-    storageKeys: ['token'],
-    callLogoutApi: false,
-  },
-  instructor: {
-    logo: '/cot_ornge.svg',
-    navItems: [
-      { to: '/instructors/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { to: '/instructors/profile', label: 'My Profile', icon: User },
-      { to: '/instructors/portfolio', label: 'Portfolio', icon: FolderOpen },
-      { to: '/instructors/settings', label: 'Settings', icon: Settings },
-    ],
-    storageKeys: ['token', 'instructor'],
-    callLogoutApi: true,
-  },
-};
+// The outline you see when moving through the menu with the keyboard.
+const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange';
 
-function Sidebar({ role }) {
-  const navigate = useNavigate();
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
+// Orange pill for the page you are on, light gray text for the others.
+// "short:" = a bit tighter on screens that are not tall, so the menu fits without scrolling.
+function linkClass({ isActive }) {
+  const base = `flex items-center gap-3 rounded-lg px-3 py-2.5 py-1.5 text-sm font-medium transition-colors ${focusRing}`;
+  if (isActive) return `${base} bg-brand-orange text-white shadow-md shadow-orange-200`;
+  return `${base} text-brand-muted hover:bg-gray-50 hover:text-brand-purple`;
+}
 
-  const config = ROLE_CONFIG[role];
-  if (!config) return null; // unknown role: render nothing
-
-  const { logo, navItems, storageKeys, callLogoutApi } = config;
-
-  const handleLogout = async () => {
-    setLoggingOut(true);
-    if (callLogoutApi) {
-      try {
-        await axios.post(`${API_BASE}/logout`);
-      } catch {
-        // stateless JWT — logout still succeeds locally even if this call fails
-      }
-    }
-    storageKeys.forEach((key) => localStorage.removeItem(key));
-    setLoggingOut(false);
-    setShowLogoutModal(false);
-    navigate('/login');
-  };
+// The Logout button at the bottom of the sidebar.
+// Roles with accountInTopBar (admin) log out from the top bar menu instead.
+function SidebarLogout({ role }) {
+  const { askToLogout, logoutModal } = useLogout(role);
 
   return (
-    <div className="w-64 h-screen sticky top-0 shrink-0 overflow-y-auto bg-white border-r border-gray-100 flex flex-col p-4">
-      <div className="flex justify-center py-6">
-        <img src={logo} alt="Logo" className="w-24" />
-      </div>
-
-      <nav className="flex flex-col gap-1">
-        {navItems.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
-                  : 'text-gray-500 hover:bg-orange-50 hover:text-orange-600'
-              }`
-            }
-          >
-            <Icon size={18} />
-            {label}
-          </NavLink>
-        ))}
-      </nav>
-
-      <div className="mt-auto pt-4 border-t border-gray-100">
-        <button
-          onClick={() => setShowLogoutModal(true)}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors"
-        >
-          <LogOut size={18} />
-          Logout
-        </button>
-      </div>
-
-      <ConfirmLogoutModal
-        open={showLogoutModal}
-        loading={loggingOut}
-        onConfirm={handleLogout}
-        onCancel={() => setShowLogoutModal(false)}
-      />
+    <div className="shrink-0 border-t border-gray-200 p-4">
+      <button
+        type="button"
+        onClick={askToLogout}
+        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-gray transition-colors hover:bg-red-50 hover:text-red-600 ${focusRing}`}
+      >
+        <LogOut size={18} aria-hidden="true" />
+        Logout
+      </button>
+      {logoutModal}
     </div>
+  );
+}
+
+// On a big screen the sidebar sits on the left of the page.
+// On a phone or tablet it is hidden, and opens on top of the page when `isOpen` is true.
+function Sidebar({ role, isOpen, onClose }) {
+  // Pressing Escape closes the menu.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [isOpen, onClose]);
+
+  const menu = NAV[role];
+  if (!menu) return null; // unknown role: show nothing
+
+  return (
+    <>
+      {/* Dark background behind the open menu (phones and tablets). Click it to close. */}
+      {isOpen && <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={onClose} />}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 flex-col border-r border-gray-200 bg-white lg:static lg:flex lg:w-64 lg:shrink-0 ${
+          isOpen ? 'flex' : 'hidden'
+        }`}
+      >
+        {/* Logo. Same height as the top bar (h-header), so the two bottom lines line up. */}
+        <div className="relative flex h-header shrink-0 items-center justify-center border-b border-gray-200 px-4">
+          <img src={LOGO} alt="BukSU seal" className="w-12 shrink-0 object-contain" />
+          <div className="ml-3 text-lg leading-tight text-brand-purple">
+            <p>
+              <span className="font-bold">COT</span>{' '}
+              <span className="font-light italic">FACULTY</span>
+            </p>
+            <p className="font-normal tracking-wide">PORTFOLIO</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close menu"
+            className={`absolute right-3 top-3 rounded-lg p-1.5 text-brand-gray hover:bg-gray-50 hover:text-brand-purple lg:hidden ${focusRing}`}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Menu. The scrollbar is hidden. The menu is small enough to fit, and still scrolls on very short screens. */}
+        <nav aria-label="Main menu" className="no-scrollbar flex-1 overflow-y-auto">
+          {menu.sections.map((section, index) => (
+            <div
+              key={section.heading}
+              className={`px-4 py-5 short:py-3 ${index > 0 ? 'border-t border-gray-200' : ''}`}
+            >
+              <h2 className="mb-3 short:mb-2 px-3 text-sm font-semibold uppercase tracking-wide text-brand-gray">
+                {section.heading}
+              </h2>
+              <ul className="flex flex-col gap-1">
+                {section.items.map(({ to, label, icon: Icon }) => (
+                  <li key={to}>
+                    <NavLink to={to} onClick={onClose} className={linkClass}>
+                      <Icon size={18} aria-hidden="true" />
+                      {label}
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </nav>
+
+        {!menu.accountInTopBar && <SidebarLogout role={role} />}
+      </aside>
+    </>
   );
 }
 

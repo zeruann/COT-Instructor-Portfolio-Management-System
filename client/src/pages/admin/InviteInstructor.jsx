@@ -1,6 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import Sidebar from '../../components/Sidebar';
-import Header from '../../components/Header';
 import {
   Mail,
   Ban,
@@ -182,13 +180,11 @@ const getDisplayName = (inv) => {
 };
 
 
-
 function InviteInstructor() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [invitations, setInvitations] = useState([]);
   // Ids currently mid-request (blocks rapid double-clicks while waiting on the server)
   const [resendingIds, setResendingIds] = useState(() => new Set());
-  // Ids that have already had one resend go out in this session
   const { modal, close, notify, confirm } = useAppModal();
 
   useEffect(() => {
@@ -202,107 +198,103 @@ function InviteInstructor() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-const handleSend = async () => {
-  if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.department) {
-    notify('error', 'Missing information', 'Fill in the instructor’s first name, last name, email, and department before sending the invitation.');
-    return;
-  }
-  try {
-    const res = await fetch('/api/invitations', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      notify('error', 'Invitation not sent', data.message || 'The server couldn’t process this invitation. Try again.');
+  const handleSend = async () => {
+    if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.department) {
+      notify('error', 'Missing information', 'Fill in the instructor’s first name, last name, email, and department before sending the invitation.');
       return;
     }
+    try {
+      const res = await fetch('/api/invitations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
 
-    setInvitations([data, ...invitations]);
-    setForm(EMPTY_FORM);
-    notify('success', 'Invitation sent', `${getDisplayName(data)} will receive an email to join as an instructor.`);
-  } catch (err) {
-    console.error('Failed to send invitation:', err);
-    notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
-  }
-};
+      const data = await res.json();
 
-const handleCancel = () => setForm(EMPTY_FORM);
+      if (!res.ok) {
+        notify('error', 'Invitation not sent', data.message || 'The server couldn’t process this invitation. Try again.');
+        return;
+      }
 
-const handleResend = async (id) => {
-  // A request for this id is already in flight - ignore rapid repeat clicks.
-  if (resendingIds.has(id)) return;
-
-  setResendingIds((prev) => new Set(prev).add(id));
-
-  try {
-    const res = await fetch(`/api/invitations/${id}/resend`, { method: 'PATCH' });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      notify('error', 'Resend failed', data.message || 'This invitation couldn’t be resent. Try again.');
-      return;
+      setInvitations([data, ...invitations]);
+      setForm(EMPTY_FORM);
+      notify('success', 'Invitation sent', `${getDisplayName(data)} will receive an email to join as an instructor.`);
+    } catch (err) {
+      console.error('Failed to send invitation:', err);
+      notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
     }
-    const updated = await res.json();
-    setInvitations((prev) => prev.map((inv) => (inv._id === id ? updated : inv)));
-    notify('success', 'Invitation resent', 'A fresh invitation email is on its way.');
-  } catch (err) {
-    console.error('Failed to resend invitation:', err);
-    notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
-  } finally {
-    setResendingIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  }
-};
+  };
+
+  const handleCancel = () => setForm(EMPTY_FORM);
+
+  const handleResend = async (id) => {
+    // A request for this id is already in flight - ignore rapid repeat clicks.
+    if (resendingIds.has(id)) return;
+
+    setResendingIds((prev) => new Set(prev).add(id));
+
+    try {
+      const res = await fetch(`/api/invitations/${id}/resend`, { method: 'PATCH' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        notify('error', 'Resend failed', data.message || 'This invitation couldn’t be resent. Try again.');
+        return;
+      }
+      const updated = await res.json();
+      setInvitations((prev) => prev.map((inv) => (inv._id === id ? updated : inv)));
+      notify('success', 'Invitation resent', 'A fresh invitation email is on its way.');
+    } catch (err) {
+      console.error('Failed to resend invitation:', err);
+      notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
+    } finally {
+      setResendingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
 
   const cancelInvitation = async (id) => {
-  try {
-    const res = await fetch(`/api/invitations/${id}/cancel`, { method: 'PATCH' });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      notify('error', 'Cancel failed', data.message || 'This invitation couldn’t be cancelled. Try again.');
-      return;
+    try {
+      const res = await fetch(`/api/invitations/${id}/cancel`, { method: 'PATCH' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        notify('error', 'Cancel failed', data.message || 'This invitation couldn’t be cancelled. Try again.');
+        return;
+      }
+      const updated = await res.json();
+      setInvitations((prev) => prev.map((inv) => (inv._id === id ? updated : inv)));
+      notify('success', 'Invitation cancelled', 'The invitation link no longer works. You can send a new one to the correct email.');
+    } catch (err) {
+      console.error('Failed to cancel invitation:', err);
+      notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
     }
-    const updated = await res.json();
-    setInvitations((prev) => prev.map((inv) => (inv._id === id ? updated : inv)));
-    notify('success', 'Invitation cancelled', 'The invitation link no longer works. You can send a new one to the correct email.');
-  } catch (err) {
-    console.error('Failed to cancel invitation:', err);
-    notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
-  }
-};
+  };
 
-const handleCancelInvitation = (inv) => {
-  const who = getDisplayName(inv);
+  const handleCancelInvitation = (inv) => {
+    const who = getDisplayName(inv);
 
-  confirm({
-    title: 'Cancel this invitation?',
-    message: `${who} will no longer be able to accept this invitation. The record stays in your list as Cancelled.`,
-    confirmLabel: 'Cancel invitation',
-    cancelLabel: 'Keep it',
-    onConfirm: () => cancelInvitation(inv._id),
-  });
-};
+    confirm({
+      title: 'Cancel this invitation?',
+      message: `${who} will no longer be able to accept this invitation. The record stays in your list as Cancelled.`,
+      confirmLabel: 'Cancel invitation',
+      cancelLabel: 'Keep it',
+      onConfirm: () => cancelInvitation(inv._id),
+    });
+  };
 
   return (
-    <div className="flex">
-      <Sidebar role="admin" />
-      <div className="flex-1 bg-[#F8F9FB] min-h-screen p-8">
-        <Header role="admin" />
-
-        {/* Invite Form */}
-        <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-6 mb-6 hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-shadow">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-orange-50 p-2.5 rounded-xl">
-              <Mail className="text-orange-500" size={20} />
-            </div>
-            <h2 className="font-semibold text-lg text-gray-800">Invite New Instructor</h2>
+    <>
+      {/* Invite Form */}
+      <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-6 mb-6 hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-shadow">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="bg-orange-50 p-2.5 rounded-xl">
+            <Mail className="text-orange-500" size={20} />
           </div>
+          <h2 className="font-semibold text-lg text-gray-800">Invite New Instructor</h2>
+        </div>
 
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div>
@@ -342,79 +334,79 @@ const handleCancelInvitation = (inv) => {
           </div>
         </div>
 
-          <div className="flex justify-end gap-3">
-            <button
-              onClick={handleCancel}
-              className="border border-gray-200 rounded-full px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSend}
-              className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-orange-200 transition-all"
-            >
-              Send Invitation
-            </button>
-          </div>
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={handleCancel}
+            className="border border-gray-200 rounded-full px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSend}
+            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-orange-200 transition-all"
+          >
+            Send Invitation
+          </button>
+        </div>
+      </div>
+
+      {/* Recent Invitations Table */}
+      <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-6 hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-shadow">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-semibold text-lg text-gray-800">Recent Invitations</h2>
+          <a href="#" className="text-orange-500 text-sm font-medium hover:underline">
+            View All
+          </a>
         </div>
 
-        {/* Recent Invitations Table */}
-        <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-6 hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-shadow">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="font-semibold text-lg text-gray-800">Recent Invitations</h2>
-            <a href="#" className="text-orange-500 text-sm font-medium hover:underline">
-              View All
-            </a>
-          </div>
-
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-gray-400 text-xs uppercase border-b border-gray-100">
-                <th className="py-3 font-medium">Instructor</th>
-                <th className="py-3 font-medium">Department</th>
-                <th className="py-3 font-medium">Date Sent</th>
-                <th className="py-3 font-medium">Status</th>
-                <th className="py-3 font-medium">Action</th>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-gray-400 text-xs uppercase border-b border-gray-100">
+              <th className="py-3 font-medium">Instructor</th>
+              <th className="py-3 font-medium">Department</th>
+              <th className="py-3 font-medium">Date Sent</th>
+              <th className="py-3 font-medium">Status</th>
+              <th className="py-3 font-medium">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {invitations.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="text-center py-16">
+                  <Mail className="mx-auto text-gray-300 mb-3" size={32} />
+                  <p className="text-gray-400 text-sm">No invitations sent yet.</p>
+                  <p className="text-gray-300 text-xs mt-1">
+                    Invite your first instructor to get started.
+                  </p>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {invitations.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="text-center py-16">
-                    <Mail className="mx-auto text-gray-300 mb-3" size={32} />
-                    <p className="text-gray-400 text-sm">No invitations sent yet.</p>
-                    <p className="text-gray-300 text-xs mt-1">
-                      Invite your first instructor to get started.
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                invitations.map((inv) => {
-                  const isResending = resendingIds.has(inv._id);
+            ) : (
+              invitations.map((inv) => {
+                const isResending = resendingIds.has(inv._id);
 
-                  return (
-                    <tr key={inv._id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors">
-                      <td className="py-3.5 flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center">
-                          <User className="text-orange-400" size={18} />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-800">{getDisplayName(inv)}</p>
-                          <p className="text-gray-400 text-xs">{inv.email}</p>
-                        </div>
-                      </td>
-                      <td className="text-gray-600">{inv.department}</td>
-                      <td className="text-gray-600">{new Date(inv.dateSent).toLocaleDateString()}</td>
-                      <td>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[inv.status]}`}
-                        >
-                          {inv.status?.toUpperCase()}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          {inv.status === 'Accepted' && (
+                return (
+                  <tr key={inv._id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors">
+                    <td className="py-3.5 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center">
+                        <User className="text-orange-400" size={18} />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-800">{getDisplayName(inv)}</p>
+                        <p className="text-gray-400 text-xs">{inv.email}</p>
+                      </div>
+                    </td>
+                    <td className="text-gray-600">{inv.department}</td>
+                    <td className="text-gray-600">{new Date(inv.dateSent).toLocaleDateString()}</td>
+                    <td>
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[inv.status]}`}
+                      >
+                        {inv.status?.toUpperCase()}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        {inv.status === 'Accepted' && (
                           inv.accountStatus === 'Active' ? (
                             <a href="#" className="text-blue-500 text-xs font-medium hover:underline">
                               View Profile
@@ -424,42 +416,40 @@ const handleCancelInvitation = (inv) => {
                           )
                         )}
 
-                          {(inv.status === 'Rejected' || inv.status === 'Expired') && (
-                            <button
-                              onClick={() => handleResend(inv._id)}
-                              disabled={isResending}
-                              className={`flex items-center gap-1 text-xs font-medium transition-colors ${
-                                isResending ? 'text-orange-300 cursor-wait' : 'text-orange-500 hover:underline'
-                              }`}
-                            >
-                              <RotateCcw size={13} className={isResending ? 'animate-spin' : ''} />
-                              {isResending ? 'Sending…' : 'Resend'}
-                            </button>
-                          )}
+                        {(inv.status === 'Rejected' || inv.status === 'Expired') && (
+                          <button
+                            onClick={() => handleResend(inv._id)}
+                            disabled={isResending}
+                            className={`flex items-center gap-1 text-xs font-medium transition-colors ${
+                              isResending ? 'text-orange-300 cursor-wait' : 'text-orange-500 hover:underline'
+                            }`}
+                          >
+                            <RotateCcw size={13} className={isResending ? 'animate-spin' : ''} />
+                            {isResending ? 'Sending…' : 'Resend'}
+                          </button>
+                        )}
 
-
-                          {inv.status === 'Pending' && (
-                            <button
-                              onClick={() => handleCancelInvitation(inv)}
-                              className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors"
-                            >
-                              <Ban size={13} />
-                              Cancel
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        {inv.status === 'Pending' && (
+                          <button
+                            onClick={() => handleCancelInvitation(inv)}
+                            className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            <Ban size={13} />
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
 
       <AppModal modal={modal} onClose={close} />
-    </div>
+    </>
   );
 }
 

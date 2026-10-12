@@ -2,9 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-import Sidebar from "../../components/Sidebar";
-import Header from "../../components/Header";
-
 const API_URL = 'http://localhost:5000/api/instructors';
 
 const STATUS_OPTIONS = [
@@ -218,158 +215,149 @@ export default function ViewInstructors() {
   };
 
   return (
-    <div className="flex">
-      <Sidebar role="admin" />
-      <div className="flex-1 bg-[#F8F9FB] min-h-screen p-8">
-        <Header role="admin" />
-
-
-        {/* SEARCH + FILTERS */}
-        <div className="flex items-center justify-between mb-6 gap-3">
-          <div className="flex items-center gap-3 flex-1">
-            {/* Search */}
-            <div className="relative flex-1 max-w-xl">
-              <input
-                type="text"
-                placeholder="Search by name or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-lg py-3 pl-4 pr-10 text-[14px] text-gray-700 placeholder-gray-400 focus:outline-none focus:border-orange-500 transition"
-              />
-              <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
-            </div>
-
-            {/* Department filter */}
-            <div className="relative w-56 shrink-0">
-              <select
-                value={departmentFilter}
-                onChange={(e) => setDepartmentFilter(e.target.value)}
-                aria-label="Filter by department"
-                className="w-full appearance-none bg-white border border-gray-200 rounded-lg py-3 pl-4 pr-9 text-[14px] text-gray-700 focus:outline-none focus:border-orange-500 transition cursor-pointer"
-              >
-                <option value="all">All departments</option>
-                {departmentOptions.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-
-            {/* Status filter */}
-            <div className="relative w-48 shrink-0">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                aria-label="Filter by account status"
-                className="w-full appearance-none bg-white border border-gray-200 rounded-lg py-3 pl-4 pr-9 text-[14px] text-gray-700 focus:outline-none focus:border-orange-500 transition cursor-pointer"
-              >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-
-                
-              </select>
-              <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
+    <>
+      {/* SEARCH + FILTERS */}
+      <div className="flex items-center justify-between mb-6 gap-3">
+        <div className="flex items-center gap-3 flex-1">
+          {/* Search */}
+          <div className="relative flex-1 max-w-xl">
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-white border border-gray-200 rounded-lg py-3 pl-4 pr-10 text-[14px] text-gray-700 placeholder-gray-400 focus:outline-none focus:border-orange-500 transition"
+            />
+            <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
           </div>
 
-          <button
-            onClick={() => navigate('/admin/invite-instructor')}
-            className="shrink-0 inline-flex items-center gap-2 px-10 py-3 text-[14px] font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 transition"
-          >
-            <Plus className="w-4 h-4" />
-            Add Instructor
-          </button>
+          {/* Department filter */}
+          <div className="relative w-56 shrink-0">
+            <select
+              value={departmentFilter}
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              aria-label="Filter by department"
+              className="w-full appearance-none bg-white border border-gray-200 rounded-lg py-3 pl-4 pr-9 text-[14px] text-gray-700 focus:outline-none focus:border-orange-500 transition cursor-pointer"
+            >
+              <option value="all">All departments</option>
+              {departmentOptions.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Status filter */}
+          <div className="relative w-48 shrink-0">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              aria-label="Filter by account status"
+              className="w-full appearance-none bg-white border border-gray-200 rounded-lg py-3 pl-4 pr-9 text-[14px] text-gray-700 focus:outline-none focus:border-orange-500 transition cursor-pointer"
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
         </div>
 
-        {/* TABLE CARD */}
-        <div className="bg-white rounded-2xl shadow-xs border border-gray-100 p-6">
-          <div className="flex items-center justify-between gap-4 mb-6">
-            <h2 className="text-base font-bold text-gray-800">Instructors</h2>
-            <button className="text-xs font-semibold text-orange-500 hover:underline">View All</button>
-          </div>
+        <button
+          onClick={() => navigate('/admin/invite-instructor')}
+          className="shrink-0 inline-flex items-center gap-2 px-10 py-3 text-[14px] font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 transition"
+        >
+          <Plus className="w-4 h-4" />
+          Add Instructor
+        </button>
+      </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="text-xs text-gray-600 uppercase tracking-wider border-b border-gray-100">
-                  <th className="pb-3">INSTRUCTOR</th>
-                  <th className="pb-3">DEPARTMENT</th>
-                  <th className="pb-3">CREATED AT</th>
-                  <th className="pb-3">ACCOUNT STATUS</th>
-                  <th className="pb-3">ONLINE</th>
-                  <th className="pb-3">ACTION</th>
+      {/* TABLE CARD */}
+      <div className="bg-white rounded-2xl shadow-xs border border-gray-100 p-6">
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <h2 className="text-base font-bold text-gray-800">Instructors</h2>
+          <button className="text-xs font-semibold text-orange-500 hover:underline">View All</button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="text-xs text-gray-600 uppercase tracking-wider border-b border-gray-100">
+                <th className="pb-3">INSTRUCTOR</th>
+                <th className="pb-3">DEPARTMENT</th>
+                <th className="pb-3">CREATED AT</th>
+                <th className="pb-3">ACCOUNT STATUS</th>
+                <th className="pb-3">ONLINE</th>
+                <th className="pb-3">ACTION</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 text-sm">
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="py-8 text-center text-xs text-gray-400">
+                    Loading instructors...
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 text-sm">
-                {loading ? (
-                  <tr>
-                    <td colSpan="6" className="py-8 text-center text-xs text-gray-400">
-                      Loading instructors...
-                    </td>
-                  </tr>
-                ) : error ? (
-                  <tr>
-                    <td colSpan="6" className="py-8 text-center text-xs text-red-500">
-                      {error}
-                    </td>
-                  </tr>
-                ) : filteredInstructors.length > 0 ? (
-                  filteredInstructors.map((item) => {
-                    const id = item._id || item.id;
-                    const name = item.fullName || 'Unknown';
-                    const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=f97316&color=fff`;
+              ) : error ? (
+                <tr>
+                  <td colSpan="6" className="py-8 text-center text-xs text-red-500">
+                    {error}
+                  </td>
+                </tr>
+              ) : filteredInstructors.length > 0 ? (
+                filteredInstructors.map((item) => {
+                  const id = item._id || item.id;
+                  const name = item.fullName || 'Unknown';
+                  const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=f97316&color=fff`;
 
-                    return (
-                      <tr
-                        key={id}
-                        onClick={() => navigate(`/admin/instructors/${id}`)}
-                        className="hover:bg-gray-50/50 transition cursor-pointer"
-                      >
-                        <td className="py-4 pr-4">
-                          <div className="flex items-center gap-3">
-                            <img src={avatar} alt={name} className="w-10 h-10 rounded-full object-cover" />
-                            <div>
-                              <p className="text-[16px] text-gray-800 leading-tight">{name}</p>
-                              <p className="text-[14px] text-gray-400 leading-tight">{item.email}</p>
-                            </div>
+                  return (
+                    <tr
+                      key={id}
+                      onClick={() => navigate(`/admin/instructors/${id}`)}
+                      className="hover:bg-gray-50/50 transition cursor-pointer"
+                    >
+                      <td className="py-4 pr-4">
+                        <div className="flex items-center gap-3">
+                          <img src={avatar} alt={name} className="w-10 h-10 rounded-full object-cover" />
+                          <div>
+                            <p className="text-[16px] text-gray-800 leading-tight">{name}</p>
+                            <p className="text-[14px] text-gray-400 leading-tight">{item.email}</p>
                           </div>
-                        </td>
-                        <td className="py-4 pr-4 text-gray-500">{item.department || '—'}</td>
-                        <td className="py-4 text-gray-500">{formatDate(item.createdAt)}</td>
-                        <td className="py-4">{renderStatusBadge(item)}</td>
-                        <td className="py-4">{renderOnlineStatus(item.onlineStatus)}</td>
-                        <td className="py-4" onClick={(e) => e.stopPropagation()}>
-                          {renderActions(item)}
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan="6" className="py-8 text-center text-xs text-gray-400">
-                      {hasActiveFilters ? 'No instructors match your filters.' : 'No instructors found.'}
-                      {hasActiveFilters && (
-                     
-                        <button
-                          onClick={clearFilters}
-                          className="ml-2 font-semibold text-orange-500 hover:underline "
-                        >
-                          Clear filters
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 pr-4 text-gray-500">{item.department || '—'}</td>
+                      <td className="py-4 text-gray-500">{formatDate(item.createdAt)}</td>
+                      <td className="py-4">{renderStatusBadge(item)}</td>
+                      <td className="py-4">{renderOnlineStatus(item.onlineStatus)}</td>
+                      <td className="py-4" onClick={(e) => e.stopPropagation()}>
+                        {renderActions(item)}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan="6" className="py-8 text-center text-xs text-gray-400">
+                    {hasActiveFilters ? 'No instructors match your filters.' : 'No instructors found.'}
+                    {hasActiveFilters && (
+                      <button
+                        onClick={clearFilters}
+                        className="ml-2 font-semibold text-orange-500 hover:underline "
+                      >
+                        Clear filters
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
-    </div>
+    </>
   );
 }
