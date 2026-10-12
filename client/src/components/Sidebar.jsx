@@ -6,7 +6,7 @@ import { NAV } from '../config/navigation';
 
 // The seal shown next to the "COT FACULTY PORTFOLIO" text.
 // Change this path when a new seal is added to the public folder.
-const LOGO = '/cot_ornge.svg';
+const LOGO = '/COT-PurpleLogo.svg';
 
 // The outline you see when moving through the menu with the keyboard.
 const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-orange';
@@ -14,9 +14,9 @@ const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-
 // Orange pill for the page you are on, light gray text for the others.
 // "short:" = a bit tighter on screens that are not tall, so the menu fits without scrolling.
 function linkClass({ isActive }) {
-  const base = `flex items-center gap-3 rounded-lg px-3 py-2.5 py-1.5 text-sm font-medium transition-colors ${focusRing}`;
-  if (isActive) return `${base} bg-brand-orange text-white shadow-md shadow-orange-200`;
-  return `${base} text-brand-muted hover:bg-gray-50 hover:text-brand-purple`;
+  const base = `flex items-center gap-3 rounded-lg px-3 py-2.5 py-1.5 text-sm font-regular transition-colors ${focusRing}`;
+  if (isActive) return `${base} bg-brand-orange text-white shadow-md shadow-orange-200 font-medium`;
+  return `${base} text-brand-muted hover:bg-gray-100 hover:text-brand-purple font-regular`;
 }
 
 // The Logout button at the bottom of the sidebar.
@@ -71,9 +71,9 @@ function Sidebar({ role, isOpen, onClose }) {
           <div className="ml-3 text-lg leading-tight text-brand-purple">
             <p>
               <span className="font-bold">COT</span>{' '}
-              <span className="font-light italic">FACULTY</span>
+              <span className="font-medium italic">FACULTY</span>
             </p>
-            <p className="font-normal tracking-wide">PORTFOLIO</p>
+            <p className="font-medium tracking-wide">PORTFOLIO</p>
           </div>
           <button
             type="button"
