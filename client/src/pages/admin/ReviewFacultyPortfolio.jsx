@@ -1,53 +1,226 @@
 // client/src/pages/admin/ReviewFacultyPortfolio.jsx
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search, ChevronDown, ArrowRight, ArrowLeft, ShieldCheck, Briefcase } from 'lucide-react';
+import {
+  Search,
+  ChevronDown,
+  ArrowLeft,
+  Folder,
+  MoreVertical,
+  MessageSquare,
+  FileText,
+} from 'lucide-react';
 import { fetchFacultySummary } from '../../api/documents';
 
+// accent = dot + underline color of the card (matches the design reference)
 const requirementCards = [
   {
     title: 'Educational Attainment',
-    description: "TOR, Diploma or Certificate of Units Earned for Bachelor's, Master's and PhD.",
+    description: "TOR, Diploma or Certificate of Units Earned for your Bachelor's, Master's and PhD.",
     path: 'educational-attainment',
+    accent: '#6aaa64',
   },
-  { title: 'Service Records', description: 'Upload and review service records.', path: 'service-records' },
+  {
+    title: 'Service Records',
+    description: 'Upload your service records.',
+    path: 'service-records',
+    accent: '#f0a93b',
+  },
   {
     title: 'Seminars and Workshops',
-    description: 'Seminars and workshops with certificates.',
+    description:
+      'List of seminars and workshops with certificates, from August 2019 to present. Add new ones as you attend.',
     path: 'seminars-and-workshops',
+    accent: '#4b4687',
   },
-  { title: 'Achievements', description: 'Grants, Awards, Certification of Commendation.', path: 'achievements' },
+  {
+    title: 'Achievements',
+    description: 'Grants, Awards, Certification of Commendation.',
+    path: 'achievements',
+    accent: '#ef6c35',
+  },
   {
     title: 'Research',
-    description: 'Research proposals and published research.',
+    description:
+      'Research proposals and finished or published research, with certificate of publication and abstract.',
     path: 'research',
+    accent: '#6aaa64',
   },
   {
     title: 'Extension Involvement',
-    description: "Certificates of extension involvement, training designs.",
+    description:
+      "Certificates of extension involvement, project leaders' training designs, or related proof.",
     path: 'extension-involvement',
+    accent: '#6aaa64',
   },
   {
     title: 'Production',
-    description: "Certificates of Copyrighted IM's, Patent or utility model.",
+    description:
+      "Certificates of Copyrighted IM's, Patent or utility model approved application 1st or 2nd certificate.",
     path: 'production',
+    accent: '#6aaa64',
   },
   {
-    title: 'Other Requirements',
-    description: 'Professional organizations, licensure examinations, and IPCR.',
+    title: 'Professional Organization',
+    description: 'Sample copy of your professional membership form.',
     path: 'other-requirements',
+    accent: '#6aaa64',
   },
 ];
+
+// Status chip styles for each card
+const statusStyles = {
+  completed: { label: 'Completed', className: 'bg-[#dcefd6] text-[#5d9a54]' },
+  review: { label: 'For review', className: 'bg-amber-100 text-amber-700' },
+  rejected: { label: 'Needs revision', className: 'bg-red-100 text-red-600' },
+  empty: { label: 'No documents', className: 'bg-gray-200 text-gray-500' },
+};
+
+const getCardStatus = ({ approved, pending, rejected }) => {
+  if (rejected > 0) return 'rejected';
+  if (pending > 0) return 'review';
+  if (approved > 0) return 'completed';
+  return 'empty';
+};
+
+// Completion is computed from the real document statuses.
+// Each requirement category is worth an equal share of 100%. Inside a category, the
+// share is split by how many of its files are approved / pending / rejected.
+// Categories with no files, or files that are not approved yet, add nothing to "percent".
+const computeCompletion = (summaries) => {
+  const categoryCount = requirementCards.length;
+  let approvedShare = 0;
+  let pendingShare = 0;
+  let rejectedShare = 0;
+  const counts = { approved: 0, pending: 0, rejected: 0 };
+
+  requirementCards.forEach(({ path }) => {
+    const s = summaries?.[path] || {};
+    const approved = s.approved || 0;
+    const pending = s.pendingReview || 0;
+    const rejected = s.rejected || 0;
+    const total = Math.max(s.totalFiles || 0, approved + pending + rejected);
+    if (total === 0) return;
+
+    approvedShare += approved / total;
+    pendingShare += pending / total;
+    rejectedShare += rejected / total;
+    counts.approved += approved;
+    counts.pending += pending;
+    counts.rejected += rejected;
+  });
+
+  const toPct = (share) => (share / categoryCount) * 100;
+  return {
+    percent: Math.round(toPct(approvedShare)),
+    approvedPct: toPct(approvedShare),
+    pendingPct: toPct(pendingShare),
+    rejectedPct: toPct(rejectedShare),
+    counts,
+  };
+};
+
+function PortfolioCard({ card, summary, instructorId, menuOpen, onToggleMenu, onCloseMenu }) {
+  const approved = summary.approved || 0;
+  const pending = summary.pendingReview || 0;
+  const rejected = summary.rejected || 0;
+  const files = summary.totalFiles ?? approved + pending + rejected;
+  const comments = summary.comments ?? summary.commentCount ?? 0;
+  const status = statusStyles[getCardStatus({ approved, pending, rejected })];
+  const href = `/admin/portfolio/faculty-portfolio/${card.path}?instructorId=${instructorId}`;
+
+  return (
+    <div className="relative flex h-full min-w-0 flex-col rounded-xl bg-[#f5f5f5] px-4 pt-5 pb-4 sm:px-5 sm:pt-6 sm:pb-5 min-h-[220px]">
+      {/* Title row */}
+      <div className="flex items-start justify-between gap-2">
+        <Link to={href} className="group flex min-w-0 items-start gap-3">
+          <span
+            className="mt-1.5 h-3 w-3 shrink-0 rounded-full"
+            style={{ backgroundColor: card.accent }}
+          />
+          <h3 className="min-w-0 break-words text-base font-semibold leading-tight text-gray-900 group-hover:underline sm:text-lg">
+            {card.title}
+          </h3>
+        </Link>
+
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={onToggleMenu}
+            aria-label={`${card.title} options`}
+            aria-expanded={menuOpen}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple transition"
+          >
+            <MoreVertical size={18} />
+          </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-9 z-10 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+              <Link
+                to={href}
+                onClick={onCloseMenu}
+                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Open and review
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Accent underline */}
+      <div className="mt-3 h-[3px] w-full rounded-full" style={{ backgroundColor: card.accent }} />
+
+      {/* Description */}
+      <Link to={href} className="mt-4 flex-1 sm:mt-5">
+        <p className="break-words text-sm leading-snug text-gray-500 sm:text-[15px]">
+          {card.description}
+        </p>
+      </Link>
+
+      {/* Footer: wraps instead of overlapping on narrow cards */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 sm:mt-5">
+        <span
+          className={`whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium sm:text-sm ${status.className}`}
+        >
+          {status.label}
+        </span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 sm:text-sm">
+          <span className="flex items-center gap-1.5 whitespace-nowrap">
+            <MessageSquare size={15} className="shrink-0" />
+            {comments} {comments === 1 ? 'comment' : 'comments'}
+          </span>
+          <span className="flex items-center gap-1.5 whitespace-nowrap">
+            <FileText size={15} className="shrink-0" />
+            {files} {files === 1 ? 'file' : 'files'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContactRow({ label, value }) {
+  return (
+    <div className="grid grid-cols-[64px_minmax(0,1fr)] items-start gap-3 border-b border-gray-200 py-3 last:border-b-0 sm:grid-cols-[72px_minmax(0,1fr)] sm:py-3.5">
+      <span className="text-xs text-gray-400">{label}</span>
+      <span className="min-w-0 text-sm font-medium text-gray-800 [overflow-wrap:anywhere]">
+        {value || '—'}
+      </span>
+    </div>
+  );
+}
 
 export default function ReviewFacultyPortfolio() {
   const [searchParams, setSearchParams] = useSearchParams();
   const instructorId = searchParams.get('instructorId');
 
   const [instructors, setInstructors] = useState([]);
-  const [summaries, setSummaries] = useState({});
+  // { [instructorId]: { [categoryPath]: { approved, pendingReview, rejected, ... } } }
+  const [summariesById, setSummariesById] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [openMenu, setOpenMenu] = useState(null);
 
   // Load list of instructors
   useEffect(() => {
@@ -73,7 +246,7 @@ export default function ReviewFacultyPortfolio() {
     if (instructorId) {
       fetchFacultySummary(instructorId)
         .then((sum) => {
-          if (isCurrent) setSummaries(sum || {});
+          if (isCurrent) setSummariesById((prev) => ({ ...prev, [instructorId]: sum || {} }));
         })
         .catch((err) => console.error('Failed to load portfolio summaries:', err));
     }
@@ -81,6 +254,40 @@ export default function ReviewFacultyPortfolio() {
       isCurrent = false;
     };
   }, [instructorId]);
+
+  // On the instructor list, load every instructor's summary so each card shows a live
+  // completion value. Runs again whenever the admin returns to the list, so approvals
+  // made on the review pages are reflected.
+  useEffect(() => {
+    if (instructorId || instructors.length === 0) return undefined;
+    let isCurrent = true;
+
+    Promise.allSettled(
+      instructors.map((inst) => {
+        const id = inst._id || inst.id;
+        return fetchFacultySummary(id).then((sum) => [id, sum || {}]);
+      }),
+    ).then((results) => {
+      if (!isCurrent) return;
+      const next = {};
+      results.forEach((r) => {
+        if (r.status === 'fulfilled') next[r.value[0]] = r.value[1];
+      });
+      setSummariesById((prev) => ({ ...prev, ...next }));
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [instructorId, instructors]);
+
+  // Close the card menu when clicking elsewhere
+  useEffect(() => {
+    if (!openMenu) return undefined;
+    const close = () => setOpenMenu(null);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [openMenu]);
 
   const selectInstructor = (inst) => {
     setSearchParams({ instructorId: inst._id || inst.id });
@@ -103,203 +310,356 @@ export default function ReviewFacultyPortfolio() {
     return matchSearch && matchDept;
   });
 
-  // If an instructor is selected, show their faculty portfolio cards
-  if (selectedInstructor) {
-    return (
-      <div className="space-y-6">
-        {/* Header bar with switch instructor */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-gray-100 shadow-2xs">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={clearSelection}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100 transition"
-              title="Back to all instructors"
-            >
-              <ArrowLeft size={16} />
-            </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-gray-800">
-                  {selectedInstructor.fullName}
-                </h1>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-100 text-brand-purple font-semibold">
-                  {selectedInstructor.department || 'Faculty'}
-                </span>
-              </div>
-              <p className="text-xs text-gray-400 mt-0.5">{selectedInstructor.email}</p>
-            </div>
-          </div>
+  // Completion for an instructor, based on their approved / pending / rejected documents.
+  // Returns null until their summary has loaded (unless the API already sends a number).
+  const getCompletion = (inst) => {
+    const summary = summariesById[inst._id || inst.id];
+    if (summary) return computeCompletion(summary);
 
+    const apiPercent =
+      typeof inst.completionPercentage === 'number'
+        ? inst.completionPercentage
+        : inst.completionRate;
+    if (typeof apiPercent === 'number') {
+      return {
+        percent: apiPercent,
+        approvedPct: apiPercent,
+        pendingPct: 0,
+        rejectedPct: 0,
+        counts: null,
+      };
+    }
+    return null;
+  };
+
+  // Auto-fit grid: columns are added/removed based on the space actually available
+  // (works regardless of sidebar width), and cards never get narrower than 300px.
+  const instructorGridClass =
+    'grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-4 sm:gap-6';
+
+  // ───────────────────────── Selected instructor view ─────────────────────────
+  if (selectedInstructor) {
+    const id = selectedInstructor._id || selectedInstructor.id;
+    const profile = selectedInstructor.profile || {};
+    const rank = profile.rank || profile.position || 'Assistant Professor IV';
+    const department = selectedInstructor.department || 'IT Department';
+    const phone = selectedInstructor.phone || profile.phone || profile.contactNumber;
+    const address = selectedInstructor.address || profile.address;
+    const education = Array.isArray(profile.education)
+      ? profile.education
+      : Array.isArray(selectedInstructor.education)
+        ? selectedInstructor.education
+        : [];
+    const instructorSummaries = summariesById[id] || {};
+    const completion = getCompletion(selectedInstructor) || computeCompletion({});
+    const percent = completion.percent;
+    const { counts } = completion;
+
+    return (
+      <div className="min-w-0 space-y-4 sm:space-y-6">
+        {/* Page title */}
+        <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={clearSelection}
-            className="text-xs font-semibold text-brand-purple hover:underline"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple transition hover:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2"
+            title="Back to all instructors"
+            aria-label="Back to all instructors"
           >
-            Change Instructor
+            <ArrowLeft size={16} />
           </button>
+          <h1 className="min-w-0 text-2xl font-semibold text-brand-purple sm:text-3xl">
+            Faculty Portfolio
+          </h1>
         </div>
 
-        {/* Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {requirementCards.map((card) => {
-            const sum = summaries[card.path] || {};
-            const approved = sum.approved || 0;
-            const pending = sum.pendingReview || 0;
-            const rejected = sum.rejected || 0;
+        {/* Profile + completion */}
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_240px] xl:grid-cols-[minmax(0,1fr)_280px]">
+          {/* Profile card */}
+          <div className="flex min-w-0 flex-col rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 md:flex-row">
+            {/* Identity */}
+            <div className="flex min-w-0 flex-col items-center justify-center border-b border-gray-200 pb-5 text-center md:w-[220px] md:shrink-0 md:border-b-0 md:border-r md:pb-0 md:pr-6 lg:w-[240px]">
+              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-[#f6c85f] sm:h-24 sm:w-24">
+                {profile.photoUrl ? (
+                  <img
+                    src={profile.photoUrl}
+                    alt={selectedInstructor.fullName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    className="h-14 w-14 text-white/80 sm:h-16 sm:w-16"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M12 2a5 5 0 100 10 5 5 0 000-10zm-7 18a7 7 0 0114 0H5z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+              </div>
+              <h2 className="mt-3 max-w-full break-words text-lg font-semibold leading-tight text-gray-900 sm:text-xl">
+                {selectedInstructor.fullName}
+              </h2>
+              <p className="mt-1 max-w-full break-words text-sm text-gray-500">{rank}</p>
+              <p className="max-w-full break-words text-sm text-gray-500">{department}</p>
+            </div>
 
-            return (
-              <Link
+            {/* Contact + education: columns auto-fit to the available width */}
+            <div className="grid min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(min(100%,230px),1fr))] gap-x-10 gap-y-6 pt-5 md:pl-6 md:pt-0 lg:pl-8">
+              <div className="min-w-0">
+                <h3 className="mb-1 border-b border-gray-200 pb-3 text-base font-semibold text-gray-800">
+                  Contact information
+                </h3>
+                <ContactRow label="Email" value={selectedInstructor.email} />
+                <ContactRow label="Phone" value={phone} />
+                <ContactRow label="Address" value={address} />
+              </div>
+
+              {education.length > 0 && (
+                <ul className="min-w-0 self-center">
+                  {education.map((edu, i) => (
+                    <li
+                      key={`${edu.degree}-${i}`}
+                      className="border-b border-gray-200 py-3 last:border-b-0"
+                    >
+                      <p className="break-words text-sm font-semibold text-gray-800">
+                        {edu.degree}
+                      </p>
+                      <p className="break-words text-xs text-gray-400">
+                        {[edu.school || edu.institution, edu.year].filter(Boolean).join(' · ')}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          {/* Completion status: horizontal strip on small screens, tall card on lg+ */}
+          <div className="flex min-w-0 flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 lg:flex-col lg:justify-center lg:text-center">
+            <h2 className="text-lg font-medium text-brand-purple sm:text-2xl">Completion Status</h2>
+            <div className="flex flex-col items-end lg:mt-3 lg:items-center">
+              <p className="text-5xl font-extrabold leading-none text-[#6aaa64] sm:text-6xl lg:text-7xl">
+                {percent}%
+              </p>
+              {counts && (
+                <p className="mt-2 text-xs text-gray-500">
+                  {counts.approved} approved · {counts.pending} pending · {counts.rejected} rejected
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Portfolio content */}
+        <section className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
+          <div className="mb-4 flex items-center gap-3 sm:mb-5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#efeef8] text-brand-purple">
+              <Folder size={20} />
+            </span>
+            <h2 className="min-w-0 text-xl font-medium text-brand-purple sm:text-2xl">
+              Portfolio Content
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 2xl:grid-cols-4">
+            {requirementCards.map((card) => (
+              <PortfolioCard
                 key={card.path}
-                to={`/admin/portfolio/faculty-portfolio/${card.path}?instructorId=${selectedInstructor._id || selectedInstructor.id}`}
-                className="flex flex-col bg-white rounded-2xl border border-gray-100 p-5 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition"
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="font-bold text-sm text-gray-800">{card.title}</h3>
-                  <Briefcase className="w-4 h-4 text-brand-purple shrink-0" />
-                </div>
-
-                <p className="text-xs text-gray-500 flex-1 leading-relaxed">{card.description}</p>
-
-                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    {pending > 0 && (
-                      <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-700 font-medium text-[11px]">
-                        {pending} to review
-                      </span>
-                    )}
-                    {approved > 0 && (
-                      <span className="px-2 py-0.5 rounded-md bg-green-100 text-green-700 font-medium text-[11px]">
-                        {approved} approved
-                      </span>
-                    )}
-                    {rejected > 0 && (
-                      <span className="px-2 py-0.5 rounded-md bg-red-100 text-red-700 font-medium text-[11px]">
-                        {rejected} rejected
-                      </span>
-                    )}
-                    {pending === 0 && approved === 0 && rejected === 0 && (
-                      <span className="text-gray-400 text-[11px]">No documents</span>
-                    )}
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+                card={card}
+                summary={instructorSummaries[card.path] || {}}
+                instructorId={id}
+                menuOpen={openMenu === card.path}
+                onToggleMenu={(e) => {
+                  e.stopPropagation();
+                  setOpenMenu(openMenu === card.path ? null : card.path);
+                }}
+                onCloseMenu={() => setOpenMenu(null)}
+              />
+            ))}
+          </div>
+        </section>
       </div>
     );
   }
 
-  // Instructor Selection Screen
+  // ───────────────────────── Instructor Selection Screen ─────────────────────────
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-4 sm:space-y-6">
+      {/* Title & Subtitle */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Faculty Portfolio Review</h1>
-        <p className="text-xs text-gray-500 mt-1">
-          Select an instructor to review their faculty portfolio submissions and evidence.
-        </p>
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">Faculty Portfolio</h1>
+        <p className="mt-1 text-sm font-medium text-gray-500">Instructor</p>
       </div>
 
-      {/* Filter / Search Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-gray-100">
-        <div className="flex flex-wrap items-center gap-3 flex-1 min-w-[280px]">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by instructor name or email..."
-              className="w-full text-xs pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-brand-purple"
-            />
-          </div>
+      {/* Search and Department Filter */}
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+        {/* Search */}
+        <div className="relative min-w-0 flex-1">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search instructor by name or email.."
+            className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+          />
+          <Search className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        </div>
 
-          <div className="relative w-48">
-            <select
-              value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-              className="w-full text-xs appearance-none px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-brand-purple cursor-pointer"
+        {/* Department Filter */}
+        <div className="relative shrink-0 sm:w-52 lg:w-60">
+          <select
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+          >
+            <option value="all">All Departments</option>
+            {departments.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        </div>
+      </div>
+
+      {/* Cards Grid */}
+      {loading ? (
+        <div className={instructorGridClass}>
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="flex animate-pulse items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs sm:gap-5 sm:p-5"
             >
-              <option value="all">All Departments</option>
-              {departments.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+              <div className="h-20 w-20 shrink-0 rounded-full bg-gray-200 sm:h-24 sm:w-24" />
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="h-4 w-3/4 rounded bg-gray-200" />
+                <div className="h-3 w-1/2 rounded bg-gray-200" />
+                <div className="h-3 w-2/3 rounded bg-gray-200" />
+                <div className="mt-2 h-2 w-full rounded bg-gray-200" />
+                <div className="mt-3 h-8 w-full rounded bg-gray-200" />
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      ) : filteredInstructors.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-2xs sm:p-12">
+          <p className="text-base font-semibold text-gray-700">No instructors found</p>
+          <p className="mt-1 text-xs text-gray-400">
+            Try adjusting your search query or department filter.
+          </p>
+          {(searchQuery || departmentFilter !== 'all') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setDepartmentFilter('all');
+              }}
+              className="mt-4 inline-flex items-center rounded-lg bg-purple-50 px-4 py-2 text-xs font-semibold text-brand-purple transition hover:bg-purple-100"
+            >
+              Reset Filters
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className={instructorGridClass}>
+          {filteredInstructors.map((inst) => {
+            const id = inst._id || inst.id;
+            const name = inst.fullName || 'Instructor';
+            const rank =
+              inst.profile?.rank || inst.profile?.position || 'Assistant Professor IV';
+            const department = inst.department || 'IT Department';
+            const photoUrl = inst.profile?.photoUrl;
+            const completion = getCompletion(inst);
+            const percent = completion?.percent;
 
-      {/* Instructors Table / Cards */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-gray-50/60 text-gray-500 uppercase tracking-wider border-b border-gray-100 font-semibold">
-                <th className="py-3.5 px-6">Instructor</th>
-                <th className="py-3.5 px-6">Department</th>
-                <th className="py-3.5 px-6">Status</th>
-                <th className="py-3.5 px-6 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={4} className="py-8 text-center text-gray-400">
-                    Loading instructors...
-                  </td>
-                </tr>
-              ) : filteredInstructors.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="py-8 text-center text-gray-400">
-                    No instructors found.
-                  </td>
-                </tr>
-              ) : (
-                filteredInstructors.map((inst) => {
-                  const id = inst._id || inst.id;
-                  return (
-                    <tr
-                      key={id}
-                      className="hover:bg-gray-50/60 transition cursor-pointer"
-                      onClick={() => selectInstructor(inst)}
+            return (
+              <div
+                key={id}
+                onClick={() => selectInstructor(inst)}
+                className="group flex min-w-0 cursor-pointer items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs transition-all hover:border-orange-300 hover:shadow-md sm:gap-5 sm:p-5"
+              >
+                {/* Left: Avatar */}
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-[#f3f4f6] sm:h-24 sm:w-24">
+                  {photoUrl ? (
+                    <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
+                  ) : (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      className="h-14 w-14 text-[#d1d5db] sm:h-16 sm:w-16"
+                      aria-hidden="true"
                     >
-                      <td className="py-3.5 px-6 font-semibold text-gray-800">
-                        {inst.fullName}
-                      </td>
-                      <td className="py-3.5 px-6 text-gray-500">
-                        {inst.department || '—'}
-                      </td>
-                      <td className="py-3.5 px-6">
-                        <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700 border border-green-200">
-                          {inst.accountStatus || 'Active'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-6 text-right">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            selectInstructor(inst);
-                          }}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-brand-purple hover:bg-opacity-90 rounded-xl shadow-2xs transition"
-                        >
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          Review Portfolio
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                      <path
+                        fillRule="evenodd"
+                        d="M12 2a5 5 0 100 10 5 5 0 000-10zm-7 18a7 7 0 0114 0H5z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  )}
+                </div>
+
+                {/* Right: Info + Progress + View button */}
+                <div className="flex min-w-0 flex-1 flex-col justify-between">
+                  <div className="min-w-0">
+                    <h3
+                      title={name}
+                      className="truncate text-base font-bold leading-snug text-gray-900 transition-colors group-hover:text-brand-orange"
+                    >
+                      {name}
+                    </h3>
+                    <p className="mt-0.5 truncate text-xs font-normal text-gray-400">{rank}</p>
+                    <p className="truncate text-xs font-normal text-gray-400">{department}</p>
+                  </div>
+
+                  <div className="mt-3">
+                    <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+                      <span className="truncate font-semibold text-[#2e2a72]">
+                        Completion Status
+                      </span>
+                      <span className="shrink-0 font-bold text-[#10b981]">
+                        {percent != null ? `${percent}%` : '—'}
+                      </span>
+                    </div>
+
+                    {/* Segmented Progress Bar */}
+                    <div className="flex h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                      <div
+                        className="h-full bg-[#10b981]"
+                        style={{ width: `${completion?.approvedPct ?? 0}%` }}
+                      />
+                      <div
+                        className="h-full bg-[#f97316]"
+                        style={{ width: `${completion?.pendingPct ?? 0}%` }}
+                      />
+                      <div
+                        className="h-full bg-[#ef4444]"
+                        style={{ width: `${completion?.rejectedPct ?? 0}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectInstructor(inst);
+                    }}
+                    className="mt-3.5 w-full rounded-lg bg-brand-orange py-2 text-center text-xs font-bold uppercase tracking-wider text-white shadow-2xs transition hover:bg-orange-600 hover:shadow active:bg-orange-700"
+                  >
+                    VIEW
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
   );
 }

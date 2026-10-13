@@ -7,7 +7,7 @@ const API_BASE = 'http://localhost:5000/api/auth';
 
 // What logout does for each role (same as before).
 const LOGOUT = {
-  admin: { keysToRemove: ['token'], callApi: false },
+  admin: { keysToRemove: ['token', 'instructor'], callApi: false },
   instructor: { keysToRemove: ['token', 'instructor'], callApi: true },
 };
 

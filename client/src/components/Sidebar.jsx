@@ -25,7 +25,6 @@ function linkClass({ isActive }) {
 }
 
 // The Logout button at the bottom of the sidebar.
-// Roles with accountInTopBar (admin) log out from the top bar menu instead.
 
 function SidebarLogout({ role }) {
   const { askToLogout, logoutModal } = useLogout(role);
@@ -117,9 +116,8 @@ function Sidebar({ role, isOpen, onClose }) {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 flex-col border-r border-gray-200 bg-white lg:static lg:flex lg:w-64 lg:shrink-0 ${
-          isOpen ? 'flex' : 'hidden'
-        }`}
+        className={`fixed inset-y-0 left-0 z-50 w-72 flex-col border-r border-gray-200 bg-white lg:static lg:flex lg:w-64 lg:shrink-0 ${isOpen ? 'flex' : 'hidden'
+          }`}
       >
         {/* Logo. Same height as the top bar (h-header), so the two bottom lines line up. */}
 
@@ -183,7 +181,7 @@ function Sidebar({ role, isOpen, onClose }) {
           ))}
         </nav>
 
-        {!menu.accountInTopBar && <SidebarLogout role={role} />}
+        <SidebarLogout role={role} />
       </aside>
     </>
   );
