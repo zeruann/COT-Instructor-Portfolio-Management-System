@@ -17,6 +17,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/invitations", invitationRoutes);
 app.use("/api/instructors", instructorRoutes);
 app.use('/api/profile', require('./routes/profileRoutes'));
+app.use('/api/documents', require('./routes/documentRoutes'));
+app.use('/api/requirements', require('./routes/requirementRoutes'));
 
 mongoose
   .connect(process.env.MONGO_URI)

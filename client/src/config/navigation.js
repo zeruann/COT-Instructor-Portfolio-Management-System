@@ -1,7 +1,8 @@
 // client/src/config/navigation.js
-//
+
 // The menu of each role. The sidebar, the top bar and the breadcrumb all read from here,
 // so adding or renaming a page only needs a change in this file.
+
 import {
   Home,
   Briefcase,
@@ -25,6 +26,7 @@ export const NAV = {
     profilePath: '/instructors/profile',
     notificationsPath: '/instructors/notifications',
     showSectionInBreadcrumb: false, // Home > Faculty Portfolio
+
     sections: [
       {
         heading: 'Portfolio',
@@ -44,6 +46,29 @@ export const NAV = {
         ],
       },
     ],
+
+    // Pages that belong to Faculty Portfolio (shown in the breadcrumb).
+
+    subPages: [
+      { to: '/instructors/portfolio/faculty-portfolio/educational-attainment', label: 'Educational Attainment', parentTo: '/instructors/faculty-portfolio' },
+      { to: '/instructors/portfolio/faculty-portfolio/service-records', label: 'Service Records', parentTo: '/instructors/faculty-portfolio' },
+      { to: '/instructors/portfolio/faculty-portfolio/seminars-and-workshops', label: 'Seminars and Workshops', parentTo: '/instructors/faculty-portfolio' },
+      { to: '/instructors/portfolio/faculty-portfolio/achievements', label: 'Achievements', parentTo: '/instructors/faculty-portfolio' },
+      { to: '/instructors/portfolio/faculty-portfolio/research', label: 'Research', parentTo: '/instructors/faculty-portfolio' },
+      { to: '/instructors/portfolio/faculty-portfolio/extension-involvement', label: 'Extension Involvement', parentTo: '/instructors/faculty-portfolio' },
+      { to: '/instructors/portfolio/faculty-portfolio/production', label: 'Production', parentTo: '/instructors/faculty-portfolio' },
+
+      // The three tabs share one crumb: Home > Faculty Portfolio > Other Requirements
+
+      { to: '/instructors/portfolio/faculty-portfolio/other-requirements', label: 'Other Requirements', parentTo: '/instructors/faculty-portfolio' },
+      { to: '/instructors/portfolio/faculty-portfolio/other-requirements/professional-organization-membership', label: 'Other Requirements', parentTo: '/instructors/faculty-portfolio' },
+      { to: '/instructors/portfolio/faculty-portfolio/other-requirements/passed-licensure-examinations', label: 'Other Requirements', parentTo: '/instructors/faculty-portfolio' },
+      { to: '/instructors/portfolio/faculty-portfolio/other-requirements/ipcr', label: 'Other Requirements', parentTo: '/instructors/faculty-portfolio' },
+
+      // Pages that belong to Class Portfolio
+
+      // Add class portfolio sub-pages here when their routes are available.
+    ],
   },
 
   admin: {
@@ -55,6 +80,7 @@ export const NAV = {
     notificationsPath: '/admin/notifications',
     showSectionInBreadcrumb: true, // Home > Review > Faculty Portfolio
     accountInTopBar: true, // My Profile, Security and Logout are in the top bar menu, not in the sidebar
+
     sections: [
       {
         heading: 'Management',
@@ -79,7 +105,32 @@ export const NAV = {
         ],
       },
     ],
+
+    // Pages that belong to Faculty Portfolio (shown in the breadcrumb).
+
+    subPages: [
+      { to: '/admin/portfolio/faculty-portfolio/educational-attainment', label: 'Educational Attainment', parentTo: '/admin/review/faculty-portfolio' },
+      { to: '/admin/portfolio/faculty-portfolio/service-records', label: 'Service Records', parentTo: '/admin/review/faculty-portfolio' },
+      { to: '/admin/portfolio/faculty-portfolio/seminars-and-workshops', label: 'Seminars and Workshops', parentTo: '/admin/review/faculty-portfolio' },
+      { to: '/admin/portfolio/faculty-portfolio/achievements', label: 'Achievements', parentTo: '/admin/review/faculty-portfolio' },
+      { to: '/admin/portfolio/faculty-portfolio/research', label: 'Research', parentTo: '/admin/review/faculty-portfolio' },
+      { to: '/admin/portfolio/faculty-portfolio/extension-involvement', label: 'Extension Involvement', parentTo: '/admin/review/faculty-portfolio' },
+      { to: '/admin/portfolio/faculty-portfolio/production', label: 'Production', parentTo: '/admin/review/faculty-portfolio' },
+
+      // The three tabs share one crumb: Home > Review > Faculty Portfolio > Other Requirements
+
+      { to: '/admin/portfolio/faculty-portfolio/other-requirements', label: 'Other Requirements', parentTo: '/admin/review/faculty-portfolio' },
+      { to: '/admin/portfolio/faculty-portfolio/other-requirements/professional-organization-membership', label: 'Other Requirements', parentTo: '/admin/review/faculty-portfolio' },
+      { to: '/admin/portfolio/faculty-portfolio/other-requirements/passed-licensure-examinations', label: 'Other Requirements', parentTo: '/admin/review/faculty-portfolio' },
+      { to: '/admin/portfolio/faculty-portfolio/other-requirements/ipcr', label: 'Other Requirements', parentTo: '/admin/review/faculty-portfolio' },
+
+      // Pages that belong to Class Portfolio
+
+      // Add class portfolio sub-pages here when their routes are available.
+    ],
+
     // Pages that are not in the sidebar. They open from the top bar.
+
     otherPages: [
       { to: '/admin/notifications', label: 'Notifications' },
       { to: '/admin/profile', label: 'My Profile', heading: 'Account' },
@@ -88,19 +139,54 @@ export const NAV = {
   },
 };
 
+// Does the address belong to this item? /admin/instructors/123 belongs to /admin/instructors.
+
+function matches(item, pathname) {
+  return pathname === item.to || pathname.startsWith(item.to + '/');
+}
+
 // Finds the menu item that matches the current address.
-// A sub-page such as /admin/instructors/123 matches its parent, /admin/instructors.
 // Returns { heading, item }, or null when nothing matches.
+
 export function findMenuItem(role, pathname) {
   const menu = NAV[role];
-  const matches = (item) => pathname === item.to || pathname.startsWith(item.to + '/');
+
+  if (!menu) return null;
 
   for (const section of menu.sections) {
-    const item = section.items.find(matches);
+    const item = section.items.find((entry) => matches(entry, pathname));
     if (item) return { heading: section.heading, item };
   }
 
   // Pages that are not in the sidebar (they open from the top bar)
-  const otherPage = (menu.otherPages || []).find(matches);
+
+  const otherPage = (menu.otherPages || []).find((entry) => matches(entry, pathname));
   return otherPage ? { heading: otherPage.heading, item: otherPage } : null;
+}
+
+// Finds the sub-page of the current address (for example "Research"), or null.
+
+export function findSubPage(role, pathname) {
+  const menu = NAV[role];
+
+  return (menu?.subPages || []).find((entry) => matches(entry, pathname)) || null;
+}
+
+// Finds the parent sidebar item for a nested portfolio page.
+
+export function findParentMenuItem(role, pathname) {
+  const menu = NAV[role];
+
+  if (!menu) return null;
+
+  const subPage = findSubPage(role, pathname);
+
+  if (subPage?.parentTo) {
+    for (const section of menu.sections) {
+      const item = section.items.find((entry) => entry.to === subPage.parentTo);
+      if (item) return { heading: section.heading, item };
+    }
+  }
+
+  return findMenuItem(role, pathname);
 }

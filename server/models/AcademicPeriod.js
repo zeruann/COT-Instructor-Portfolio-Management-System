@@ -30,15 +30,15 @@ const academicPeriodSchema = new mongoose.Schema(
     { timestamps: true, versionKey: false}
 );
 
-academicPeriodSchema(
-    { schoolYear: 1,semester: 1},
+academicPeriodSchema.index(
+    { schoolYear: 1, semester: 1 },
     { unique: true }
 );
 
 // Only one period can be current
 academicPeriodSchema.index(
-    { isCurrent: 1},
-    {unique: true, partialFilterExpresssion: {isCurrent: true}}
+    { isCurrent: 1 },
+    { unique: true, partialFilterExpression: { isCurrent: true } }
 );
 
 
