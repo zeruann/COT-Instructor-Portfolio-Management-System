@@ -9,6 +9,7 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react';
+import { formatDate } from '../../utils/formatDate';
 
 const statusStyles = {
   Pending: 'bg-yellow-100 text-yellow-700',
@@ -396,7 +397,7 @@ function InviteInstructor() {
                       </div>
                     </td>
                     <td className="text-gray-600">{inv.department}</td>
-                    <td className="text-gray-600">{new Date(inv.dateSent).toLocaleDateString()}</td>
+                    <td className="text-gray-600">{formatDate(inv.dateSent)}</td>
                     <td>
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[inv.status]}`}

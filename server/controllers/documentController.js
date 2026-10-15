@@ -115,8 +115,20 @@ exports.uploadDocument = async (req, res) => {
 
     let savedDoc;
     if (existingDoc) {
-      // Re-upload / update existing document
-      existingDoc.versions.push(newVersion);
+      // Re-upload / update existing document:
+      // Clean up previous files from Google Drive so old files do not linger
+      if (existingDoc.versions && existingDoc.versions.length > 0) {
+        for (const oldVer of existingDoc.versions) {
+          if (oldVer.driveFileId) {
+            storageService.deleteFile(oldVer.driveFileId).catch((delErr) => {
+              console.warn(`Could not delete old drive file ${oldVer.driveFileId}:`, delErr.message);
+            });
+          }
+        }
+      }
+
+      // In a re-upload where old file is replaced, keep only the latest version or track as replaced
+      existingDoc.versions = [newVersion];
       existingDoc.currentVersion = nextVersionNum;
       existingDoc.status = STATUS.PENDING_REVIEW;
       existingDoc.submittedAt = new Date();
@@ -376,6 +388,17 @@ exports.deleteDocument = async (req, res) => {
 
     if (doc.status === STATUS.APPROVED) {
       return res.status(400).json({ message: 'Approved documents cannot be deleted.' });
+    }
+
+    // Clean up files in Google Drive
+    if (doc.versions && doc.versions.length > 0) {
+      for (const ver of doc.versions) {
+        if (ver.driveFileId) {
+          storageService.deleteFile(ver.driveFileId).catch((delErr) => {
+            console.warn(`Could not delete file ${ver.driveFileId} from Google Drive:`, delErr.message);
+          });
+        }
+      }
     }
 
     await Document.findByIdAndDelete(id);

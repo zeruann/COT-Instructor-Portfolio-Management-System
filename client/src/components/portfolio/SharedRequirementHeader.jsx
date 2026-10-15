@@ -31,7 +31,7 @@ export default function SharedRequirementHeader({
             <ArrowLeft size={16} />
           </Link>
           <div>
-            <h1 className="text-2xl font-medium text-brand-purple">{title}</h1>
+            <h1 className="text-[23px] font-medium text-brand-purple">{title}</h1>
             {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
           </div>
         </div>

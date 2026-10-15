@@ -198,23 +198,26 @@ function UploadModalContent({
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Document Title <span className="text-red-500">*</span>
+                  Title / Service Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={meta.name || ''}
                   onChange={(e) => setMeta({ ...meta, name: e.target.value })}
-                  placeholder="e.g. IPCR 1st Semester 2025–2026"
+                  placeholder={`e.g. ${requirement?.label ? `College of Technology ${requirement.label}` : 'College of Technology Service Record'}`}
                   required
                   className="w-full text-xs px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-brand-purple"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Date</label>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Date <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="date"
                   value={meta.date || ''}
                   onChange={(e) => setMeta({ ...meta, date: e.target.value })}
+                  required
                   className="w-full text-xs px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-brand-purple"
                 />
               </div>

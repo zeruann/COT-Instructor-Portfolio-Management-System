@@ -8,6 +8,7 @@ import UploadModal from '../../../../components/documentActions/UploadModal';
 import PreviewModal from '../../../../components/documentActions/PreviewModal';
 import { useRequirementDocuments } from '../../../../hooks/useRequirementDocuments';
 import { Eye, ShieldCheck, RefreshCw, Trash2, Plus } from 'lucide-react';
+import { formatDate } from '../../../../utils/formatDate';
 
 import '../requirementStyle.css';
 import '../listEntries.css';
@@ -126,11 +127,7 @@ export default function IPCR() {
                     doc.versions?.[doc.versions.length - 1] || {};
                   const docName =
                     doc.meta?.name || 'IPCR (Individual Performance Commitment and Review)';
-                  const docDate =
-                    doc.meta?.date ||
-                    (doc.submittedAt
-                      ? new Date(doc.submittedAt).toLocaleDateString()
-                      : '—');
+                  const docDate = formatDate(doc.meta?.date || doc.submittedAt);
                   const fileName = latestVersion.originalName || '—';
 
                   return (

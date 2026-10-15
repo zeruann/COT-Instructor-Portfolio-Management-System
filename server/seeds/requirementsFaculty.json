@@ -116,12 +116,26 @@
       "cardOrder": 3,
       "label": "Service records",
       "scope": "faculty",
-      "multiple": false,
+      "multiple": true,
       "required": "required",
       "periodScope": "none",
       "order": 8,
       "inChecklist": true,
-      "active": true
+      "active": true,
+      "metaFields": [
+        {
+          "name": "name",
+          "label": "Title / Service Name",
+          "type": "text",
+          "required": true
+        },
+        {
+          "name": "date",
+          "label": "Date",
+          "type": "date",
+          "required": true
+        }
+      ]
     },
     {
       "key": "FAC_D_SEMINAR",

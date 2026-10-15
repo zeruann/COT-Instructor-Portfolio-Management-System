@@ -10,7 +10,9 @@ import {
   Clock,
   Loader2,
   Calendar,
+  RefreshCw,
 } from 'lucide-react';
+import { formatDate } from '../../utils/formatDate';
 import { getDocumentFileUrl, reviewDocument } from '../../api/documents';
 import StatusBadge from './StatusBadge';
 
@@ -20,6 +22,7 @@ export default function PreviewModal({
   document,
   isAdmin = false,
   onReviewSuccess,
+  onEdit,
 }) {
   const [rejecting, setRejecting] = useState(false);
   const [comment, setComment] = useState('');
@@ -87,13 +90,24 @@ export default function PreviewModal({
               {document.submittedAt && (
                 <span className="flex items-center gap-1 shrink-0">
                   <Calendar className="w-3.5 h-3.5" />
-                  {new Date(document.submittedAt).toLocaleDateString()}
+                  {formatDate(document.submittedAt)}
                 </span>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
+            {!isAdmin && onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(document)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-brand-orange hover:bg-orange-600 rounded-xl transition shadow-xs"
+                title="Edit / Re-upload a new version"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Edit / Re-upload
+              </button>
+            )}
             <a
               href={fileUrl}
               download={currentVersion?.originalName}

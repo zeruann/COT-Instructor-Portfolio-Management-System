@@ -7,6 +7,7 @@ import UploadModal from '../../../components/documentActions/UploadModal';
 import PreviewModal from '../../../components/documentActions/PreviewModal';
 import { useRequirementDocuments } from '../../../hooks/useRequirementDocuments';
 import { Eye, ShieldCheck, RefreshCw, Trash2, Plus } from 'lucide-react';
+import { formatDate } from '../../../utils/formatDate';
 
 import './requirementStyle.css';
 import './listEntries.css';
@@ -39,15 +40,15 @@ export default function Achievements() {
         ? 'No achievement proofs submitted by this instructor yet.'
         : 'No records yet. Click "Add Achievement" to upload awards, grants, or commendations.'
       : counts.approved === total
-      ? 'All achievement documents have been approved.'
-      : `${counts.approved} of ${total} achievement documents have been approved.`;
+        ? 'All achievement documents have been approved.'
+        : `${counts.approved} of ${total} achievement documents have been approved.`;
 
   const completionMessage =
     percent === 100
       ? 'All achievement records verified and approved!'
       : total === 0
-      ? 'No records yet.'
-      : `${counts.approved} of ${total} records approved (${percent}%).`;
+        ? 'No records yet.'
+        : `${counts.approved} of ${total} records approved (${percent}%).`;
 
   return (
     <div className="space-y-5">
@@ -123,9 +124,7 @@ export default function Achievements() {
                 documents.map((doc) => {
                   const latestVersion = doc.versions?.[doc.versions.length - 1] || {};
                   const docName = doc.meta?.title || doc.meta?.name || 'Achievement';
-                  const docDate =
-                    doc.meta?.date ||
-                    (doc.submittedAt ? new Date(doc.submittedAt).toLocaleDateString() : '—');
+                  const docDate = formatDate(doc.meta?.date || doc.submittedAt);
                   const fileName = latestVersion.originalName || '—';
 
                   return (

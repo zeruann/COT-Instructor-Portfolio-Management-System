@@ -9,8 +9,11 @@ function PlaceholderPage({ title, backTo }) {
     document.title = `${title} | COT Faculty Portfolio`;
   }, [title]);
 
-  const heading = <h1 className="text-2xl font-medium text-brand-purple">{title}</h1>;
-
+  const heading = (
+    <h1 className="text-[24px] leading-[32px] font-medium text-brand-purple">
+      {title}
+    </h1>
+  );
   if (!backTo) return heading;
 
   return (

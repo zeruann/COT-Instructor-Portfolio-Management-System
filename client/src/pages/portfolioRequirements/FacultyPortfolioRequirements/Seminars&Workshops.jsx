@@ -7,6 +7,7 @@ import UploadModal from '../../../components/documentActions/UploadModal';
 import PreviewModal from '../../../components/documentActions/PreviewModal';
 import { useRequirementDocuments } from '../../../hooks/useRequirementDocuments';
 import { Eye, ShieldCheck, RefreshCw, Trash2, Plus } from 'lucide-react';
+import { formatDate } from '../../../utils/formatDate';
 
 import './requirementStyle.css';
 import './listEntries.css';
@@ -125,9 +126,8 @@ export default function SeminarsAndWorkshops() {
                   const docName = doc.meta?.title || doc.meta?.name || 'Seminar / Workshop';
                   const docDate =
                     doc.meta?.dateFrom
-                      ? `${doc.meta.dateFrom}${doc.meta.dateTo ? ` to ${doc.meta.dateTo}` : ''}`
-                      : doc.meta?.date ||
-                        (doc.submittedAt ? new Date(doc.submittedAt).toLocaleDateString() : '—');
+                      ? `${formatDate(doc.meta.dateFrom)}${doc.meta.dateTo ? ` to ${formatDate(doc.meta.dateTo)}` : ''}`
+                      : formatDate(doc.meta?.date || doc.submittedAt);
                   const fileName = latestVersion.originalName || '—';
 
                   return (

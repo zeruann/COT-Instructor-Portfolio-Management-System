@@ -7,6 +7,7 @@ import UploadModal from '../../../components/documentActions/UploadModal';
 import PreviewModal from '../../../components/documentActions/PreviewModal';
 import { useRequirementDocuments } from '../../../hooks/useRequirementDocuments';
 import { Eye, ShieldCheck, RefreshCw, Trash2, Plus } from 'lucide-react';
+import { formatDate } from '../../../utils/formatDate';
 
 import './requirementStyle.css';
 import './listEntries.css';
@@ -122,10 +123,8 @@ export default function ServiceRecords() {
               ) : (
                 documents.map((doc) => {
                   const latestVersion = doc.versions?.[doc.versions.length - 1] || {};
-                  const docName = doc.meta?.name || 'Service Record';
-                  const docDate =
-                    doc.meta?.date ||
-                    (doc.submittedAt ? new Date(doc.submittedAt).toLocaleDateString() : '—');
+                  const docName = doc.meta?.name || doc.meta?.title || latestVersion.originalName || 'Service Record';
+                  const docDate = formatDate(doc.meta?.date || doc.submittedAt);
                   const fileName = latestVersion.originalName || '—';
 
                   return (
@@ -145,10 +144,7 @@ export default function ServiceRecords() {
                             <path d="M14 3v5h5M9 13h6M9 17h6" />
                           </svg>
                           <div className="min-w-0">
-                            <span className="doc-table__name block truncate">{docName}</span>
-                            <p className="doc-table__hint">
-                              Version {doc.currentVersion || 1} &bull; Service Record
-                            </p>
+                            <span className="doc-table__name block truncate font-medium text-gray-800" title={docName}>{docName}</span>
                           </div>
                         </div>
                       </td>
