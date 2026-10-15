@@ -5,6 +5,7 @@ const { OAuth2Client } = require('google-auth-library');
 const Instructor = require('../models/Instructor');
 const { sendEmail } = require('../utils/sendEmail');
 const { isPasswordValid } = require('../utils/passwordRules');
+const verifyRecaptcha = require('../utils/verifyRecaptcha');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -35,6 +36,11 @@ const publicInstructor = (user) => ({
 
 exports.login = async (req, res) => {
   try {
+
+    if (!(await verifyRecaptcha(req.body.captchaToken))) {
+      return res.status(400).json({ message: 'reCAPTCHA verification failed. Please try again.' });
+    }
+
     const email = (req.body.email || '').trim().toLowerCase();
     const { password } = req.body;
 
