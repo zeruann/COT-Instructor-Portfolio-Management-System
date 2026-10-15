@@ -72,8 +72,6 @@ exports.uploadDocument = async (req, res) => {
       existingDoc = await Document.findOne({ slotKey });
     }
 
-    const nextVersionNum = existingDoc ? existingDoc.currentVersion + 1 : 1;
-
     // 1. Build Google Drive folder hierarchy
     const folderPath = driveNaming.facultyFolderPath({
       department: instructor.department || 'General',
@@ -82,11 +80,11 @@ exports.uploadDocument = async (req, res) => {
       requirement,
     });
 
-    // 2. Build unique filename for Google Drive
+    // 2. Build unique filename for Google Drive (no incrementing version)
     const targetDocId = existingDoc ? existingDoc._id : new mongoose.Types.ObjectId();
     const fileName = driveNaming.buildFileName({
       slot: meta.name || requirement.label || requirement.card,
-      version: nextVersionNum,
+      version: 1,
       originalName: req.file.originalname,
       documentId: targetDocId,
     });
@@ -100,9 +98,9 @@ exports.uploadDocument = async (req, res) => {
       mimeType: req.file.mimetype,
     });
 
-    // 4. Create new version record
+    // 4. Create single active file record
     const newVersion = {
-      n: nextVersionNum,
+      n: 1,
       driveFileId: driveUpload.fileId,
       originalName: req.file.originalname,
       mimeType: req.file.mimetype,
@@ -116,20 +114,22 @@ exports.uploadDocument = async (req, res) => {
     let savedDoc;
     if (existingDoc) {
       // Re-upload / update existing document:
-      // Clean up previous files from Google Drive so old files do not linger
+      // Clean up previous file(s) from Google Drive so old files do not linger
       if (existingDoc.versions && existingDoc.versions.length > 0) {
         for (const oldVer of existingDoc.versions) {
           if (oldVer.driveFileId) {
-            storageService.deleteFile(oldVer.driveFileId).catch((delErr) => {
+            try {
+              await storageService.deleteFile(oldVer.driveFileId);
+            } catch (delErr) {
               console.warn(`Could not delete old drive file ${oldVer.driveFileId}:`, delErr.message);
-            });
+            }
           }
         }
       }
 
-      // In a re-upload where old file is replaced, keep only the latest version or track as replaced
+      // Replace with only the new file
       existingDoc.versions = [newVersion];
-      existingDoc.currentVersion = nextVersionNum;
+      existingDoc.currentVersion = 1;
       existingDoc.status = STATUS.PENDING_REVIEW;
       existingDoc.submittedAt = new Date();
       if (Object.keys(meta).length > 0) {
@@ -172,7 +172,7 @@ exports.uploadDocument = async (req, res) => {
       targetType: 'document',
       targetId: savedDoc._id,
       targetLabel: req.file.originalname,
-      meta: { requirementKey, version: nextVersionNum },
+      meta: { requirementKey, version: 1 },
       req,
     });
 
@@ -475,7 +475,7 @@ exports.getFacultyPortfolioSummary = async (req, res) => {
         };
       }
 
-      summaries[cardPath].totalFiles += doc.versions?.length || 1;
+      summaries[cardPath].totalFiles += 1;
 
       if (doc.status === STATUS.APPROVED) summaries[cardPath].approved += 1;
       else if (doc.status === STATUS.PENDING_REVIEW) summaries[cardPath].pendingReview += 1;

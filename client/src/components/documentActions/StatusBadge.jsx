@@ -2,7 +2,7 @@
 
 const STATUS_CONFIG = {
   approved: {
-    label: 'Completed',
+    label: 'Approved',
     className: 'doc-status doc-status--completed',
   },
   pending_review: {
