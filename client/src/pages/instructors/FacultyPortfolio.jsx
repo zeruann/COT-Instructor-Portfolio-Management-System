@@ -1,13 +1,21 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import PlaceholderPage from '../../components/layout/PlaceholderPage';
-import { fetchFacultySummary, fetchRequirement, fetchDocuments } from '../../api/documents';
 import UploadModal from '../../components/documentActions/UploadModal';
-import PreviewModal from '../../components/documentActions/PreviewModal';
-import { Eye, UploadCloud } from 'lucide-react';
+import { fetchDocuments } from '../../api/documents';
 
 // The Faculty Portfolio URL. Every card link is built from it.
 const BASE_PATH = "/instructors/portfolio/faculty-portfolio";
+
+// PDS SETTINGS: the PDS is ONE file per instructor, so there are no popup fields (metaFields is empty).
+// key must match the requirement key in the database seed.
+const PDS_REQUIREMENT = {
+  key: 'FAC_A_PDS',
+  label: 'Personal Data Sheet (PDS)',
+  card: 'Faculty Profile',
+  multiple: false,
+  metaFields: [],
+};
 
 //CHANGE THIS LIST TO ADD OR RENAME A CARD
 const requirementCards = [
@@ -155,33 +163,26 @@ function FacultyPortfolio() {
   const navigate = useNavigate();
   const [summaries, setSummaries] = useState({});
   const [instructorData, setInstructorData] = useState(null);
-  const [pdsModalOpen, setPdsModalOpen] = useState(false);
-  const [pdsPreviewOpen, setPdsPreviewOpen] = useState(false);
+
+  // PDS: the saved PDS (null if none yet) and whether its upload popup is open
   const [pdsDoc, setPdsDoc] = useState(null);
-  const [pdsRequirement, setPdsRequirement] = useState(null);
+  const [pdsOpen, setPdsOpen] = useState(false);
 
-  const loadSummaries = () => {
-    fetchFacultySummary()
-      .then((data) => setSummaries(data || {}))
-      .catch((err) => console.error('Failed to load faculty summaries:', err));
-  };
-
-  const loadPdsDoc = () => {
-    fetchDocuments({ requirementKey: 'FAC_A_PDS' })
-      .then((docs) => {
-        if (Array.isArray(docs) && docs.length > 0) {
-          setPdsDoc(docs[0]);
-        } else {
-          setPdsDoc(null);
-        }
-      })
-      .catch((err) => console.warn('Could not load PDS document:', err));
+  // Loads the instructor's PDS from the server
+  const loadPds = async () => {
+    try {
+      const docs = await fetchDocuments({ requirementKey: PDS_REQUIREMENT.key });
+      setPdsDoc(docs?.[0] || null);
+    } catch (err) {
+      console.warn('Could not load PDS:', err);
+    }
   };
 
   useEffect(() => {
-    loadSummaries();
-    loadPdsDoc();
+    loadPds();
+  }, []);
 
+  useEffect(() => {
     // Fetch user profile info
     fetch('/api/profile/me', {
       headers: {
@@ -193,18 +194,6 @@ function FacultyPortfolio() {
         if (data) setInstructorData(data);
       })
       .catch((err) => console.warn('Could not load profile header:', err));
-
-    // Fetch PDS requirement details for UploadModal
-    fetchRequirement('FAC_A_PDS')
-      .then((req) => setPdsRequirement(req))
-      .catch(() => {
-        setPdsRequirement({
-          key: 'FAC_A_PDS',
-          card: 'Faculty Profile (Updated PDS)',
-          label: 'Updated PDS (Personal Data Sheet)',
-          multiple: false,
-        });
-      });
   }, []);
 
   // Compute progress: total approved files over total files submitted/in-review
@@ -324,27 +313,15 @@ function FacultyPortfolio() {
             >
               Edit Profile
             </button>
-            {pdsDoc ? (
-              <button
-                type="button"
-                onClick={() => setPdsPreviewOpen(true)}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-brand-purple hover:bg-[#494673] rounded-xl shadow-xs transition text-center cursor-pointer"
-                title="View uploaded Personal Data Sheet"
-              >
-                <Eye className="w-3.5 h-3.5" />
-                View PDS
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setPdsModalOpen(true)}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-brand-purple hover:bg-[#494673] rounded-xl shadow-xs transition text-center cursor-pointer"
-                title="Upload Personal Data Sheet"
-              >
-                <UploadCloud className="w-3.5 h-3.5" />
-                Upload PDS
-              </button>
-            )}
+            {/* PDS button: "Upload PDS" when none, "Replace PDS" after. Always enabled, so the
+                instructor can reupload at any time (the server keeps the old file as a version). */}
+            <button
+              type="button"
+              onClick={() => setPdsOpen(true)}
+              className="w-full px-4 py-2 text-xs font-semibold text-white bg-brand-purple hover:bg-[#494673] rounded-xl shadow-xs transition text-center"
+            >
+              {pdsDoc ? 'Replace PDS' : 'Upload PDS'}
+            </button>
           </div>
         </section>
 
@@ -358,8 +335,8 @@ function FacultyPortfolio() {
             {completionPercent === 100
               ? 'Your portfolio has been verified and approved!'
               : totalSubmitted === 0
-              ? 'No files submitted yet.'
-              : `${totalApproved} of ${totalSubmitted} files approved.`}
+                ? 'No files submitted yet.'
+                : `${totalApproved} of ${totalSubmitted} files approved.`}
           </p>
         </section>
       </div>
@@ -384,41 +361,14 @@ function FacultyPortfolio() {
         </div>
       </section>
 
-      {/* Upload PDS Modal */}
-      {pdsModalOpen && (
-        <UploadModal
-          isOpen={pdsModalOpen}
-          onClose={() => setPdsModalOpen(false)}
-          onSuccess={() => {
-            setPdsModalOpen(false);
-            loadSummaries();
-            loadPdsDoc();
-          }}
-          existingDoc={pdsDoc}
-          requirement={
-            pdsRequirement || {
-              key: 'FAC_A_PDS',
-              card: 'Faculty Profile (Updated PDS)',
-              label: 'Updated PDS (Personal Data Sheet)',
-              multiple: false,
-            }
-          }
-        />
-      )}
-
-      {/* Preview PDS Modal with Edit / Re-upload button */}
-      {pdsPreviewOpen && pdsDoc && (
-        <PreviewModal
-          isOpen={pdsPreviewOpen}
-          onClose={() => setPdsPreviewOpen(false)}
-          document={pdsDoc}
-          isAdmin={false}
-          onEdit={() => {
-            setPdsPreviewOpen(false);
-            setPdsModalOpen(true);
-          }}
-        />
-      )}
+      {/* PDS upload popup: file picker only (Add or Replace) */}
+      <UploadModal
+        isOpen={pdsOpen}
+        onClose={() => setPdsOpen(false)}
+        requirement={PDS_REQUIREMENT}
+        existingDoc={pdsDoc}
+        onSuccess={() => loadPds()}
+      />
     </div>
   );
 }

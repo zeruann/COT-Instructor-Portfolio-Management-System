@@ -3,6 +3,9 @@ import { useState, useRef } from 'react';
 import { X, UploadCloud, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { uploadDocument } from '../../api/documents';
 
+// Biggest file allowed (MB). The server enforces the same limit in constants/uploadRules.js.
+const MAX_FILE_MB = 5;
+
 function formatFileSize(bytes) {
   if (!bytes) return '0 B';
   const k = 1024;
@@ -49,8 +52,8 @@ function UploadModalContent({
     setError('');
     if (!selectedFile) return;
 
-    if (selectedFile.size > 25 * 1024 * 1024) {
-      setError('File size exceeds the 25 MB limit.');
+    if (selectedFile.size > MAX_FILE_MB * 1024 * 1024) {
+      setError(`File size exceeds the ${MAX_FILE_MB} MB limit.`);
       return;
     }
 
@@ -107,26 +110,29 @@ function UploadModalContent({
     }
   };
 
+  //EDIT: MODAL TITLE
   const modalTitle = existingDoc
-    ? `Replace: ${existingDoc.meta?.name || requirement?.label || 'Document'}`
+    ? `Upload: ${existingDoc.meta?.name || existingDoc.meta?.title || requirement?.label || 'Document'}`
     : `Upload: ${requirement?.label || requirement?.card || 'Document'}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div className="min-w-0 pr-4">
-            <h3 className="text-base font-bold text-gray-800 truncate">{modalTitle}</h3>
-            <p className="text-xs text-gray-500 truncate">
-              {existingDoc ? 'Uploading a new version will submit it for review' : (requirement?.card || 'Faculty Portfolio')}
+
+        {/* MODAL TITLE AND DESCRIPTION */}
+        <div className="flex items-start justify-between gap-4 px-6 py-4 border-b border-gray-100">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base font-bold text-gray-700 break-words text-[17px] pt-3 pb-1">{modalTitle}</h3>
+            <p className="text-s leading-5 text-gray-500 whitespace-normal break-words text-[13px]">
+              {existingDoc ? '' : (requirement?.card || 'Faculty Portfolio')}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             disabled={uploading}
-            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
+            className="p-1.5 shrink-0 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition text-[10px]"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -246,11 +252,10 @@ function UploadModalContent({
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 ${
-                  isDragging
-                    ? 'border-brand-purple bg-purple-50/50'
-                    : 'border-gray-200 hover:border-gray-300 bg-gray-50/50 hover:bg-gray-50'
-                }`}
+                className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition flex flex-col items-center justify-center gap-2 ${isDragging
+                  ? 'border-brand-purple bg-purple-50/50'
+                  : 'border-gray-200 hover:border-gray-300 bg-gray-50/50 hover:bg-gray-50'
+                  }`}
               >
                 <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-brand-purple">
                   <UploadCloud className="w-5 h-5" />
@@ -260,7 +265,7 @@ function UploadModalContent({
                     Click to browse <span className="text-gray-400 font-normal">or drag & drop</span>
                   </p>
                   <p className="text-[11px] text-gray-400 mt-0.5">
-                    PDF, JPG, PNG, or DOCX (Max 25 MB)
+                    PDF, JPG, PNG, or DOCX (Max {MAX_FILE_MB} MB)
                   </p>
                 </div>
               </div>
@@ -271,7 +276,9 @@ function UploadModalContent({
                     <FileText className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-medium text-gray-800 truncate" title={file.name}>
+
+
+                    <p className="mt-1 whitespace-normal break-words text-xs leading-5 text-gray-500" title={file.name}>
                       {file.name}
                     </p>
                     <p className="text-[10px] text-gray-500">{formatFileSize(file.size)}</p>

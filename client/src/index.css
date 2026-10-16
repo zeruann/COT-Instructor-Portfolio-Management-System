@@ -35,72 +35,6 @@
 }
 
 
-/* ==========================================================================
-   Typography Utility Classes
-   ========================================================================== */
-
-/* Display: 32px / 40px, 700 (Dashboard hero titles) */
-@utility type-display {
-  font-size: 32px;
-  line-height: 40px;
-  font-weight: 700;
-}
-
-/* Heading 1: 28px / 36px, 700 (Primary page titles) */
-@utility type-h1 {
-  font-size: 28px;
-  line-height: 36px;
-  font-weight: 700;
-}
-
-/* Heading 2: 22px / 30px, 600 (Section headings) */
-@utility type-h2 {
-  font-size: 22px;
-  line-height: 30px;
-  font-weight: 600;
-}
-
-/* Heading 3: 18px / 26px, 600 (Card and subsection titles) */
-@utility type-h3 {
-  font-size: 18px;
-  line-height: 26px;
-  font-weight: 600;
-}
-
-/* Body: 14px / 22px, 400 (Default content) */
-@utility type-body {
-  font-size: 14px;
-  line-height: 22px;
-  font-weight: 400;
-}
-
-/* Small: 13px / 20px, 400 (Secondary information) */
-@utility type-small {
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 400;
-}
-
-/* Caption: 12px / 16px, 500 (Metadata & compact labels) */
-@utility type-caption {
-  font-size: 12px;
-  line-height: 16px;
-  font-weight: 500;
-}
-
-/* Button text: 14px / 20px, 600 */
-@utility type-button {
-  font-size: 14px;
-  line-height: 20px;
-  font-weight: 300;
-}
-
-/* Table text: 13px / 20px, 400 */
-@utility type-table {
-  font-size: 13px;
-  line-height: 20px;
-  font-weight: 400;
-}
 
 @theme {
   /* Brand colors */
@@ -111,37 +45,6 @@
   --color-brand-bg: #fbfbfb;
 
   --spacing-header: 89px;
-
-  /* ========================================================================
-     AUTOMATIC SYSTEM-WIDE TYPOGRAPHY OVERRIDE
-     ======================================================================== */
-  /* Display (32px / 40px) */
-  --text-3xl: 32px;
-  --text-3xl--line-height: 40px;
-
-  /* Heading 1 (28px / 36px) */
-  --text-2xl: 28px;
-  --text-2xl--line-height: 36px;
-
-  /* Heading 2 (22px / 30px) */
-  --text-xl: 22px;
-  --text-xl--line-height: 30px;
-
-  /* Heading 3 (18px / 26px) */
-  --text-lg: 18px;
-  --text-lg--line-height: 26px;
-
-  /* Body (14px / 22px) */
-  --text-base: 14px;
-  --text-base--line-height: 22px;
-
-  /* Small / Table text (13px / 20px) */
-  --text-sm: 13px;
-  --text-sm--line-height: 20px;
-
-  /* Caption (12px / 16px) */
-  --text-xs: 12px;
-  --text-xs--line-height: 16px;
 
 
   /* ========================================================================

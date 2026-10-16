@@ -31,3 +31,4 @@ export default function StatusBadge({ status }) {
 
   return <span className={config.className}>{config.label}</span>;
 }
+

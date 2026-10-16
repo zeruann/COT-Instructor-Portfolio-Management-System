@@ -55,133 +55,133 @@ function App() {
     <BrowserRouter>
       <PortfolioProvider>
         <Routes>
-        {/* DEFAULT ROUTE */}
+          {/* DEFAULT ROUTE */}
 
-        <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* AUTHENTICATION PAGES */}
+          {/* AUTHENTICATION PAGES */}
 
-        <Route path="/login" element={<Login />} />
+          <Route path="/login" element={<Login />} />
 
-        {/* Password Reset */}
+          {/* Password Reset */}
 
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/set-new-password/:token" element={<SetNewPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/set-new-password/:token" element={<SetNewPassword />} />
 
-        {/* Instructor onboarding (its own full-page layout) */}
+          {/* Instructor onboarding (its own full-page layout) */}
 
-        <Route path="/profile-setup" element={<SetupProfile />} />
+          <Route path="/profile-setup" element={<SetupProfile />} />
 
-        {/* Invitations */}
+          {/* Invitations */}
 
-        <Route path="/invitation/:token" element={<AcceptInvitation />} />
-        <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
-
-        {/* =========================================================================================================== */}
-        {/* ADMINISTRATOR PAGES */}
-        {/* =========================================================================================================== */}
-
-        {/* ADMIN: every page below shows inside the shared layout */}
-
-        <Route element={<ProtectedRoute><AppLayout role="admin" /></ProtectedRoute>}>
-
-          {/* Dashboard */}
-
-          <Route path="/admin/AdminDashboard" element={<AdminDashboard />} />
-
-          {/* Instructor Management */}
-
-          <Route path="/admin/invite-instructor" element={<InviteInstructor />} />
-          <Route path="/admin/instructors" element={<ViewInstructors />} />
-
-          {/* Individual Instructor Profile */}
-
-          <Route path="/admin/instructors/:id" element={<AdminInstructorProfile />} />
-
-          {/* Portfolio Review */}
-
-          <Route path="/admin/review/faculty-portfolio" element={<ReviewFacultyPortfolio />} />
-          <Route path="/admin/review/class-portfolio" element={<ReviewClassPortfolio />} />
-
-          {/* SHARED PORTFOLIO REQUIREMENTS - ADMIN VIEW */}
-
-          <Route path="/admin/portfolio/faculty-portfolio/educational-attainment" element={<EducationalAttainment />} />
-          <Route path="/admin/portfolio/faculty-portfolio/service-records" element={<ServiceRecords />} />
-          <Route path="/admin/portfolio/faculty-portfolio/seminars-and-workshops" element={<SeminarsAndWorkshops />} />
-          <Route path="/admin/portfolio/faculty-portfolio/achievements" element={<Achievements />} />
-          <Route path="/admin/portfolio/faculty-portfolio/research" element={<Research />} />
-          <Route path="/admin/portfolio/faculty-portfolio/extension-involvement" element={<ExtensionInvolvement />} />
-          <Route path="/admin/portfolio/faculty-portfolio/production" element={<Production />} />
-
-          {/* OTHER REQUIREMENTS: parent page with 3 tab pages inside it */}
-
-          <Route path="/admin/portfolio/faculty-portfolio/other-requirements" element={<OtherRequirements />}>
-            <Route index element={<Navigate to="professional-organization-membership" replace />} />
-            <Route path="professional-organization-membership" element={<ProfessionalOrgs />} />
-            <Route path="passed-licensure-examinations" element={<PassedLicensureExams />} />
-            <Route path="ipcr" element={<IPCR />} />
-          </Route>
-
-          {/* Archive and System Settings */}
-
-          <Route path="/admin/archive" element={<AdminArchive />} />
-          <Route path="/admin/academic-period" element={<AcademicPeriod />} />
-          <Route path="/admin/notifications" element={<AdminNotifications />} />
-          <Route path="/admin/profile" element={<AdminProfile />} />
-          <Route path="/admin/security" element={<AdminSecurity />} />
-        </Route>
-
-        {/* =========================================================================================================== */}
-        {/* INSTRUCTOR PAGES */}
-        {/* =========================================================================================================== */}
-
-        {/* INSTRUCTOR: every page below shows inside the shared layout */}
-
-        <Route element={<ProtectedRoute><AppLayout role="instructor" /></ProtectedRoute>}>
-
-          {/* Dashboard and Profile */}
-
-          <Route path="/instructors/dashboard" element={<InstructorDashboard />} />
-          <Route path="/instructors/profile" element={<Profile />} />
+          <Route path="/invitation/:token" element={<AcceptInvitation />} />
+          <Route path="/accept-invitation/:token" element={<AcceptInvitation />} />
 
           {/* =========================================================================================================== */}
-          {/* INSTRUCTOR PORTFOLIO PAGES */}
+          {/* ADMINISTRATOR PAGES */}
           {/* =========================================================================================================== */}
 
-          {/* 1. FACULTY PORTFOLIO */}
+          {/* ADMIN: every page below shows inside the shared layout */}
 
-          <Route path="/instructors/faculty-portfolio" element={<FacultyPortfolio />} />
+          <Route element={<ProtectedRoute><AppLayout role="admin" /></ProtectedRoute>}>
 
-          {/* 2. CLASS PORTFOLIO */}
+            {/* Dashboard */}
 
-          <Route path="/instructors/class-portfolio" element={<ClassPortfolio />} />
+            <Route path="/admin/AdminDashboard" element={<AdminDashboard />} />
 
-          {/* 3. SHARED PORTFOLIO REQUIREMENTS - INSTRUCTOR VIEW */}
+            {/* Instructor Management */}
 
-          <Route path="/instructors/portfolio/faculty-portfolio/educational-attainment" element={<EducationalAttainment />} />
-          <Route path="/instructors/portfolio/faculty-portfolio/service-records" element={<ServiceRecords />} />
-          <Route path="/instructors/portfolio/faculty-portfolio/seminars-and-workshops" element={<SeminarsAndWorkshops />} />
-          <Route path="/instructors/portfolio/faculty-portfolio/achievements" element={<Achievements />} />
-          <Route path="/instructors/portfolio/faculty-portfolio/research" element={<Research />} />
-          <Route path="/instructors/portfolio/faculty-portfolio/extension-involvement" element={<ExtensionInvolvement />} />
-          <Route path="/instructors/portfolio/faculty-portfolio/production" element={<Production />} />
+            <Route path="/admin/invite-instructor" element={<InviteInstructor />} />
+            <Route path="/admin/instructors" element={<ViewInstructors />} />
 
-          {/* OTHER REQUIREMENTS: parent page with 3 tab pages inside it */}
+            {/* Individual Instructor Profile */}
 
-          <Route path="/instructors/portfolio/faculty-portfolio/other-requirements" element={<OtherRequirements />}>
-            <Route index element={<Navigate to="professional-organization-membership" replace />} />
-            <Route path="professional-organization-membership" element={<ProfessionalOrgs />} />
-            <Route path="passed-licensure-examinations" element={<PassedLicensureExams />} />
-            <Route path="ipcr" element={<IPCR />} />
+            <Route path="/admin/instructors/:id" element={<AdminInstructorProfile />} />
+
+            {/* Portfolio Review */}
+
+            <Route path="/admin/review/faculty-portfolio" element={<ReviewFacultyPortfolio />} />
+            <Route path="/admin/review/class-portfolio" element={<ReviewClassPortfolio />} />
+
+            {/* SHARED PORTFOLIO REQUIREMENTS - ADMIN VIEW */}
+
+            <Route path="/admin/portfolio/faculty-portfolio/educational-attainment" element={<EducationalAttainment />} />
+            <Route path="/admin/portfolio/faculty-portfolio/service-records" element={<ServiceRecords />} />
+            <Route path="/admin/portfolio/faculty-portfolio/seminars-and-workshops" element={<SeminarsAndWorkshops />} />
+            <Route path="/admin/portfolio/faculty-portfolio/achievements" element={<Achievements />} />
+            <Route path="/admin/portfolio/faculty-portfolio/research" element={<Research />} />
+            <Route path="/admin/portfolio/faculty-portfolio/extension-involvement" element={<ExtensionInvolvement />} />
+            <Route path="/admin/portfolio/faculty-portfolio/production" element={<Production />} />
+
+            {/* OTHER REQUIREMENTS: parent page with 3 tab pages inside it */}
+
+            <Route path="/admin/portfolio/faculty-portfolio/other-requirements" element={<OtherRequirements />}>
+              <Route index element={<Navigate to="professional-organization-membership" replace />} />
+              <Route path="professional-organization-membership" element={<ProfessionalOrgs />} />
+              <Route path="passed-licensure-examinations" element={<PassedLicensureExams />} />
+              <Route path="ipcr" element={<IPCR />} />
+            </Route>
+
+            {/* Archive and System Settings */}
+
+            <Route path="/admin/archive" element={<AdminArchive />} />
+            <Route path="/admin/academic-period" element={<AcademicPeriod />} />
+            <Route path="/admin/notifications" element={<AdminNotifications />} />
+            <Route path="/admin/profile" element={<AdminProfile />} />
+            <Route path="/admin/security" element={<AdminSecurity />} />
           </Route>
 
-          {/* Archive and Account Settings */}
+          {/* =========================================================================================================== */}
+          {/* INSTRUCTOR PAGES */}
+          {/* =========================================================================================================== */}
 
-          <Route path="/instructors/archive" element={<InstructorArchive />} />
-          <Route path="/instructors/notifications" element={<InstructorNotifications />} />
-          <Route path="/instructors/security" element={<InstructorSecurity />} />
-        </Route>
-      </Routes>
+          {/* INSTRUCTOR: every page below shows inside the shared layout */}
+
+          <Route element={<ProtectedRoute><AppLayout role="instructor" /></ProtectedRoute>}>
+
+            {/* Dashboard and Profile */}
+
+            <Route path="/instructors/dashboard" element={<InstructorDashboard />} />
+            <Route path="/instructors/profile" element={<Profile />} />
+
+            {/* =========================================================================================================== */}
+            {/* INSTRUCTOR PORTFOLIO PAGES */}
+            {/* =========================================================================================================== */}
+
+            {/* 1. FACULTY PORTFOLIO */}
+
+            <Route path="/instructors/faculty-portfolio" element={<FacultyPortfolio />} />
+
+            {/* 2. CLASS PORTFOLIO */}
+
+            <Route path="/instructors/class-portfolio" element={<ClassPortfolio />} />
+
+            {/* 3. SHARED PORTFOLIO REQUIREMENTS - INSTRUCTOR VIEW */}
+
+            <Route path="/instructors/portfolio/faculty-portfolio/educational-attainment" element={<EducationalAttainment />} />
+            <Route path="/instructors/portfolio/faculty-portfolio/service-records" element={<ServiceRecords />} />
+            <Route path="/instructors/portfolio/faculty-portfolio/seminars-and-workshops" element={<SeminarsAndWorkshops />} />
+            <Route path="/instructors/portfolio/faculty-portfolio/achievements" element={<Achievements />} />
+            <Route path="/instructors/portfolio/faculty-portfolio/research" element={<Research />} />
+            <Route path="/instructors/portfolio/faculty-portfolio/extension-involvement" element={<ExtensionInvolvement />} />
+            <Route path="/instructors/portfolio/faculty-portfolio/production" element={<Production />} />
+
+            {/* OTHER REQUIREMENTS: parent page with 3 tab pages inside it */}
+
+            <Route path="/instructors/portfolio/faculty-portfolio/other-requirements" element={<OtherRequirements />}>
+              <Route index element={<Navigate to="professional-organization-membership" replace />} />
+              <Route path="professional-organization-membership" element={<ProfessionalOrgs />} />
+              <Route path="passed-licensure-examinations" element={<PassedLicensureExams />} />
+              <Route path="ipcr" element={<IPCR />} />
+            </Route>
+
+            {/* Archive and Account Settings */}
+
+            <Route path="/instructors/archive" element={<InstructorArchive />} />
+            <Route path="/instructors/notifications" element={<InstructorNotifications />} />
+            <Route path="/instructors/security" element={<InstructorSecurity />} />
+          </Route>
+        </Routes>
       </PortfolioProvider>
     </BrowserRouter>
   );
