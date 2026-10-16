@@ -5,8 +5,7 @@ import AuthLayout from "../../components/AuthLayout";
 import ReCAPTCHA from "react-google-recaptcha";
 
 const API_BASE = "http://localhost:5000/api/auth";
-const GOOGLE_CLIENT_ID =
-  "928882897040-ejalv92n62s91uoh5f6k6k6ike7s10t8.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 function Login() {
   const [email, setEmail] = useState("");
