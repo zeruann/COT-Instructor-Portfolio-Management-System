@@ -103,7 +103,7 @@ function Login() {
 
   return (
     <AuthLayout>
-      <h2 className="text-3xl font-bold text-[#575488] mb-1">Welcome Back!</h2>
+      <h2 className="text-3xl font- bold text-[#575488] mb-1">Welcome Back!</h2>
       <p className="text-gray-500 mb-6">Please login to continue to your account.</p>
 
       <form onSubmit={handleSubmit} className="space-y-5">

@@ -19,7 +19,7 @@ function AuthLayout({ children }) {
       <div className="relative z-10 min-h-screen flex">
         <div className="w-1/2 flex flex-col items-center justify-center text-white text-center p-10">
           <img src="/cot_logo.svg" alt="COT Logo" className="w-100 h-90 mb-8" />
-          <h1 className="text-4xl font-bold leading-tight">
+          <h1 className="text-4xl font-bold leading-tight text-white">
             COT Instructor Portfolio
             <br />
             Management System

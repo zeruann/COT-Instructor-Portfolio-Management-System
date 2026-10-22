@@ -195,3 +195,11 @@ button.doc-btn:disabled {
     justify-content: center; /* centers the icon + label */
   }
 }
+
+.doc-btn--review {
+  background: #f07a2b;
+  color: #fff;
+}
+.doc-btn--review:hover:not(:disabled) {
+  background: #e06a1c;
+}

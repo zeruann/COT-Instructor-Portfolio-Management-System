@@ -210,6 +210,7 @@ function ContactRow({ label, value }) {
   );
 }
 
+
 export default function ReviewFacultyPortfolio() {
   const [searchParams, setSearchParams] = useSearchParams();
   const instructorId = searchParams.get('instructorId');
@@ -220,6 +221,7 @@ export default function ReviewFacultyPortfolio() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [viewBy, setViewBy] = useState('all');
   const [openMenu, setOpenMenu] = useState(null);
 
   // Load list of instructors
@@ -301,14 +303,37 @@ export default function ReviewFacultyPortfolio() {
     ...new Set(instructors.map((i) => i.department).filter(Boolean)),
   ].sort();
 
-  const filteredInstructors = instructors.filter((inst) => {
-    const name = inst.fullName || '';
-    const email = inst.email || '';
-    const query = searchQuery.toLowerCase();
-    const matchSearch = name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
-    const matchDept = departmentFilter === 'all' || inst.department === departmentFilter;
-    return matchSearch && matchDept;
-  });
+
+const viewByOptions = [
+  { value: 'all', label: 'All' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'review', label: 'For review' },
+  { value: 'rejected', label: 'Needs revision' },
+  { value: 'empty', label: 'No documents' },
+];
+
+const getInstructorStatus = (inst) => {
+  const completion = getCompletion(inst);
+  if (!completion) return 'empty';
+  if (!completion.counts) {
+    return completion.percent >= 100 ? 'completed' : completion.percent > 0 ? 'review' : 'empty';
+  }
+  const { approved, pending, rejected } = completion.counts;
+  if (rejected > 0) return 'rejected';
+  if (pending > 0) return 'review';
+  if (completion.percent >= 100) return 'completed';
+  return approved > 0 ? 'review' : 'empty';
+};
+
+const filteredInstructors = instructors.filter((inst) => {
+  const name = inst.fullName || '';
+  const email = inst.email || '';
+  const query = searchQuery.toLowerCase();
+  const matchSearch = name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
+  const matchDept = departmentFilter === 'all' || inst.department === departmentFilter;
+  const matchView = viewBy === 'all' || getInstructorStatus(inst) === viewBy;
+  return matchSearch && matchDept && matchView;
+});
 
   // Completion for an instructor, based on their approved / pending / rejected documents.
   // Returns null until their summary has loaded (unless the API already sends a number).
@@ -338,195 +363,287 @@ export default function ReviewFacultyPortfolio() {
     'grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-4 sm:gap-6';
 
   // ───────────────────────── Selected instructor view ─────────────────────────
-  if (selectedInstructor) {
-    const id = selectedInstructor._id || selectedInstructor.id;
-    const profile = selectedInstructor.profile || {};
-    const rank = profile.rank || profile.position || 'Assistant Professor IV';
-    const department = selectedInstructor.department || 'IT Department';
-    const phone = selectedInstructor.phone || profile.phone || profile.contactNumber;
-    const address = selectedInstructor.address || profile.address;
-    const education = Array.isArray(profile.education)
-      ? profile.education
-      : Array.isArray(selectedInstructor.education)
-        ? selectedInstructor.education
-        : [];
-    const instructorSummaries = summariesById[id] || {};
-    const completion = getCompletion(selectedInstructor) || computeCompletion({});
-    const percent = completion.percent;
-    const { counts } = completion;
+    if (selectedInstructor) {
+      const id = selectedInstructor._id || selectedInstructor.id;
+      const profile = selectedInstructor.profile || {};
+      const rank = profile.rank || profile.position || 'Assistant Professor IV';
+      const department = selectedInstructor.department || 'IT Department';
+      const phone = selectedInstructor.phone || profile.phone || profile.contactNumber;
+      const address = selectedInstructor.address || profile.address;
+      const pdsUrl = profile.pdsUrl || selectedInstructor.pdsUrl;
+      const education = Array.isArray(profile.education)
+        ? profile.education
+        : Array.isArray(selectedInstructor.education)
+          ? selectedInstructor.education
+          : [];
+      const instructorSummaries = summariesById[id] || {};
+      const completion = getCompletion(selectedInstructor) || computeCompletion({});
+      const percent = completion.percent;
+      const { counts } = completion;
+      const uploaded = counts ? counts.approved + counts.pending + counts.rejected : null;
 
-    return (
-      <div className="min-w-0 space-y-4 sm:space-y-6">
-        {/* Page title */}
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={clearSelection}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple transition hover:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2"
-            title="Back to all instructors"
-            aria-label="Back to all instructors"
-          >
-            <ArrowLeft size={16} />
-          </button>
-          <h1 className="min-w-0 text-2xl font-semibold text-brand-purple sm:text-3xl">
-            Faculty Portfolio
-          </h1>
-        </div>
+      const completionMessage =
+        percent >= 100
+          ? 'Your portfolio has been verified and approved!'
+          : counts?.rejected > 0
+            ? 'Some documents need revision.'
+            : counts?.pending > 0
+              ? 'Some documents are waiting for review.'
+              : 'No documents have been approved yet.';
 
-        {/* Profile + completion */}
-        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_240px] xl:grid-cols-[minmax(0,1fr)_280px]">
-          {/* Profile card */}
-          <div className="flex min-w-0 flex-col rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 md:flex-row">
-            {/* Identity */}
-            <div className="flex min-w-0 flex-col items-center justify-center border-b border-gray-200 pb-5 text-center md:w-[220px] md:shrink-0 md:border-b-0 md:border-r md:pb-0 md:pr-6 lg:w-[240px]">
-              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-[#f6c85f] sm:h-24 sm:w-24">
-                {profile.photoUrl ? (
-                  <img
-                    src={profile.photoUrl}
-                    alt={selectedInstructor.fullName}
-                    className="h-full w-full object-cover"
+    const legend = [
+      { color: '#d1d5db', label: 'Documents uploaded', value: uploaded },
+      { color: '#6aaa64', label: 'Approved', value: counts?.approved },
+      { color: '#f0a93b', label: 'Pending review', value: counts?.pending },
+      { color: '#ef6c35', label: 'Rejected', value: counts?.rejected },
+    ];
+
+      // Two rows of four cards, separated by a divider (matches the prototype)
+      const cardRows = [requirementCards.slice(0, 4), requirementCards.slice(4)];
+
+      return (
+        <div className="min-w-0 space-y-4 sm:space-y-6">
+          {/* Page title */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple transition hover:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2"
+              title="Back to all instructors"
+              aria-label="Back to all instructors"
+            >
+              <ArrowLeft size={16} />
+            </button>
+            <h1 className="min-w-0 text-2xl font-semibold text-brand-purple sm:text-3xl">
+              Faculty Portfolio Review
+            </h1>
+          </div>
+
+    {/* Profile + completion: side by side only when there is really room (2xl), stacked otherwise */}
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">
+      {/* Profile card (container: layout reacts to the card's own width) */}
+      <div className="@container min-w-0">
+        <div className="flex h-full min-w-0 flex-col rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 @2xl:flex-row">
+          {/* Identity */}
+          <div className="flex min-w-0 flex-col items-center gap-4 border-b border-gray-200 pb-5 text-center @md:flex-row @md:text-left @2xl:shrink-0 @2xl:border-b-0 @2xl:border-r @2xl:pb-0 @2xl:pr-6">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f6c85f] @md:h-28 @md:w-28">
+              {profile.photoUrl ? (
+                <img
+                  src={profile.photoUrl}
+                  alt={selectedInstructor.fullName}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                  className="h-14 w-14 text-white/80 sm:h-16 sm:w-16"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M12 2a5 5 0 100 10 5 5 0 000-10zm-7 18a7 7 0 0114 0H5z"
+                    clipRule="evenodd"
                   />
-                ) : (
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                    className="h-14 w-14 text-white/80 sm:h-16 sm:w-16"
-                    aria-hidden="true"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      d="M12 2a5 5 0 100 10 5 5 0 000-10zm-7 18a7 7 0 0114 0H5z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                )}
-              </div>
-              <h2 className="mt-3 max-w-full break-words text-lg font-semibold leading-tight text-gray-900 sm:text-xl">
+                </svg>
+              )}
+            </div>
+            <div className="min-w-0 w-full @md:w-auto @md:max-w-[220px]">
+              <h2 className="break-words text-lg font-semibold leading-tight text-gray-900 sm:text-xl">
                 {selectedInstructor.fullName}
               </h2>
-              <p className="mt-1 max-w-full break-words text-sm text-gray-500">{rank}</p>
-              <p className="max-w-full break-words text-sm text-gray-500">{department}</p>
+              <p className="mt-1 break-words text-sm text-gray-500">{rank}</p>
+              <p className="break-words text-sm text-gray-500">{department}</p>
+
+              {pdsUrl ? (
+                <a
+                  href={pdsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 block w-full rounded-md border border-gray-300 px-6 py-2 text-center text-sm text-gray-600 transition hover:bg-gray-50"
+                >
+                  See PDS
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  title="No PDS uploaded yet"
+                  className="mt-3 w-full cursor-not-allowed rounded-md border border-gray-300 px-6 py-2 text-sm text-gray-400"
+                >
+                  See PDS
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Contact + educational background */}
+          <div className="grid min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(min(100%,230px),1fr))] gap-x-10 gap-y-6 pt-5 @2xl:pl-8 @2xl:pt-0">
+            <div className="min-w-0">
+              <h3 className="mb-1 border-b border-gray-200 pb-3 text-base font-semibold text-gray-800">
+                Contact Information
+              </h3>
+              <ContactRow label="Email" value={selectedInstructor.email} />
+              <ContactRow label="Phone" value={phone} />
+              <ContactRow label="Address" value={address} />
             </div>
 
-            {/* Contact + education: columns auto-fit to the available width */}
-            <div className="grid min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(min(100%,230px),1fr))] gap-x-10 gap-y-6 pt-5 md:pl-6 md:pt-0 lg:pl-8">
-              <div className="min-w-0">
-                <h3 className="mb-1 border-b border-gray-200 pb-3 text-base font-semibold text-gray-800">
-                  Contact information
-                </h3>
-                <ContactRow label="Email" value={selectedInstructor.email} />
-                <ContactRow label="Phone" value={phone} />
-                <ContactRow label="Address" value={address} />
-              </div>
-
-              {education.length > 0 && (
-                <ul className="min-w-0 self-center">
+            <div className="min-w-0">
+              <h3 className="mb-1 border-b border-gray-200 pb-3 text-base font-semibold text-gray-800">
+                Educational Background
+              </h3>
+              {education.length > 0 ? (
+                <ul>
                   {education.map((edu, i) => (
                     <li
                       key={`${edu.degree}-${i}`}
                       className="border-b border-gray-200 py-3 last:border-b-0"
                     >
-                      <p className="break-words text-sm font-semibold text-gray-800">
-                        {edu.degree}
-                      </p>
+                      <p className="break-words text-sm font-semibold text-gray-800">{edu.degree}</p>
                       <p className="break-words text-xs text-gray-400">
                         {[edu.school || edu.institution, edu.year].filter(Boolean).join(' · ')}
                       </p>
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
-          </div>
-
-          {/* Completion status: horizontal strip on small screens, tall card on lg+ */}
-          <div className="flex min-w-0 flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 lg:flex-col lg:justify-center lg:text-center">
-            <h2 className="text-lg font-medium text-brand-purple sm:text-2xl">Completion Status</h2>
-            <div className="flex flex-col items-end lg:mt-3 lg:items-center">
-              <p className="text-5xl font-extrabold leading-none text-[#6aaa64] sm:text-6xl lg:text-7xl">
-                {percent}%
-              </p>
-              {counts && (
-                <p className="mt-2 text-xs text-gray-500">
-                  {counts.approved} approved · {counts.pending} pending · {counts.rejected} rejected
-                </p>
+              ) : (
+                <p className="py-3 text-sm text-gray-400">No educational background provided.</p>
               )}
             </div>
           </div>
         </div>
-
-        {/* Portfolio content */}
-        <section className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
-          <div className="mb-4 flex items-center gap-3 sm:mb-5">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#efeef8] text-brand-purple">
-              <Folder size={20} />
-            </span>
-            <h2 className="min-w-0 text-xl font-medium text-brand-purple sm:text-2xl">
-              Portfolio Content
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 2xl:grid-cols-4">
-            {requirementCards.map((card) => (
-              <PortfolioCard
-                key={card.path}
-                card={card}
-                summary={instructorSummaries[card.path] || {}}
-                instructorId={id}
-                menuOpen={openMenu === card.path}
-                onToggleMenu={(e) => {
-                  e.stopPropagation();
-                  setOpenMenu(openMenu === card.path ? null : card.path);
-                }}
-                onCloseMenu={() => setOpenMenu(null)}
-              />
-            ))}
-          </div>
-        </section>
       </div>
-    );
-  }
+
+      {/* Completion status card (also a container) */}
+      <div className="@container min-w-0">
+        <div className="flex h-full min-w-0 flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
+          <h2 className="text-lg font-medium text-brand-purple sm:text-2xl">Completion Status</h2>
+
+          <div className="flex flex-1 flex-col gap-5 @md:flex-row @md:items-center">
+            <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+              <p className="text-5xl font-extrabold leading-none text-[#6aaa64] sm:text-6xl @md:text-7xl">
+                {percent}%
+              </p>
+              <p className="mt-4 text-sm leading-snug text-gray-400">{completionMessage}</p>
+            </div>
+
+            <ul className="w-full shrink-0 divide-y divide-gray-100 border-t border-gray-200 pt-2 @md:flex @md:w-56 @md:flex-col @md:justify-center @md:self-stretch @md:border-l @md:border-t-0 @md:pl-6 @md:pt-0">
+              {legend.map((item) => (
+                <li
+                  key={item.label}
+                  className="flex items-center justify-between gap-3 py-2.5 text-sm text-gray-500"
+                >
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="truncate">{item.label}</span>
+                  </span>
+                  <span className="font-semibold tabular-nums text-gray-800">{item.value ?? '—'}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      {/* Portfolio content */}
+      <section className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
+        <div className="mb-4 flex items-center gap-3 sm:mb-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#efeef8] text-brand-purple">
+            <Folder size={20} />
+          </span>
+          <h2 className="min-w-0 text-xl font-medium text-brand-purple sm:text-2xl">
+            Portfolio Content
+          </h2>
+        </div>
+
+        <div className="space-y-4 sm:space-y-6">
+          {cardRows.map((row, rowIndex) => (
+            <div key={rowIndex}>
+              {rowIndex > 0 && <hr className="mb-4 border-gray-200 sm:mb-6" />}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
+                {row.map((card) => (
+                  <PortfolioCard
+                    key={card.path}
+                    card={card}
+                    summary={instructorSummaries[card.path] || {}}
+                    instructorId={id}
+                    menuOpen={openMenu === card.path}
+                    onToggleMenu={(e) => {
+                      e.stopPropagation();
+                      setOpenMenu(openMenu === card.path ? null : card.path);
+                    }}
+                    onCloseMenu={() => setOpenMenu(null)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
 
   // ───────────────────────── Instructor Selection Screen ─────────────────────────
   return (
     <div className="min-w-0 space-y-4 sm:space-y-6">
-      {/* Title & Subtitle */}
-      <div>
-        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">Faculty Portfolio</h1>
-        <p className="mt-1 text-sm font-medium text-gray-500">Instructor</p>
-      </div>
+{/* Title & Subtitle */}
+<div>
+  <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">Faculty Portfolio</h1>
+  <p className="mt-1 text-sm font-medium text-gray-500">
+    Review instructor submitted requirement documents
+  </p>
+</div>
 
-      {/* Search and Department Filter */}
-      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-        {/* Search */}
-        <div className="relative min-w-0 flex-1">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search instructor by name or email.."
-            className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-2xs transition focus:border-brand-orange focus:outline-none"
-          />
-          <Search className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-        </div>
+{/* Department, View by, Search */}
+<div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+  {/* Department Filter */}
+  <div className="relative shrink-0 sm:w-52 lg:w-60">
+    <select
+      value={departmentFilter}
+      onChange={(e) => setDepartmentFilter(e.target.value)}
+      className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+    >
+      <option value="all">All Departments</option>
+      {departments.map((dept) => (
+        <option key={dept} value={dept}>{dept}</option>
+      ))}
+    </select>
+    <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+  </div>
 
-        {/* Department Filter */}
-        <div className="relative shrink-0 sm:w-52 lg:w-60">
-          <select
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-            className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
-          >
-            <option value="all">All Departments</option>
-            {departments.map((dept) => (
-              <option key={dept} value={dept}>
-                {dept}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        </div>
-      </div>
+  {/* View by */}
+  <div className="relative shrink-0 sm:w-44 lg:w-48">
+    <select
+      value={viewBy}
+      onChange={(e) => setViewBy(e.target.value)}
+      aria-label="View by"
+      className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+    >
+      <option value="all">View by</option>
+      {viewByOptions.filter((o) => o.value !== 'all').map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </select>
+    <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+  </div>
+
+  {/* Search */}
+  <div className="relative min-w-0 flex-1">
+    <input
+      type="text"
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      placeholder="Search instructor by name or email.."
+      className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+    />
+    <Search className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+  </div>
+</div>
 
       {/* Cards Grid */}
       {loading ? (
@@ -553,12 +670,13 @@ export default function ReviewFacultyPortfolio() {
           <p className="mt-1 text-xs text-gray-400">
             Try adjusting your search query or department filter.
           </p>
-          {(searchQuery || departmentFilter !== 'all') && (
+          {(searchQuery || departmentFilter !== 'all' || viewBy !== 'all') && (
             <button
               type="button"
               onClick={() => {
                 setSearchQuery('');
                 setDepartmentFilter('all');
+                setViewBy('all');
               }}
               className="mt-4 inline-flex items-center rounded-lg bg-purple-50 px-4 py-2 text-xs font-semibold text-brand-purple transition hover:bg-purple-100"
             >
@@ -625,22 +743,6 @@ export default function ReviewFacultyPortfolio() {
                       <span className="shrink-0 font-bold text-[#10b981]">
                         {percent != null ? `${percent}%` : '—'}
                       </span>
-                    </div>
-
-                    {/* Segmented Progress Bar */}
-                    <div className="flex h-2 w-full overflow-hidden rounded-full bg-gray-200">
-                      <div
-                        className="h-full bg-[#10b981]"
-                        style={{ width: `${completion?.approvedPct ?? 0}%` }}
-                      />
-                      <div
-                        className="h-full bg-[#f97316]"
-                        style={{ width: `${completion?.pendingPct ?? 0}%` }}
-                      />
-                      <div
-                        className="h-full bg-[#ef4444]"
-                        style={{ width: `${completion?.rejectedPct ?? 0}%` }}
-                      />
                     </div>
                   </div>
 

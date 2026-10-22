@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 import UploadModal from '../../../components/documentActions/UploadModal';
-import PlaceholderPage from '../../../components/layout/PlaceholderPage';
+import SharedRequirementHeader from '../../../components/portfolio/SharedRequirementHeader';
 import ComplianceCard from '../../../components/portfolio/ComplianceCard';
 import CompletionStatusCard from '../../../components/portfolio/CompletionStatusCard';
 import { fetchDocuments } from '../../../api/documents';
@@ -196,19 +196,12 @@ function SeminarsAndWorkshops() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0">
-          <PlaceholderPage title={WORDS.pageTitle} backTo="/instructors/faculty-portfolio" />
-        </div>
-
-        <button type="button" onClick={() => openModal(null)} className="entry-add-btn">
-          <svg {...iconProps} width="16" height="16" strokeWidth="2">
-            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-            <path d="M14 3v5h5M12 12v6M9 15h6" />
-          </svg>
-          {WORDS.addButton}
-        </button>
-      </div>
+    <SharedRequirementHeader
+      title={WORDS.pageTitle}
+      // subtitle="Upload your service records."
+      onAddClick={() => openModal(null)}
+      addLabel={WORDS.addButton}
+    />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <ComplianceCard counts={counts} message={complianceMessage} className="col-span-3" />

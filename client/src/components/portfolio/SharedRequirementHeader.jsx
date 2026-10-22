@@ -1,5 +1,4 @@
-// client/src/components/portfolio/SharedRequirementHeader.jsx
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Plus, ShieldCheck } from 'lucide-react';
 import { usePortfolio } from '../../context/usePortfolio';
 
@@ -10,14 +9,26 @@ export default function SharedRequirementHeader({
   addLabel = 'Add Document',
   backTo,
 }) {
-  const { isAdmin, selectedInstructor } = usePortfolio();
+  const { selectedInstructor } = usePortfolio();
+  const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
 
-  const defaultBackPath = isAdmin
-    ? '/admin/review/faculty-portfolio'
-    : '/instructors/faculty-portfolio';
+  // Decide from the URL, not from context
+  const isAdmin = pathname.startsWith('/admin');
 
-  const backDestination = backTo || defaultBackPath;
+  const instructorId =
+    searchParams.get('instructorId') ||
+    selectedInstructor?._id ||
+    selectedInstructor?.id;
 
+  const backDestination = isAdmin
+    ? instructorId
+      ? `/admin/review/faculty-portfolio?instructorId=${instructorId}`
+      : '/admin/review/faculty-portfolio'
+    : backTo || '/instructors/faculty-portfolio';
+  
+
+    
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
