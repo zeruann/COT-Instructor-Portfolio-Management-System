@@ -701,15 +701,6 @@ function Profile() {
                     No educational background added yet.
                   </p>
 
-                  <button
-                    type="button"
-                    onClick={handleAddEducation}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600"
-                  >
-                    <Plus size={16} />
-                    Add Education
-                  </button>
-
                 </div>
               )
 
