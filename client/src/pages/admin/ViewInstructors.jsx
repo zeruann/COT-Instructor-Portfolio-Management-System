@@ -14,6 +14,14 @@ const STATUS_OPTIONS = [
 // Default table order: Active first, then Pending, then Deactivated
 const STATUS_ORDER = { active: 0, pending: 1, deactivated: 2, inactive: 3 };
 
+// Prioritise profile first/last name over the root fullName which may be stale
+const getDisplayName = (inst) => {
+  const p = inst?.profile || {};
+  const parts = [p.firstName, p.middleName, p.lastName].filter(Boolean);
+  if (parts.length > 0) return parts.join(' ');
+  return inst?.fullName || '';
+};
+
 export default function ViewInstructors() {
   const navigate = useNavigate();
   const [instructors, setInstructors] = useState([]);
@@ -65,7 +73,10 @@ export default function ViewInstructors() {
   // Search (name / email) + status + department filters, then sort by status group (newest first inside each group)
   const filteredInstructors = instructors
     .filter((inst) => {
-      const name = inst.fullName || '';
+      // Show instructors only; exclude Administrators
+      if (inst.accountType === 'Administrator') return false;
+
+      const name = getDisplayName(inst);
       const email = inst.email || '';
       const query = searchQuery.toLowerCase();
       const matchesSearch = name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
@@ -108,7 +119,7 @@ export default function ViewInstructors() {
     const newStatus = isActive ? 'Deactivated' : 'Active';
     const verb = isActive ? 'deactivate' : 'reactivate';
 
-    if (!confirm(`Are you sure you want to ${verb} ${item.fullName}?`)) return;
+    if (!confirm(`Are you sure you want to ${verb} ${getDisplayName(item)}?`)) return;
 
     try {
       setUpdatingId(id);
@@ -311,7 +322,7 @@ export default function ViewInstructors() {
               ) : filteredInstructors.length > 0 ? (
                 filteredInstructors.map((item) => {
                   const id = item._id || item.id;
-                  const name = item.fullName || 'Unknown';
+                  const name = getDisplayName(item) || 'Unknown';
                   const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=f97316&color=fff`;
 
                   return (

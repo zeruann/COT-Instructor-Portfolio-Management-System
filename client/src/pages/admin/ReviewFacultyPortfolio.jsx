@@ -138,7 +138,7 @@ function PortfolioCard({ card, summary, instructorId, menuOpen, onToggleMenu, on
             className="mt-1.5 h-3 w-3 shrink-0 rounded-full"
             style={{ backgroundColor: card.accent }}
           />
-          <h3 className="min-w-0 break-words text-base font-semibold leading-tight text-gray-900 group-hover:underline sm:text-lg">
+          <h3 className="min-w-0 break-words text-base font-semibold leading-tight text-gray-900 sm:text-lg">
             {card.title}
           </h3>
         </Link>
@@ -335,11 +335,22 @@ export default function ReviewFacultyPortfolio() {
     { value: 'completion_low', label: 'Lowest Completion' },
   ];
 
+  // Prioritise profile first/last name over the root fullName which may be stale
+  const getDisplayName = (inst) => {
+    const p = inst?.profile || {};
+    const parts = [p.firstName, p.middleName, p.lastName].filter(Boolean);
+    if (parts.length > 0) return parts.join(' ');
+    return inst?.fullName || '';
+  };
+
   const filteredInstructors = useMemo(() => {
     const query = searchQuery.toLowerCase();
 
     const result = instructors.filter((inst) => {
-      const name = inst.fullName || '';
+      // Show instructors only; exclude Administrators
+      if (inst.accountType === 'Administrator') return false;
+
+      const name = getDisplayName(inst);
       const email = inst.email || '';
       const matchSearch = name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
       const matchDept = departmentFilter === 'all' || inst.department === departmentFilter;
@@ -354,10 +365,10 @@ export default function ReviewFacultyPortfolio() {
         return dateB - dateA;
       }
       if (viewBy === 'name_asc') {
-        return (a.fullName || '').localeCompare(b.fullName || '');
+        return getDisplayName(a).localeCompare(getDisplayName(b));
       }
       if (viewBy === 'name_desc') {
-        return (b.fullName || '').localeCompare(a.fullName || '');
+        return getDisplayName(b).localeCompare(getDisplayName(a));
       }
       if (viewBy === 'completion_high') {
         const pctA = getCompletion(a)?.percent ?? -1;
@@ -446,7 +457,7 @@ export default function ReviewFacultyPortfolio() {
               {profile.photoUrl ? (
                 <img
                   src={profile.photoUrl}
-                  alt={selectedInstructor.fullName}
+                  alt={getDisplayName(selectedInstructor)}
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -466,7 +477,7 @@ export default function ReviewFacultyPortfolio() {
             </div>
             <div className="min-w-0 w-full @md:w-auto @md:max-w-[220px]">
               <h2 className="break-words text-lg font-semibold leading-tight text-gray-900 sm:text-xl">
-                {selectedInstructor.fullName}
+                {getDisplayName(selectedInstructor)}
               </h2>
               <p className="mt-1 break-words text-sm text-gray-500">{rank}</p>
               <p className="break-words text-sm text-gray-500">{department}</p>
@@ -704,7 +715,7 @@ export default function ReviewFacultyPortfolio() {
         <div className={instructorGridClass}>
           {filteredInstructors.map((inst) => {
             const id = inst._id || inst.id;
-            const name = inst.fullName || 'Instructor';
+            const name = getDisplayName(inst) || 'Instructor';
             const rank =
               inst.profile?.rank || inst.profile?.position || 'Assistant Professor IV';
             const department = inst.department || 'IT Department';
@@ -752,13 +763,41 @@ export default function ReviewFacultyPortfolio() {
                   </div>
 
                   <div className="mt-3">
-                    <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+                    <div className="mb-1.5 flex items-center justify-between gap-2 text-xs">
                       <span className="truncate font-semibold text-[#2e2a72]">
                         Completion Status
                       </span>
                       <span className="shrink-0 font-bold text-[#10b981]">
                         {percent != null ? `${percent}%` : '—'}
                       </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="flex h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                      {completion?.approvedPct > 0 && (
+                        <div
+                          style={{ width: `${completion.approvedPct}%` }}
+                          className="bg-[#10b981] transition-all duration-300"
+                          title={`Approved: ${Math.round(completion.approvedPct)}%`}
+                        />
+                      )}
+                      {completion?.pendingPct > 0 && (
+                        <div
+                          style={{ width: `${completion.pendingPct}%` }}
+                          className="bg-amber-400 transition-all duration-300"
+                          title={`Pending: ${Math.round(completion.pendingPct)}%`}
+                        />
+                      )}
+                      {completion?.rejectedPct > 0 && (
+                        <div
+                          style={{ width: `${completion.rejectedPct}%` }}
+                          className="bg-red-400 transition-all duration-300"
+                          title={`Rejected: ${Math.round(completion.rejectedPct)}%`}
+                        />
+                      )}
+                      {(!percent || percent === 0) && (!completion?.pendingPct && !completion?.rejectedPct) && (
+                        <div className="w-full bg-gray-200" />
+                      )}
                     </div>
                   </div>
 

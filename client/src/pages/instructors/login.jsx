@@ -40,8 +40,8 @@ function Login() {
       });
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
-
       if (res.data.instructor.accountType === "Administrator") {
+        localStorage.setItem("admin", JSON.stringify(res.data.instructor));
         navigate("/admin/AdminDashboard");
       } else if (res.data.instructor.accountType === "Instructor") {
         navigate("/instructors/dashboard");
@@ -63,8 +63,8 @@ function Login() {
       });
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
-
       if (res.data.instructor.accountType === "Administrator") {
+        localStorage.setItem("admin", JSON.stringify(res.data.instructor));
         navigate("/admin/AdminDashboard");
       } else if (res.data.instructor.accountType === "Instructor") {
         navigate("/instructors/dashboard");
