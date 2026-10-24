@@ -1,11 +1,13 @@
 import { useMemo, useState, useEffect } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import SharedRequirementHeader from '../../../components/portfolio/SharedRequirementHeader';
 import ComplianceCard from '../../../components/portfolio/ComplianceCard';
 import CompletionStatusCard from '../../../components/portfolio/CompletionStatusCard';
 import StatusBadge from '../../../components/documentActions/StatusBadge';
 import UploadModal from '../../../components/documentActions/UploadModal';
+import PreviewModal from '../../../components/documentActions/PreviewModal';
 import { fetchDocuments } from '../../../api/documents';
-import { Eye, RefreshCw, Upload } from 'lucide-react';
+import { Eye, RefreshCw, Upload, CheckSquare } from 'lucide-react';
 
 import './requirementStyle.css';
 import './listEntries.css';
@@ -26,13 +28,24 @@ const EDU_SLOTS = [
 ];
 
 export default function EducationalAttainment() {
+  const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
+  const isAdmin = pathname.startsWith('/admin');
+  const instructorId = searchParams.get('instructorId');
+
   const [docs, setDocs] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState(null);
 
   const loadRecords = async () => {
     try {
-      const data = await fetchDocuments();
+      const params = {};
+      if (isAdmin && instructorId) {
+        params.instructorId = instructorId;
+      }
+      const data = await fetchDocuments(params);
       setDocs(data || []);
     } catch (err) {
       console.error('Failed to load documents:', err);
@@ -41,7 +54,7 @@ export default function EducationalAttainment() {
 
   useEffect(() => {
     loadRecords();
-  }, []);
+  }, [isAdmin, instructorId]);
 
   // Match each slot to its uploaded document
   const slotRows = useMemo(
@@ -91,6 +104,11 @@ export default function EducationalAttainment() {
   const openUpload = (slot) => {
     setSelectedSlot(slot);
     setUploadOpen(true);
+  };
+
+  const openPreview = (doc) => {
+    setSelectedDoc(doc);
+    setPreviewOpen(true);
   };
 
   return (
@@ -160,36 +178,52 @@ export default function EducationalAttainment() {
 
                   <td>
                     <div className="doc-actions">
-                      <button
-                        type="button"
-                        className="doc-btn doc-btn--view"
-                        disabled={!row.hasRecord}
-                        title={row.hasRecord ? 'View document' : 'Upload a file first'}
-                      >
-                        <Eye className="w-4 h-4" />
-                        View
-                      </button>
-
-                      {!row.hasRecord ? (
+                      {isAdmin ? (
                         <button
                           type="button"
-                          className="doc-btn doc-btn--upload"
-                          title="Upload document"
-                          onClick={() => openUpload(row.slot)}
+                          className="doc-btn doc-btn--review"
+                          disabled={!row.hasRecord}
+                          title={row.hasRecord ? 'Review document' : 'No document submitted yet'}
+                          onClick={() => openPreview(row.attachedDoc)}
                         >
-                          <Upload className="w-4 h-4" />
-                          Upload
+                          <CheckSquare className="w-4 h-4" />
+                          Review
                         </button>
                       ) : (
-                        <button
-                          type="button"
-                          className="doc-btn doc-btn--reupload"
-                          title="Upload replacement version"
-                          onClick={() => openUpload(row.slot)}
-                        >
-                          <RefreshCw className="w-3.5 h-3.5" />
-                          Reupload
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            className="doc-btn doc-btn--view"
+                            disabled={!row.hasRecord}
+                            title={row.hasRecord ? 'View document' : 'Upload a file first'}
+                            onClick={() => openPreview(row.attachedDoc)}
+                          >
+                            <Eye className="w-4 h-4" />
+                            View
+                          </button>
+
+                          {!row.hasRecord ? (
+                            <button
+                              type="button"
+                              className="doc-btn doc-btn--upload"
+                              title="Upload document"
+                              onClick={() => openUpload(row.slot)}
+                            >
+                              <Upload className="w-4 h-4" />
+                              Upload
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="doc-btn doc-btn--reupload"
+                              title="Upload replacement version"
+                              onClick={() => openUpload(row.slot)}
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              Reupload
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>
@@ -207,6 +241,20 @@ export default function EducationalAttainment() {
         existingDoc={docs.find((d) => d.requirementKey === selectedSlot?.key)}
         onSuccess={() => {
           setUploadOpen(false);
+          loadRecords();
+        }}
+      />
+
+      <PreviewModal
+        isOpen={previewOpen}
+        onClose={() => {
+          setPreviewOpen(false);
+          setSelectedDoc(null);
+        }}
+        document={selectedDoc}
+        isAdmin={isAdmin}
+        onReviewSuccess={() => {
+          setPreviewOpen(false);
           loadRecords();
         }}
       />

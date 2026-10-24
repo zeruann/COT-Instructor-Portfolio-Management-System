@@ -304,37 +304,6 @@ export default function ReviewFacultyPortfolio() {
   ].sort();
 
 
-const viewByOptions = [
-  { value: 'all', label: 'All' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'review', label: 'For review' },
-  { value: 'rejected', label: 'Needs revision' },
-  { value: 'empty', label: 'No documents' },
-];
-
-const getInstructorStatus = (inst) => {
-  const completion = getCompletion(inst);
-  if (!completion) return 'empty';
-  if (!completion.counts) {
-    return completion.percent >= 100 ? 'completed' : completion.percent > 0 ? 'review' : 'empty';
-  }
-  const { approved, pending, rejected } = completion.counts;
-  if (rejected > 0) return 'rejected';
-  if (pending > 0) return 'review';
-  if (completion.percent >= 100) return 'completed';
-  return approved > 0 ? 'review' : 'empty';
-};
-
-const filteredInstructors = instructors.filter((inst) => {
-  const name = inst.fullName || '';
-  const email = inst.email || '';
-  const query = searchQuery.toLowerCase();
-  const matchSearch = name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
-  const matchDept = departmentFilter === 'all' || inst.department === departmentFilter;
-  const matchView = viewBy === 'all' || getInstructorStatus(inst) === viewBy;
-  return matchSearch && matchDept && matchView;
-});
-
   // Completion for an instructor, based on their approved / pending / rejected documents.
   // Returns null until their summary has loaded (unless the API already sends a number).
   const getCompletion = (inst) => {
@@ -356,6 +325,53 @@ const filteredInstructors = instructors.filter((inst) => {
     }
     return null;
   };
+
+  const viewByOptions = [
+    { value: 'all', label: 'All' },
+    { value: 'last_updated', label: 'Last Updated' },
+    { value: 'name_asc', label: 'Name (A to Z)' },
+    { value: 'name_desc', label: 'Name (Z to A)' },
+    { value: 'completion_high', label: 'Highest Completion' },
+    { value: 'completion_low', label: 'Lowest Completion' },
+  ];
+
+  const filteredInstructors = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+
+    const result = instructors.filter((inst) => {
+      const name = inst.fullName || '';
+      const email = inst.email || '';
+      const matchSearch = name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
+      const matchDept = departmentFilter === 'all' || inst.department === departmentFilter;
+
+      return matchSearch && matchDept;
+    });
+
+    return result.sort((a, b) => {
+      if (viewBy === 'last_updated') {
+        const dateA = new Date(a.updatedAt || a.createdAt || 0);
+        const dateB = new Date(b.updatedAt || b.createdAt || 0);
+        return dateB - dateA;
+      }
+      if (viewBy === 'name_asc') {
+        return (a.fullName || '').localeCompare(b.fullName || '');
+      }
+      if (viewBy === 'name_desc') {
+        return (b.fullName || '').localeCompare(a.fullName || '');
+      }
+      if (viewBy === 'completion_high') {
+        const pctA = getCompletion(a)?.percent ?? -1;
+        const pctB = getCompletion(b)?.percent ?? -1;
+        return pctB - pctA;
+      }
+      if (viewBy === 'completion_low') {
+        const pctA = getCompletion(a)?.percent ?? 999;
+        const pctB = getCompletion(b)?.percent ?? 999;
+        return pctA - pctB;
+      }
+      return 0;
+    });
+  }, [instructors, searchQuery, departmentFilter, viewBy, summariesById]);
 
   // Auto-fit grid: columns are added/removed based on the space actually available
   // (works regardless of sidebar width), and cards never get narrower than 300px.
