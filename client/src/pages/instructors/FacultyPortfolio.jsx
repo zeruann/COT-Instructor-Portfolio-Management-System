@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import PlaceholderPage from '../../components/layout/PlaceholderPage';
 import UploadModal from '../../components/documentActions/UploadModal';
 import { fetchDocuments, fetchFacultySummary } from '../../api/documents';
@@ -264,10 +264,14 @@ function FacultyPortfolio() {
     }
   };
 
+  const location = useLocation();
+
+  // Re-fetch every time the user lands on (or returns to) this page
   useEffect(() => {
     loadPds();
     loadSummary();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
 
   useEffect(() => {
     // Fetch user profile info

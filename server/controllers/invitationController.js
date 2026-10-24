@@ -22,8 +22,9 @@ const withoutPrivate = (doc) => {
   return obj;
 };
 
-// Only people who were invited belong in the invitations table
-const INVITED = { invitedBy: { $exists: true } };
+// Only people who were invited belong in the invitations table.
+// Exclude administrators — they should never appear in the instructor list.
+const INVITED = { invitedBy: { $exists: true }, accountType: { $ne: 'Administrator' } };
 
 // Flip any Pending invitation past its expiry date to Expired
 const expireStale = () =>
