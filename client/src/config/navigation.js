@@ -16,6 +16,7 @@ import {
   Users,
   ClipboardCheck,
   ClipboardList,
+  Settings,
 } from 'lucide-react';
 
 export const NAV = {
@@ -102,6 +103,12 @@ showSectionInBreadcrumb: false, // Home > Faculty Portfolio
         items: [
           { to: '/admin/archive', label: 'Archive', icon: Archive },
           { to: '/admin/academic-period', label: 'Academic Period', icon: Calendar },
+        ],
+      },
+      {
+        heading: 'Settings',
+        items: [
+          { to: '/admin/settings', label: 'Settings', icon: Settings },
         ],
       },
     ],
