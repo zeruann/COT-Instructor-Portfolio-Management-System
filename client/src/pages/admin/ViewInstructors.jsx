@@ -323,7 +323,6 @@ export default function ViewInstructors() {
                 filteredInstructors.map((item) => {
                   const id = item._id || item.id;
                   const name = getDisplayName(item) || 'Unknown';
-                  const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=f97316&color=fff`;
 
                   return (
                     <tr
@@ -333,7 +332,9 @@ export default function ViewInstructors() {
                     >
                       <td className="py-4 pr-4">
                         <div className="flex items-center gap-3">
-                          <img src={avatar} alt={name} className="w-10 h-10 rounded-full object-cover" />
+                          <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                          </div>
                           <div>
                             <p className="text-[16px] text-gray-800 leading-tight">{name}</p>
                             <p className="text-[14px] text-gray-400 leading-tight">{item.email}</p>

@@ -421,9 +421,8 @@ function InviteInstructor() {
                           <button
                             onClick={() => handleResend(inv._id)}
                             disabled={isResending}
-                            className={`flex items-center gap-1 text-xs font-medium transition-colors ${
-                              isResending ? 'text-orange-300 cursor-wait' : 'text-orange-500 hover:underline'
-                            }`}
+                            className={`flex items-center gap-1 text-xs font-medium transition-colors ${isResending ? 'text-orange-300 cursor-wait' : 'text-orange-500 hover:underline'
+                              }`}
                           >
                             <RotateCcw size={13} className={isResending ? 'animate-spin' : ''} />
                             {isResending ? 'Sending…' : 'Resend'}

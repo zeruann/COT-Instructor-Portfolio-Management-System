@@ -453,7 +453,7 @@ export default function ReviewFacultyPortfolio() {
         <div className="flex h-full min-w-0 flex-col rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 @2xl:flex-row">
           {/* Identity */}
           <div className="flex min-w-0 flex-col items-center gap-4 border-b border-gray-200 pb-5 text-center @md:flex-row @md:text-left @2xl:shrink-0 @2xl:border-b-0 @2xl:border-r @2xl:pb-0 @2xl:pr-6">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f6c85f] @md:h-28 @md:w-28">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 @md:h-28 @md:w-28">
               {profile.photoUrl ? (
                 <img
                   src={profile.photoUrl}
@@ -462,19 +462,22 @@ export default function ReviewFacultyPortfolio() {
                 />
               ) : (
                 <svg
+                  xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="h-14 w-14 text-white/80 sm:h-16 sm:w-16"
+                  fill="none"
+                  stroke="#fb923c"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-12 w-12 sm:h-14 sm:w-14"
                   aria-hidden="true"
                 >
-                  <path
-                    fillRule="evenodd"
-                    d="M12 2a5 5 0 100 10 5 5 0 000-10zm-7 18a7 7 0 0114 0H5z"
-                    clipRule="evenodd"
-                  />
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
                 </svg>
               )}
             </div>
+
             <div className="min-w-0 w-full @md:w-auto @md:max-w-[220px]">
               <h2 className="break-words text-lg font-semibold leading-tight text-gray-900 sm:text-xl">
                 {getDisplayName(selectedInstructor)}
@@ -730,24 +733,27 @@ export default function ReviewFacultyPortfolio() {
                 className="group flex min-w-0 cursor-pointer items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs transition-all hover:border-orange-300 hover:shadow-md sm:gap-5 sm:p-5"
               >
                 {/* Left: Avatar */}
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-[#f3f4f6] sm:h-24 sm:w-24">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 sm:h-24 sm:w-24">
                   {photoUrl ? (
                     <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
                   ) : (
                     <svg
+                      xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="h-14 w-14 text-[#d1d5db] sm:h-16 sm:w-16"
+                      fill="none"
+                      stroke="#fb923c"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-10 w-10 sm:h-12 sm:w-12"
                       aria-hidden="true"
                     >
-                      <path
-                        fillRule="evenodd"
-                        d="M12 2a5 5 0 100 10 5 5 0 000-10zm-7 18a7 7 0 0114 0H5z"
-                        clipRule="evenodd"
-                      />
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
                     </svg>
                   )}
                 </div>
+
 
                 {/* Right: Info + Progress + View button */}
                 <div className="flex min-w-0 flex-1 flex-col justify-between">
