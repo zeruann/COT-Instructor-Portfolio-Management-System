@@ -28,6 +28,7 @@ import AcademicPeriod from "./pages/admin/AcademicPeriod";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminProfile from "./pages/admin/AdminProfile";
 import AdminSecurity from "./pages/admin/AdminSecurity";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 // SHARED LAYOUT (sidebar + top bar + breadcrumb) FOR EVERY SIGNED-IN PAGE
 
@@ -129,6 +130,7 @@ function App() {
             <Route path="/admin/notifications" element={<AdminNotifications />} />
             <Route path="/admin/profile" element={<AdminProfile />} />
             <Route path="/admin/security" element={<AdminSecurity />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
           </Route>
 
           {/* =========================================================================================================== */}

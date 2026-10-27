@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { LogOut, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChevronDown, LogOut, X } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import useLogout from '../hooks/useLogout';
 import { NAV } from '../config/navigation';
@@ -18,6 +18,16 @@ const focusRing = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-
 
 function linkClass({ isActive }) {
   const base = `flex items-center gap-3 rounded-lg px-3 py-2.5 py-1.5 text-sm font-regular transition-colors ${focusRing}`;
+
+  if (isActive) return `${base} bg-brand-orange text-white shadow-md shadow-orange-200 font-medium`;
+
+  return `${base} text-brand-muted hover:bg-gray-100 hover:text-brand-purple font-regular`;
+}
+
+// Smaller, indented version of linkClass used for the items inside a dropdown.
+
+function childLinkClass({ isActive }) {
+  const base = `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${focusRing}`;
 
   if (isActive) return `${base} bg-brand-orange text-white shadow-md shadow-orange-200 font-medium`;
 
@@ -44,11 +54,69 @@ function SidebarLogout({ role }) {
   );
 }
 
+// A menu item that opens and closes a list of links (a dropdown).
+// The parent stays highlighted while one of its pages is open.
+
+function SidebarGroup({ item, isOpen, isActive, onToggle, onClose, isChildActive }) {
+  const { label, icon: Icon, children } = item;
+  const panelId = `nav-group-${label.toLowerCase().replace(/\s+/g, '-')}`;
+
+  // Text looks the same as the other menu items (normal weight, muted color), active or not.
+  // When one of its pages is open, only a light background shows it.
+
+  const buttonClass = `flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-normal text-brand-muted transition-colors hover:bg-gray-100 hover:text-brand-purple ${focusRing} ${isActive ? 'bg-orange-50' : ''
+    }`;
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        aria-controls={panelId}
+        className={buttonClass}
+      >
+        <Icon size={18} aria-hidden="true" />
+        <span className="flex-1 text-left font-normal">{label}</span>
+        <ChevronDown
+          size={16}
+          aria-hidden="true"
+          className={`transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {isOpen && (
+        <ul id={panelId} className="mt-1 ml-5 flex flex-col gap-1 border-l border-gray-200 pl-3">
+          {children.map((child) => (
+            <li key={child.to}>
+              <NavLink
+                to={child.to}
+                onClick={onClose}
+                end
+                className={({ isActive: linkActive }) =>
+                  childLinkClass({ isActive: linkActive || isChildActive(child.to) })
+                }
+              >
+                {child.label}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
+  );
+}
+
 // On a big screen the sidebar sits on the left of the page.
 // On a phone or tablet it is hidden, and opens on top of the page when `isOpen` is true.
 
 function Sidebar({ role, isOpen, onClose }) {
   const location = useLocation();
+  const menu = NAV[role];
+
+  // Which dropdowns are open, by label. Example: { Instructors: true }
+
+  const [openGroups, setOpenGroups] = useState({});
 
   // Pressing Escape closes the menu.
 
@@ -63,10 +131,6 @@ function Sidebar({ role, isOpen, onClose }) {
 
     return () => document.removeEventListener('keydown', closeOnEscape);
   }, [isOpen, onClose]);
-
-  const menu = NAV[role];
-
-  if (!menu) return null; // unknown role: show nothing
 
   // Checks whether a page belongs to a parent portfolio sidebar item.
 
@@ -103,6 +167,39 @@ function Sidebar({ role, isOpen, onClose }) {
 
     return false;
   }
+
+  // True when the current page is one of the dropdown's pages.
+
+  function isGroupActive(item) {
+    return item.children.some(
+      (child) => location.pathname === child.to || isParentPortfolioActive(child.to),
+    );
+  }
+
+  // When you land on a page inside a dropdown, open that dropdown.
+
+  useEffect(() => {
+    if (!menu) return;
+
+    const toOpen = {};
+
+    menu.sections.forEach((section) => {
+      section.items.forEach((item) => {
+        if (item.children && isGroupActive(item)) toOpen[item.label] = true;
+      });
+    });
+
+    if (Object.keys(toOpen).length > 0) {
+      setOpenGroups((current) => ({ ...current, ...toOpen }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname, role]);
+
+  function toggleGroup(label) {
+    setOpenGroups((current) => ({ ...current, [label]: !current[label] }));
+  }
+
+  if (!menu) return null; // unknown role: show nothing
 
   return (
     <>
@@ -159,23 +256,46 @@ function Sidebar({ role, isOpen, onClose }) {
               </h2>
 
               <ul className="flex flex-col gap-1">
-                {section.items.map(({ to, label, icon: Icon }) => (
-                  <li key={to}>
-                    <NavLink
-                      to={to}
-                      onClick={onClose}
-                      end
-                      className={({ isActive }) =>
-                        linkClass({
-                          isActive: isActive || isParentPortfolioActive(to),
-                        })
-                      }
-                    >
-                      <Icon size={18} aria-hidden="true" />
-                      {label}
-                    </NavLink>
-                  </li>
-                ))}
+                {section.items.map((item) => {
+                  // Dropdown item: has a list of pages inside it.
+
+                  if (item.children) {
+                    return (
+                      <li key={item.label}>
+                        <SidebarGroup
+                          item={item}
+                          isOpen={Boolean(openGroups[item.label])}
+                          isActive={isGroupActive(item)}
+                          onToggle={() => toggleGroup(item.label)}
+                          onClose={onClose}
+                          isChildActive={isParentPortfolioActive}
+                        />
+                      </li>
+                    );
+                  }
+
+                  // Normal item: a single link.
+
+                  const { to, label, icon: Icon } = item;
+
+                  return (
+                    <li key={to}>
+                      <NavLink
+                        to={to}
+                        onClick={onClose}
+                        end
+                        className={({ isActive }) =>
+                          linkClass({
+                            isActive: isActive || isParentPortfolioActive(to),
+                          })
+                        }
+                      >
+                        <Icon size={18} aria-hidden="true" />
+                        {label}
+                      </NavLink>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}

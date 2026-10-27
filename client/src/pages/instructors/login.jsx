@@ -16,10 +16,33 @@ function Login() {
   const navigate = useNavigate();
   const recaptchaRef = useRef(null);
   const [captchaToken, setCaptchaToken] = useState(null);
+  const [apiConfig, setApiConfig] = useState({ recaptchaEnabled: true, googleAuthEnabled: true });
+
+  useEffect(() => {
+    axios
+      .get("http://localhost:5000/api/settings/public")
+      .then((res) => {
+        if (res.data) setApiConfig(res.data);
+      })
+      .catch((err) => {
+        console.warn("Could not load public settings:", err);
+      });
+  }, []);
 
   const handleGoogleClick = () => {
     const realBtn = document.querySelector("#googleBtn div[role='button']");
-    if (realBtn) realBtn.click();
+    if (realBtn) {
+      realBtn.click();
+    } else {
+      const clientId = apiConfig.googleClientId || GOOGLE_CLIENT_ID;
+      if (!clientId) {
+        setError("Google Client ID is not configured. Please check your system settings or .env file.");
+      } else if (window.google?.accounts?.id) {
+        window.google.accounts.id.prompt();
+      } else {
+        setError("Google Sign-In is still loading. Please try again in a few seconds.");
+      }
+    }
   };
 
   //MANUAL LOGIN
@@ -27,7 +50,7 @@ function Login() {
     e.preventDefault();
     setError("");
 
-    if (!captchaToken) {
+    if (apiConfig.recaptchaEnabled && !captchaToken) {
       setError("Please complete the reCAPTCHA.");
       return;
     }
@@ -36,7 +59,7 @@ function Login() {
       const res = await axios.post(`${API_BASE}/login`, {
         email,
         password,
-        captchaToken,
+        captchaToken: apiConfig.recaptchaEnabled ? captchaToken : undefined,
       });
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
@@ -76,28 +99,43 @@ function Login() {
     }
   };
 
-  //Google button login desing
+  //Google button login design
   useEffect(() => {
+    const clientId = apiConfig.googleClientId || GOOGLE_CLIENT_ID;
+    if (!apiConfig.googleAuthEnabled || !clientId) return;
+
+    const initGoogle = () => {
+      if (!window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleResponse,
+      });
+      const btnContainer = document.getElementById("googleBtn");
+      if (btnContainer) {
+        window.google.accounts.id.renderButton(
+          btnContainer,
+          { theme: "outline", size: "large", width: 320 }
+        );
+      }
+    };
+
+    if (window.google?.accounts?.id) {
+      initGoogle();
+      return;
+    }
+
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client?hl=en";
     script.async = true;
+    script.onload = initGoogle;
     document.body.appendChild(script);
 
-    script.onload = () => {
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleResponse,
-      });
-      window.google.accounts.id.renderButton(
-        document.getElementById("googleBtn"),
-        { theme: "outline", size: "large", width: 320 }
-      );
-    };
-
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
-  }, []);
+  }, [apiConfig.googleAuthEnabled, apiConfig.googleClientId]);
 
   // FRONTEND =================================================================================================================
 
@@ -162,12 +200,14 @@ function Login() {
           </a>
         </div>
 
-        <ReCAPTCHA
-          ref={recaptchaRef}
-          sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-          onChange={(token) => setCaptchaToken(token)}
-          onExpired={() => setCaptchaToken(null)}
-        />
+        {apiConfig.recaptchaEnabled && (
+          <ReCAPTCHA
+            ref={recaptchaRef}
+            sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+            onChange={(token) => setCaptchaToken(token)}
+            onExpired={() => setCaptchaToken(null)}
+          />
+        )}
 
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
@@ -179,34 +219,38 @@ function Login() {
         </button>
       </form>
 
-      <div className="flex items-center my-5">
-        <div className="flex-grow h-px bg-gray-200"></div>
-        <span className="px-3 text-gray-400 text-sm">or</span>
-        <div className="flex-grow h-px bg-gray-200"></div>
-      </div>
+      {apiConfig.googleAuthEnabled && (
+        <>
+          <div className="flex items-center my-5">
+            <div className="flex-grow h-px bg-gray-200"></div>
+            <span className="px-3 text-gray-400 text-sm">or</span>
+            <div className="flex-grow h-px bg-gray-200"></div>
+          </div>
 
-      {/* Real Google button: hidden, but still in the DOM so it can be clicked */}
-      <div
-        id="googleBtn"
-        style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0, overflow: "hidden" }}
-      />
+          {/* Real Google button: hidden, but still in the DOM so it can be clicked */}
+          <div
+            id="googleBtn"
+            style={{ position: "absolute", opacity: 0, pointerEvents: "none", width: 0, height: 0, overflow: "hidden" }}
+          />
 
-      {/* Custom button that matches Log In */}
-      <button
-        type="button"
-        onClick={handleGoogleClick}
-        className="w-full flex items-center justify-center gap-3 border border-gray-300 text-gray-600 hover:bg-gray-100 focus:outline-none font-semibold py-2.5 rounded-lg transition"
-      >
-        <span className="bg-white rounded-full p-1 flex items-center justify-center">
-          <svg width="16" height="16" viewBox="0 0 48 48">
-            <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
-            <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.1 5.5c4.3-4 6.8-9.9 6.8-16.9z" />
-            <path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z" />
-            <path fill="#34A853" d="M24 48c6.3 0 11.6-2.1 15.5-5.7l-7.1-5.5c-2 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z" />
-          </svg>
-        </span>
-        Continue with Google
-      </button>
+          {/* Custom button that matches Log In */}
+          <button
+            type="button"
+            onClick={handleGoogleClick}
+            className="w-full flex items-center justify-center gap-3 border border-gray-300 text-gray-600 hover:bg-gray-100 focus:outline-none font-semibold py-2.5 rounded-lg transition"
+          >
+            <span className="bg-white rounded-full p-1 flex items-center justify-center">
+              <svg width="16" height="16" viewBox="0 0 48 48">
+                <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
+                <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.1 5.5c4.3-4 6.8-9.9 6.8-16.9z" />
+                <path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z" />
+                <path fill="#34A853" d="M24 48c6.3 0 11.6-2.1 15.5-5.7l-7.1-5.5c-2 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z" />
+              </svg>
+            </span>
+            Continue with Google
+          </button>
+        </>
+      )}
     </AuthLayout>
   );
 }

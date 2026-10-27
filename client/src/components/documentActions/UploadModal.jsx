@@ -46,7 +46,7 @@ function UploadModalContent({
   });
 
   const acceptedExts =
-    '.pdf, .jpg, .jpeg, .png, .docx, application/pdf, image/jpeg, image/png, application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    '.pdf, .jpg, .jpeg, .png, .webp, .doc, .docx, .xls, .xlsx, .csv, application/pdf, image/jpeg, image/png, image/webp, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, application/vnd.ms-excel, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, text/csv';
 
   const handleFileSelect = (selectedFile) => {
     setError('');
@@ -110,9 +110,15 @@ function UploadModalContent({
     }
   };
 
+  const currentVer =
+    existingDoc?.versions?.find((v) => v.n === existingDoc.currentVersion) ||
+    existingDoc?.versions?.[existingDoc?.versions?.length - 1];
+  const existingFileName = currentVer?.originalName;
+  const existingFileSize = currentVer?.size;
+
   //EDIT: MODAL TITLE
   const modalTitle = existingDoc
-    ? `Upload: ${existingDoc.meta?.name || existingDoc.meta?.title || requirement?.label || 'Document'}`
+    ? `Reupload: ${existingDoc.meta?.name || existingDoc.meta?.title || requirement?.label || 'Document'}`
     : `Upload: ${requirement?.label || requirement?.card || 'Document'}`;
 
   return (
@@ -235,6 +241,29 @@ function UploadModalContent({
             <label className="block text-xs font-semibold text-gray-700 mb-1.5">
               File Attachment <span className="text-red-500">*</span>
             </label>
+
+            {existingFileName && !file && (
+              <div className="mb-2.5 p-3 bg-purple-50/70 border border-purple-200/80 rounded-xl flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-white border border-purple-200 flex items-center justify-center text-brand-purple shrink-0">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-gray-500">Current file on record:</p>
+                    <p className="font-semibold text-gray-800 truncate" title={existingFileName}>
+                      {existingFileName}
+                      {existingFileSize ? (
+                        <span className="text-gray-400 font-normal ml-1">({formatFileSize(existingFileSize)})</span>
+                      ) : null}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[11px] font-semibold text-brand-purple bg-purple-100/70 px-2 py-0.5 rounded-md shrink-0 ml-2">
+                  v{existingDoc.currentVersion || 1}
+                </span>
+              </div>
+            )}
+
             <input
               type="file"
               ref={fileInputRef}
@@ -262,10 +291,11 @@ function UploadModalContent({
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-gray-800">
-                    Click to browse <span className="text-gray-400 font-normal">or drag & drop</span>
+                    {existingFileName ? 'Select new file to replace' : 'Click to browse'}{' '}
+                    <span className="text-gray-400 font-normal">or drag & drop</span>
                   </p>
                   <p className="text-[11px] text-gray-400 mt-0.5">
-                    PDF, JPG, PNG, or DOCX (Max {MAX_FILE_MB} MB)
+                    PDF, Word (DOCX), Excel (XLSX, CSV), Images (Max {MAX_FILE_MB} MB)
                   </p>
                 </div>
               </div>
@@ -327,7 +357,7 @@ function UploadModalContent({
               className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-brand-purple hover:bg-opacity-90 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed shadow-xs transition"
             >
               {uploading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              {uploading ? 'Uploading...' : existingDoc ? 'Replace File' : 'Submit Upload'}
+              {uploading ? 'Uploading...' : existingDoc ? 'Reupload File' : 'Submit Upload'}
             </button>
           </div>
         </form>

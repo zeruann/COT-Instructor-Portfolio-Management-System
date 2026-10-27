@@ -2,6 +2,8 @@
 
 // The menu of each role. The sidebar, the top bar and the breadcrumb all read from here,
 // so adding or renaming a page only needs a change in this file.
+//
+// An item with a `children` list becomes a dropdown in the sidebar (it has no `to` of its own).
 
 import {
   Home,
@@ -16,6 +18,7 @@ import {
   Users,
   ClipboardCheck,
   ClipboardList,
+  Settings,
 } from 'lucide-react';
 
 export const NAV = {
@@ -78,7 +81,7 @@ export const NAV = {
     profilePath: '/admin/profile',
     securityPath: '/admin/security',
     notificationsPath: '/admin/notifications',
-    showSectionInBreadcrumb: true, // Home > Review > Faculty Portfolio
+    showSectionInBreadcrumb: true, // Home > Portfolio Review > Faculty Portfolio
     accountInTopBar: true, // My Profile, Security and Logout are in the top bar menu, not in the sidebar
 
     sections: [
@@ -86,15 +89,28 @@ export const NAV = {
         heading: 'Management',
         items: [
           { to: '/admin/AdminDashboard', label: 'Dashboard', icon: Home },
-          { to: '/admin/invite-instructor', label: 'Invite Instructors', icon: UserPlus },
-          { to: '/admin/instructors', label: 'Instructors', icon: Users },
-        ],
-      },
-      {
-        heading: 'Review',
-        items: [
-          { to: '/admin/review/faculty-portfolio', label: 'Faculty Portfolio', icon: ClipboardCheck },
-          { to: '/admin/review/class-portfolio', label: 'Class Portfolio', icon: ClipboardList },
+
+          // Dropdown: Instructors
+
+          {
+            label: 'Instructors',
+            icon: Users,
+            children: [
+              { to: '/admin/instructors', label: 'View Instructors', icon: Users },
+              { to: '/admin/invite-instructor', label: 'Invite Instructors', icon: UserPlus },
+            ],
+          },
+
+          // Dropdown: Portfolio Review
+
+          {
+            label: 'Portfolio Review',
+            icon: ClipboardCheck,
+            children: [
+              { to: '/admin/review/faculty-portfolio', label: 'Faculty Portfolio', icon: ClipboardCheck },
+              { to: '/admin/review/class-portfolio', label: 'Class Portfolio', icon: ClipboardList },
+            ],
+          },
         ],
       },
       {
@@ -102,6 +118,12 @@ export const NAV = {
         items: [
           { to: '/admin/archive', label: 'Archive', icon: Archive },
           { to: '/admin/academic-period', label: 'Academic Period', icon: Calendar },
+        ],
+      },
+      {
+        heading: 'System',
+        items: [
+          { to: '/admin/settings', label: 'API Settings', icon: Settings },
         ],
       },
     ],
@@ -117,7 +139,7 @@ export const NAV = {
       { to: '/admin/portfolio/faculty-portfolio/extension-involvement', label: 'Extension Involvement', parentTo: '/admin/review/faculty-portfolio' },
       { to: '/admin/portfolio/faculty-portfolio/production', label: 'Production', parentTo: '/admin/review/faculty-portfolio' },
 
-      // The three tabs share one crumb: Home > Review > Faculty Portfolio > Other Requirements
+      // The three tabs share one crumb: Home > Portfolio Review > Faculty Portfolio > Other Requirements
 
       { to: '/admin/portfolio/faculty-portfolio/other-requirements', label: 'Other Requirements', parentTo: '/admin/review/faculty-portfolio' },
       { to: '/admin/portfolio/faculty-portfolio/other-requirements/professional-organization-membership', label: 'Other Requirements', parentTo: '/admin/review/faculty-portfolio' },
@@ -140,13 +162,18 @@ export const NAV = {
 };
 
 // Does the address belong to this item? /admin/instructors/123 belongs to /admin/instructors.
+// Dropdown parents have no `to`, so they never match on their own.
 
 function matches(item, pathname) {
+  if (!item.to) return false;
+
   return pathname === item.to || pathname.startsWith(item.to + '/');
 }
 
 // Finds the menu item that matches the current address.
 // Returns { heading, item }, or null when nothing matches.
+// For a page inside a dropdown, the heading is the dropdown's name
+// (so the breadcrumb reads Home > Portfolio Review > Faculty Portfolio).
 
 export function findMenuItem(role, pathname) {
   const menu = NAV[role];
@@ -154,8 +181,14 @@ export function findMenuItem(role, pathname) {
   if (!menu) return null;
 
   for (const section of menu.sections) {
-    const item = section.items.find((entry) => matches(entry, pathname));
-    if (item) return { heading: section.heading, item };
+    for (const entry of section.items) {
+      if (entry.children) {
+        const child = entry.children.find((c) => matches(c, pathname));
+        if (child) return { heading: entry.label, item: child };
+      } else if (matches(entry, pathname)) {
+        return { heading: section.heading, item: entry };
+      }
+    }
   }
 
   // Pages that are not in the sidebar (they open from the top bar)
@@ -183,8 +216,14 @@ export function findParentMenuItem(role, pathname) {
 
   if (subPage?.parentTo) {
     for (const section of menu.sections) {
-      const item = section.items.find((entry) => entry.to === subPage.parentTo);
-      if (item) return { heading: section.heading, item };
+      for (const entry of section.items) {
+        if (entry.children) {
+          const child = entry.children.find((c) => c.to === subPage.parentTo);
+          if (child) return { heading: entry.label, item: child };
+        } else if (entry.to === subPage.parentTo) {
+          return { heading: section.heading, item: entry };
+        }
+      }
     }
   }
 

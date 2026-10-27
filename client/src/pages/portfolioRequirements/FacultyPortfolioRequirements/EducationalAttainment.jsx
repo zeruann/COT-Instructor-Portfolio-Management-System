@@ -4,8 +4,9 @@ import ComplianceCard from '../../../components/portfolio/ComplianceCard';
 import CompletionStatusCard from '../../../components/portfolio/CompletionStatusCard';
 import StatusBadge from '../../../components/documentActions/StatusBadge';
 import UploadModal from '../../../components/documentActions/UploadModal';
-import { fetchDocuments } from '../../../api/documents';
-import { Eye, RefreshCw, Upload } from 'lucide-react';
+import PreviewModal from '../../../components/documentActions/PreviewModal';
+import { fetchDocuments, deleteDocument } from '../../../api/documents';
+import { Eye, RefreshCw, Upload, Trash2 } from 'lucide-react';
 
 import './requirementStyle.css';
 import './listEntries.css';
@@ -29,6 +30,8 @@ export default function EducationalAttainment() {
   const [docs, setDocs] = useState([]);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState(null);
 
   const loadRecords = async () => {
     try {
@@ -91,6 +94,25 @@ export default function EducationalAttainment() {
   const openUpload = (slot) => {
     setSelectedSlot(slot);
     setUploadOpen(true);
+  };
+
+  const handleView = (doc) => {
+    setPreviewDoc(doc);
+    setPreviewOpen(true);
+  };
+
+  const handleDelete = async (doc) => {
+    if (!doc) return;
+    const name = doc.versions?.[0]?.originalName || 'this file';
+    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) {
+      return;
+    }
+    try {
+      await deleteDocument(doc._id);
+      loadRecords();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete document.');
+    }
   };
 
   return (
@@ -159,12 +181,13 @@ export default function EducationalAttainment() {
                   </td>
 
                   <td>
-                    <div className="doc-actions">
+                    <div className="doc-actions flex items-center gap-2">
                       <button
                         type="button"
                         className="doc-btn doc-btn--view"
                         disabled={!row.hasRecord}
                         title={row.hasRecord ? 'View document' : 'Upload a file first'}
+                        onClick={() => row.attachedDoc && handleView(row.attachedDoc)}
                       >
                         <Eye className="w-4 h-4" />
                         View
@@ -191,6 +214,17 @@ export default function EducationalAttainment() {
                           Reupload
                         </button>
                       )}
+
+                      {row.hasRecord && row.status !== 'approved' && (
+                        <button
+                          type="button"
+                          className="doc-btn border-red-200 text-red-600 hover:bg-red-50 p-2 rounded"
+                          title="Delete document"
+                          onClick={() => handleDelete(row.attachedDoc)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -208,6 +242,17 @@ export default function EducationalAttainment() {
         onSuccess={() => {
           setUploadOpen(false);
           loadRecords();
+        }}
+      />
+
+      <PreviewModal
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        document={previewDoc}
+        onEdit={(doc) => {
+          setPreviewOpen(false);
+          const slot = EDU_SLOTS.find((s) => s.key === doc.requirementKey);
+          if (slot) openUpload(slot);
         }}
       />
     </div>

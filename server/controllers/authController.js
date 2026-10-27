@@ -3,11 +3,14 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const Instructor = require('../models/Instructor');
+const Setting = require('../models/Setting');
+const { getSettingOrEnv } = require('./settingController');
 const { sendEmail } = require('../utils/sendEmail');
 const { isPasswordValid } = require('../utils/passwordRules');
 const verifyRecaptcha = require('../utils/verifyRecaptcha');
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+// Note: googleLogin() creates its own OAuth2Client per-request using the DB credential.
+// No module-level client needed.
 
 // Shared by login, googleLogin and forgotPassword.
 // Admins and Google users were never invited, so `status` is empty for them.
@@ -81,14 +84,24 @@ exports.login = async (req, res) => {
 
 exports.googleLogin = async (req, res) => {
   try {
+    const authSetting = await Setting.findOne({ key: 'googleAuthEnabled' });
+    if (authSetting && authSetting.value === false) {
+      return res.status(403).json({
+        message: 'Google Sign-In is currently disabled by the administrator.'
+      });
+    }
+
     const { credential } = req.body;
     if (!credential) {
       return res.status(400).json({ message: 'Missing Google credential.' });
     }
 
-    const ticket = await googleClient.verifyIdToken({
+    const clientId = await getSettingOrEnv('googleClientId', 'GOOGLE_CLIENT_ID');
+    const client = new OAuth2Client(clientId);
+
+    const ticket = await client.verifyIdToken({
       idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
+      audience: clientId,
     });
 
     const payload = ticket.getPayload();

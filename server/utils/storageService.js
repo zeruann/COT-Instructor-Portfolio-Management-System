@@ -23,6 +23,7 @@ require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') }
 
 const { google } = require('googleapis');
 const { Readable } = require('stream');
+const { getSettingOrEnv } = require('../controllers/settingController');
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 
@@ -40,12 +41,18 @@ class StorageError extends Error {
 
 let driveClient = null;
 
-function getDrive() {
+function resetDriveClient() {
+  driveClient = null;
+  if (typeof folderCache !== 'undefined') folderCache.clear();
+  if (typeof pathCache !== 'undefined') pathCache.clear();
+}
+
+async function getDrive() {
   if (driveClient) return driveClient;
 
-  const clientId = process.env.GOOGLE_DRIVE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_DRIVE_CLIENT_SECRET;
-  const refreshToken = process.env.GOOGLE_DRIVE_REFRESH_TOKEN;
+  const clientId = await getSettingOrEnv('googleDriveClientId', 'GOOGLE_DRIVE_CLIENT_ID');
+  const clientSecret = await getSettingOrEnv('googleDriveClientSecret', 'GOOGLE_DRIVE_CLIENT_SECRET');
+  const refreshToken = await getSettingOrEnv('googleDriveRefreshToken', 'GOOGLE_DRIVE_REFRESH_TOKEN');
 
   const missing = [
     ['GOOGLE_DRIVE_CLIENT_ID', clientId],
@@ -56,7 +63,7 @@ function getDrive() {
     .map(([name]) => name);
 
   if (missing.length) {
-    throw new StorageError('CONFIG', `Missing environment variables: ${missing.join(', ')}`);
+    throw new StorageError('CONFIG', `Missing Google Drive credentials: ${missing.join(', ')}`);
   }
 
   const auth = new google.auth.OAuth2(clientId, clientSecret);
@@ -66,9 +73,9 @@ function getDrive() {
   return driveClient;
 }
 
-function getRootFolderId() {
-  const id = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
-  if (!id) throw new StorageError('CONFIG', 'Missing environment variable: GOOGLE_DRIVE_ROOT_FOLDER_ID');
+async function getRootFolderId() {
+  const id = await getSettingOrEnv('googleDriveRootFolderId', 'GOOGLE_DRIVE_ROOT_FOLDER_ID');
+  if (!id) throw new StorageError('CONFIG', 'Missing Google Drive root folder ID.');
   return id;
 }
 
@@ -118,7 +125,7 @@ function escapeQueryValue(value) {
 }
 
 async function findOrCreateFolder(name, parentId) {
-  const drive = getDrive();
+  const drive = await getDrive();
   const q = [
     `name = '${escapeQueryValue(name)}'`,
     `'${escapeQueryValue(parentId)}' in parents`,
@@ -148,7 +155,10 @@ function ensureInstructorFolder(instructorId) {
   }
   if (!folderCache.has(key)) {
     const pending = Promise.resolve()
-      .then(() => findOrCreateFolder(`instructor-${key}`, getRootFolderId()))
+      .then(async () => {
+        const rootId = await getRootFolderId();
+        return findOrCreateFolder(`instructor-${key}`, rootId);
+      })
       .catch((err) => {
         folderCache.delete(key); // do not cache failures
         throw toStorageError(err);
@@ -185,7 +195,7 @@ function ensureFolderPath(segments) {
   }
 
   const walk = async () => {
-    let parentId = getRootFolderId();
+    let parentId = await getRootFolderId();
     for (const name of names) {
       const key = `${parentId}/${name}`;
       if (!pathCache.has(key)) {
@@ -210,8 +220,10 @@ function ensureFolderPath(segments) {
 // Confirms credentials work and the root folder is reachable by this app.
 async function checkConnection() {
   try {
-    const res = await getDrive().files.get({
-      fileId: getRootFolderId(),
+    const drive = await getDrive();
+    const rootId = await getRootFolderId();
+    const res = await drive.files.get({
+      fileId: rootId,
       fields: 'id, name, mimeType, trashed',
     });
     if (res.data.mimeType !== FOLDER_MIME || res.data.trashed) {
@@ -237,7 +249,8 @@ async function uploadFile({ instructorId, folderPath, buffer, fileName, mimeType
 
   try {
     const folderId = folderPath ? await ensureFolderPath(folderPath) : await ensureInstructorFolder(instructorId);
-    const res = await getDrive().files.create({
+    const drive = await getDrive();
+    const res = await drive.files.create({
       requestBody: { name: sanitizeName(fileName, 150), parents: [folderId] },
       media: { mimeType, body: Readable.from(buffer) },
       fields: 'id, name, mimeType, size, md5Checksum',
@@ -261,7 +274,7 @@ async function uploadFile({ instructorId, folderPath, buffer, fileName, mimeType
 async function getFile(fileId) {
   requireNonEmptyString(fileId, 'fileId');
   try {
-    const drive = getDrive();
+    const drive = await getDrive();
     const meta = await drive.files.get({ fileId, fields: 'id, name, mimeType, size, trashed' });
     if (meta.data.trashed) throw new StorageError('NOT_FOUND', 'File not found in Google Drive.');
 
@@ -283,7 +296,8 @@ async function getFile(fileId) {
 async function deleteFile(fileId) {
   requireNonEmptyString(fileId, 'fileId');
   try {
-    await getDrive().files.delete({ fileId });
+    const drive = await getDrive();
+    await drive.files.delete({ fileId });
     return true;
   } catch (err) {
     const mapped = toStorageError(err);
@@ -298,7 +312,7 @@ async function moveFolder(folderId, newParentId) {
   requireNonEmptyString(folderId, 'folderId');
   requireNonEmptyString(newParentId, 'newParentId');
   try {
-    const drive = getDrive();
+    const drive = await getDrive();
     const meta = await drive.files.get({ fileId: folderId, fields: 'parents' });
     await drive.files.update({
       fileId: folderId,
@@ -330,5 +344,6 @@ module.exports = {
   getFile,
   deleteFile,
   moveFolder,
+  resetDriveClient,
   __setDriveClientForTests,
 };

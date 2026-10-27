@@ -12,6 +12,13 @@ const ALLOWED_MIME_TYPES = [
   'image/webp',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/csv',
+  'application/csv',
+  'application/x-csv',
+  'text/x-csv',
+  'text/comma-separated-values',
 ];
 
 const fileFilter = (req, file, cb) => {
@@ -20,7 +27,7 @@ const fileFilter = (req, file, cb) => {
   } else {
     cb(
       new Error(
-        `Invalid file format: ${file.mimetype}. Allowed formats: PDF, JPG, PNG, DOCX.`
+        `Invalid file format: ${file.mimetype}. Allowed formats: PDF, JPG, PNG, DOCX, XLSX, XLS, CSV.`
       ),
       false
     );

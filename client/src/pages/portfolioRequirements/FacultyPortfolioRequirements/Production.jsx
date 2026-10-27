@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 
 import UploadModal from '../../../components/documentActions/UploadModal';
+import PreviewModal from '../../../components/documentActions/PreviewModal';
 import SharedRequirementHeader from '../../../components/portfolio/SharedRequirementHeader';
 import ComplianceCard from '../../../components/portfolio/ComplianceCard';
 import CompletionStatusCard from '../../../components/portfolio/CompletionStatusCard';
-import { fetchDocuments } from '../../../api/documents';
+import { fetchDocuments, deleteDocument } from '../../../api/documents';
 
 import './requirementStyle.css';
 import './listEntries.css';
@@ -90,13 +91,11 @@ function summarize(records) {
 
 // Which row buttons are enabled for each status
 function getRowActions(status) {
-  const WAITING = 'Waiting for review. Delete this entry first to upload a different file.';
   return {
     view: { disabled: false },
-    edit: { disabled: false },
     replace: {
-      disabled: !(status === 'approved' || status === 'rejected'),
-      tip: status === 'pending_review' ? WAITING : 'Submit this entry first.',
+      disabled: false,
+      tip: 'Reupload file',
     },
     remove: {
       disabled: status === 'approved',
@@ -152,6 +151,26 @@ function Production() {
   const [loading, setLoading] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState(null);
+
+  const handleView = (doc) => {
+    setPreviewDoc(doc);
+    setPreviewOpen(true);
+  };
+
+  const handleDelete = async (doc) => {
+    const title = doc.meta?.name || 'this record';
+    if (!window.confirm(`Are you sure you want to delete "${title}"?`)) {
+      return;
+    }
+    try {
+      await deleteDocument(doc._id);
+      loadRecords();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete document.');
+    }
+  };
 
   // Loads this requirement's documents from the server
   const loadRecords = async () => {
@@ -292,20 +311,21 @@ function Production() {
 
                       <td className="whitespace-nowrap">
                         <div className="doc-icon-actions">
-                          <IconButton variant="view" label={`View ${title}`} title="View" disabled={actions.view.disabled}>
+                          <IconButton
+                            variant="view"
+                            label={`View ${title}`}
+                            title="View"
+                            disabled={actions.view.disabled}
+                            onClick={() => handleView(doc)}
+                          >
                             <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
                             <circle cx="12" cy="12" r="3" />
                           </IconButton>
 
-                          <IconButton variant="edit" label={`Edit ${title}`} title="Edit" disabled={actions.edit.disabled} onClick={() => openModal(doc)}>
-                            <path d="M12 20h9" />
-                            <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
-                          </IconButton>
-
                           <IconButton
                             variant="replace"
-                            label={`Replace file of ${title}`}
-                            title={actions.replace.disabled ? actions.replace.tip : 'Replace file'}
+                            label={`Reupload ${title}`}
+                            title="Reupload"
                             disabled={actions.replace.disabled}
                             onClick={() => openModal(doc)}
                           >
@@ -318,6 +338,7 @@ function Production() {
                             label={`Delete ${title}`}
                             title={actions.remove.disabled ? actions.remove.tip : 'Delete'}
                             disabled={actions.remove.disabled}
+                            onClick={() => handleDelete(doc)}
                           >
                             <path d="M3 6h18" />
                             <path d="M8 6V4h8v2" />
@@ -342,6 +363,14 @@ function Production() {
         requirement={REQUIREMENT}
         existingDoc={selectedDoc}
         onSuccess={() => loadRecords()}
+      />
+
+      {/* Preview popup */}
+      <PreviewModal
+        isOpen={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        document={previewDoc}
+        onEdit={(doc) => openModal(doc)}
       />
     </div>
   );
