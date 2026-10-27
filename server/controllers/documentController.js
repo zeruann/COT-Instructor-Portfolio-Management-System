@@ -264,16 +264,14 @@ exports.getDocumentById = async (req, res) => {
 };
 
 
-// =====================================================================================================================
-// Search: PREVIEW  =======================================================================================
-// GET /api/documents/:id/file
-// =====================================================================================================================
-
-// GET /api/documents/:id/file
+/**
+ * GET /api/documents/:id/file
+ * Stream document content from Google Drive to the browser
+ */
 exports.streamDocumentFile = async (req, res) => {
   try {
     const { id } = req.params;
-    const { version } = req.query;
+    const versionNum = req.query.version ? parseInt(req.query.version, 10) : null;
 
     const doc = await Document.findById(id).lean();
     if (!doc) {
@@ -287,9 +285,9 @@ exports.streamDocumentFile = async (req, res) => {
       return res.status(403).json({ message: 'Access denied.' });
     }
 
-    // Find requested or active version
-    const targetVer = version
-      ? doc.versions.find((v) => Number(v.n) === Number(version))
+    // Locate requested or current version
+    const targetVer = versionNum
+      ? doc.versions.find((v) => Number(v.n) === Number(versionNum))
       : doc.versions.find((v) => v.n === doc.currentVersion) || doc.versions[doc.versions.length - 1];
 
     if (!targetVer || !targetVer.driveFileId) {
@@ -299,43 +297,99 @@ exports.streamDocumentFile = async (req, res) => {
     // Fetch stream from Google Drive
     const fileData = await storageService.getFile(targetVer.driveFileId);
 
-    res.setHeader('Content-Type', fileData.mimeType || 'application/octet-stream');
-    res.setHeader('Content-Length', fileData.size);
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(targetVer.originalName || fileData.name)}"`);
+    res.setHeader('Content-Type', targetVer.mimeType || fileData.mimeType || 'application/octet-stream');
+    if (fileData.size) {
+      res.setHeader('Content-Length', fileData.size);
+    }
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="${encodeURIComponent(targetVer.originalName || fileData.name)}"`
+    );
 
     fileData.stream.on('error', (streamErr) => {
       console.error('Drive stream error:', streamErr);
-      if (!res.headersSent) res.status(500).end();
+      if (!res.headersSent) res.status(500).json({ message: 'Error streaming file.' });
     });
 
     fileData.stream.pipe(res);
   } catch (err) {
     console.error('Error in streamDocumentFile:', err);
-    return res.status(500).json({ message: err.message || 'Failed to stream document file.' });
+    if (!res.headersSent) {
+      return res.status(500).json({ message: err.message || 'Failed to stream document file.' });
+    }
   }
 };
 
-
-
-// =====================================================================================================================
-// Search: REVIEW  =======================================================================================
-// PATCH /api/documents/:id/review
-// =====================================================================================================================
-
+/**
+ * PATCH /api/documents/:id/review
+ * Admin review endpoint (Approve or Reject with comment)
+ */
 exports.reviewDocument = async (req, res) => {
-  return res.status(501).json({ message: 'Review endpoint reset. Ready for clean rebuild.' });
+  try {
+    if (req.user.accountType !== 'Administrator') {
+      return res.status(403).json({ message: 'Only administrators can review documents.' });
+    }
+
+    const { id } = req.params;
+    const { decision, comment } = req.body;
+
+    if (!['approved', 'rejected'].includes(decision)) {
+      return res.status(400).json({ message: 'Decision must be "approved" or "rejected".' });
+    }
+
+    if (decision === 'rejected' && (!comment || !comment.trim())) {
+      return res.status(400).json({ message: 'A comment is required when rejecting a document.' });
+    }
+
+    const doc = await Document.findById(id);
+    if (!doc) {
+      return res.status(404).json({ message: 'Document not found.' });
+    }
+
+    const targetStatus = decision === 'approved' ? STATUS.APPROVED : STATUS.REJECTED;
+
+    // Attach review to current version
+    const currentVersionObj = doc.versions.find((v) => v.n === doc.currentVersion);
+    if (currentVersionObj) {
+      currentVersionObj.review = {
+        decision,
+        by: req.user.id,
+        comment: comment ? comment.trim() : '',
+        at: new Date(),
+      };
+    }
+
+    doc.status = targetStatus;
+    doc.reviewedAt = new Date();
+    await doc.save();
+
+    await logAudit({
+      actor: req.user,
+      action: `document.${decision}`,
+      targetType: 'document',
+      targetId: doc._id,
+      targetLabel: doc.requirementKey,
+      meta: { decision, comment },
+      req,
+    });
+
+    return res.json({
+      message: `Document successfully ${decision}.`,
+      document: doc,
+    });
+  } catch (err) {
+    console.error('Error in reviewDocument:', err);
+    return res.status(500).json({ message: err.message || 'Failed to review document.' });
+  }
 };
 
-
-// =====================================================================================================================
-// Search: DELETE  =======================================================================================
-// DELETE /api/documents/:id
-// =====================================================================================================================
-
+/**
+ * DELETE /api/documents/:id
+ * Remove draft or rejected document entry
+ */
 exports.deleteDocument = async (req, res) => {
   try {
     const { id } = req.params;
-
     const doc = await Document.findById(id);
     if (!doc) {
       return res.status(404).json({ message: 'Document not found.' });
@@ -367,7 +421,16 @@ exports.deleteDocument = async (req, res) => {
     }
 
     // Delete MongoDB document
-    await Document.deleteOne({ _id: doc._id });
+    await Document.findByIdAndDelete(id);
+
+    await logAudit({
+      actor: req.user,
+      action: 'document.delete',
+      targetType: 'document',
+      targetId: id,
+      targetLabel: doc.requirementKey,
+      req,
+    });
 
     return res.json({ success: true, message: 'Document deleted successfully.' });
   } catch (err) {
@@ -376,14 +439,77 @@ exports.deleteDocument = async (req, res) => {
   }
 };
 
-
-
-
-// =====================================================================================================================
-// Search: SUMMARY  =======================================================================================
-// GET /api/documents/summary/faculty
-// =====================================================================================================================
-
+/**
+ * GET /api/documents/summary/faculty
+ * Get aggregated counts per card for Faculty Portfolio overview
+ */
 exports.getFacultyPortfolioSummary = async (req, res) => {
-  return res.json({});
+  try {
+    let targetOwnerId = req.user.id;
+    if (req.user.accountType === 'Administrator' && req.query.instructorId) {
+      targetOwnerId = req.query.instructorId;
+    }
+
+    // Fetch all faculty requirements
+    const requirements = await Requirement.find({ scope: 'faculty', active: true }).lean();
+
+    // Fetch all documents submitted by this instructor
+    const documents = await Document.find({ ownerId: targetOwnerId }).lean();
+
+    // Map requirement keys to card names
+    const reqKeyToCard = {};
+    for (const r of requirements) {
+      reqKeyToCard[r.key] = r.card;
+    }
+
+    // Card path map
+    const cardNameToPath = {
+      'Educational Attainment': 'educational-attainment',
+      'Service Records': 'service-records',
+      'Seminars and Workshops': 'seminars-and-workshops',
+      'Achievements': 'achievements',
+      'Research': 'research',
+      'Extension Involvement': 'extension-involvement',
+      'Production': 'production',
+      'Other Requirements': 'other-requirements',
+      'Membership to Professional Organization': 'other-requirements',
+      'Passed Licensure Examinations': 'other-requirements',
+      'IPCR': 'other-requirements',
+    };
+
+    const summaries = {};
+
+    for (const doc of documents) {
+      const cardName = reqKeyToCard[doc.requirementKey] || 'other-requirements';
+      const cardPath = cardNameToPath[cardName] || 'other-requirements';
+
+      if (!summaries[cardPath]) {
+        summaries[cardPath] = {
+          approved: 0,
+          pendingReview: 0,
+          rejected: 0,
+          draft: 0,
+          totalFiles: 0,
+          commentCount: 0,
+          previewed: false,
+        };
+      }
+
+      summaries[cardPath].totalFiles += 1;
+
+      if (doc.status === STATUS.APPROVED) summaries[cardPath].approved += 1;
+      else if (doc.status === STATUS.PENDING_REVIEW) summaries[cardPath].pendingReview += 1;
+      else if (doc.status === STATUS.REJECTED) {
+        summaries[cardPath].rejected += 1;
+        summaries[cardPath].commentCount += 1;
+      } else if (doc.status === STATUS.DRAFT) {
+        summaries[cardPath].draft += 1;
+      }
+    }
+
+    return res.json(summaries);
+  } catch (err) {
+    console.error('Error in getFacultyPortfolioSummary:', err);
+    return res.status(500).json({ message: 'Failed to calculate summary.' });
+  }
 };

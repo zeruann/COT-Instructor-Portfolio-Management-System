@@ -76,7 +76,6 @@ exports.createMyProfile = async (req, res) => {
   }
 };
 
-// PUT /api/profile/me
 exports.updateMyProfile = async (req, res) => {
   try {
     const $set = {};
@@ -85,6 +84,20 @@ exports.updateMyProfile = async (req, res) => {
       if (req.body[key] !== undefined) {
         $set[`profile.${key}`] = req.body[key];
       }
+    }
+
+    // Sync fullName if first or last name is updated
+    const computedFullName = [
+      req.body.firstName,
+      req.body.middleName,
+      req.body.lastName,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+
+    if (computedFullName) {
+      $set.fullName = computedFullName;
     }
 
     const me = await Instructor.findByIdAndUpdate(

@@ -81,7 +81,7 @@ export const NAV = {
     profilePath: '/admin/profile',
     securityPath: '/admin/security',
     notificationsPath: '/admin/notifications',
-    showSectionInBreadcrumb: true, // Home > Portfolio Review > Faculty Portfolio
+    showSectionInBreadcrumb: false, // Home > Faculty Portfolio
     accountInTopBar: true, // My Profile, Security and Logout are in the top bar menu, not in the sidebar
 
     sections: [
@@ -121,7 +121,7 @@ export const NAV = {
         ],
       },
       {
-        heading: 'System',
+        heading: 'Settings',
         items: [
           { to: '/admin/settings', label: 'API Settings', icon: Settings },
         ],

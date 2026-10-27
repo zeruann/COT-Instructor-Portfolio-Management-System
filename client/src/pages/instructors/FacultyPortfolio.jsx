@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Folder, MoreVertical, MessageSquare, FileText, Eye } from 'lucide-react';
 import PlaceholderPage from '../../components/layout/PlaceholderPage';
 import UploadModal from '../../components/documentActions/UploadModal';
@@ -75,6 +75,62 @@ const requirementCards = [
     accent: '#6aaa64',
   },
 ];
+
+function toCount(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+function normalizeSummary(raw) {
+  const s = raw && typeof raw === 'object' ? raw : {};
+  return {
+    approved: toCount(s.approved),
+    pendingReview: toCount(s.pendingReview),
+    rejected: toCount(s.rejected),
+    draft: toCount(s.draft),
+    required: toCount(s.required),
+    totalFiles: toCount(s.totalFiles),
+    commentCount: toCount(s.commentCount),
+    previewed: s.previewed === true,
+  };
+}
+
+// Completion is computed from the real document statuses.
+// Each requirement category is worth an equal share of 100%. Inside a category, the
+// share is split by how many of its files are approved / pending / rejected.
+// Categories with no files, or files that are not approved yet, add nothing to "percent".
+const computeCompletion = (summaries) => {
+  const categoryCount = requirementCards.length;
+  let approvedShare = 0;
+  let pendingShare = 0;
+  let rejectedShare = 0;
+  const counts = { approved: 0, pending: 0, rejected: 0 };
+
+  requirementCards.forEach(({ path }) => {
+    const s = summaries?.[path] || {};
+    const approved = s.approved || 0;
+    const pending = s.pendingReview || 0;
+    const rejected = s.rejected || 0;
+    const total = Math.max(s.totalFiles || 0, approved + pending + rejected);
+    if (total === 0) return;
+
+    approvedShare += approved / total;
+    pendingShare += pending / total;
+    rejectedShare += rejected / total;
+    counts.approved += approved;
+    counts.pending += pending;
+    counts.rejected += rejected;
+  });
+
+  const toPct = (share) => (share / categoryCount) * 100;
+  return {
+    percent: Math.round(toPct(approvedShare)),
+    approvedPct: toPct(approvedShare),
+    pendingPct: toPct(pendingShare),
+    rejectedPct: toPct(rejectedShare),
+    counts,
+  };
+};
 
 // Status chip styles for each card
 const statusStyles = {
@@ -170,8 +226,19 @@ function PortfolioCard({ card, summary, menuOpen, onToggleMenu, onCloseMenu }) {
   );
 }
 
+// One label/value line with a thin divider underneath (contact info)
+function InfoRow({ label, children }) {
+  return (
+    <div className="grid grid-cols-[64px_minmax(0,1fr)] items-start gap-2 border-b border-gray-200 py-2.5 text-sm last:border-b-0 sm:grid-cols-[72px_minmax(0,1fr)]">
+      <span className="text-gray-500">{label}</span>
+      <span className="min-w-0 font-medium text-gray-900 [overflow-wrap:anywhere] break-words">{children}</span>
+    </div>
+  );
+}
+
 function FacultyPortfolio() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [summaries, setSummaries] = useState({});
   const [instructorData, setInstructorData] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
@@ -183,13 +250,6 @@ function FacultyPortfolio() {
     document.addEventListener('click', close);
     return () => document.removeEventListener('click', close);
   }, [openMenu]);
-
-  // Load live faculty summaries for requirement cards
-  useEffect(() => {
-    fetchFacultySummary()
-      .then((sum) => setSummaries(sum || {}))
-      .catch((err) => console.warn('Could not load faculty summaries:', err));
-  }, []);
 
   // PDS: the saved PDS (null if none yet) and whether its upload popup is open
   const [pdsDoc, setPdsDoc] = useState(null);
@@ -206,9 +266,22 @@ function FacultyPortfolio() {
     }
   };
 
+  // Loads card summaries and progress from the server
+  const loadSummary = async () => {
+    try {
+      const data = await fetchFacultySummary();
+      if (data) setSummaries(data);
+    } catch (err) {
+      console.warn('Could not load faculty summary:', err);
+    }
+  };
+
+  // Re-fetch every time the user lands on (or returns to) this page
   useEffect(() => {
     loadPds();
-  }, []);
+    loadSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.key]);
 
   useEffect(() => {
     // Fetch user profile info
@@ -224,30 +297,37 @@ function FacultyPortfolio() {
       .catch((err) => console.warn('Could not load profile header:', err));
   }, []);
 
-  // Compute progress: total approved files over total files submitted/in-review
-  const { totalApproved, totalSubmitted, completionPercent } = useMemo(() => {
-    let approved = 0;
-    let submitted = 0;
-
-    Object.values(summaries || {}).forEach((s) => {
-      const a = Number(s?.approved) || 0;
-      const p = Number(s?.pendingReview) || 0;
-      const r = Number(s?.rejected) || 0;
-      const d = Number(s?.draft) || 0;
-      approved += a;
-      submitted += a + p + r + d;
-    });
-
-    const percent = submitted > 0 ? Math.round((approved / submitted) * 100) : 0;
-    return {
-      totalApproved: approved,
-      totalSubmitted: submitted,
-      completionPercent: percent,
-    };
+  // Compute completion exactly matching ReviewFacultyPortfolio (category-weighted)
+  const completion = useMemo(() => {
+    return computeCompletion(summaries || {});
   }, [summaries]);
 
+  const completionPercent = completion.percent;
+  const { counts } = completion;
+  const uploaded = counts ? counts.approved + counts.pending + counts.rejected : 0;
+
+  const completionMessage =
+    completionPercent >= 100
+      ? 'Your portfolio has been verified and approved!'
+      : counts?.rejected > 0
+        ? 'Some documents need revision.'
+        : counts?.pending > 0
+          ? 'Some documents are waiting for review.'
+          : 'No documents have been approved yet.';
+
+  const legend = [
+    { color: '#d1d5db', label: 'Documents uploaded', value: uploaded },
+    { color: '#6aaa64', label: 'Approved', value: counts?.approved },
+    { color: '#f0a93b', label: 'Pending review', value: counts?.pending },
+    { color: '#ef6c35', label: 'Rejected', value: counts?.rejected },
+  ];
+
   const profile = instructorData?.profile || {};
-  const fullName = instructorData?.fullName || 'Instructor';
+  const profileFullName = [profile.firstName, profile.middleName, profile.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  const fullName = profileFullName || instructorData?.fullName || 'Instructor';
   const department = instructorData?.department || 'IT Department';
   const position = profile.position || profile.rank || 'Faculty Member';
   const email = instructorData?.email || '—';
@@ -262,125 +342,126 @@ function FacultyPortfolio() {
       <PlaceholderPage title="Faculty Portfolio" />
 
       {/* TOP CARDS */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">
         {/* Left Column: Faculty Profile Summary Card */}
-        <section className="col-span-1 lg:col-span-3 rounded-2xl border border-gray-100 bg-white p-6 shadow-xs flex flex-col md:flex-row items-center md:items-start gap-6">
-          {/* Avatar and Basic Role */}
-          <div className="flex flex-col items-center text-center shrink-0 w-44">
-            <div className="w-24 h-24 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center overflow-hidden shadow-xs mb-3">
-              {profile.photoUrl ? (
-                <img
-                  src={profile.photoUrl}
-                  alt={fullName}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-2xl font-bold text-amber-700">
-                  {fullName
-                    .split(' ')
-                    .map((n) => n[0])
-                    .join('')
-                    .slice(0, 2)
-                    .toUpperCase()}
-                </span>
-              )}
-            </div>
-            <h3 className="text-base font-bold text-gray-900 leading-snug">{fullName}</h3>
-            <p className="text-xs text-gray-500 mt-0.5">{position}</p>
-            <p className="text-xs font-medium text-brand-purple mt-0.5">{department}</p>
-          </div>
-
-          {/* Middle Details: Contact Information & Educational Background */}
-          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-6 border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6 w-full">
-            {/* Contact Information */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                Contact information
-              </h4>
-              <div className="space-y-2 text-xs">
-                <div>
-                  <span className="text-gray-400 block text-[11px]">Email</span>
-                  <span className="text-gray-800 font-medium break-all">{email}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[11px]">Phone</span>
-                  <span className="text-gray-800 font-medium">{phone}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400 block text-[11px]">Address</span>
-                  <span className="text-gray-800 font-medium">{address}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Educational Background */}
-            <div className="space-y-3">
-              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-                Educational background
-              </h4>
-              <div className="space-y-2.5 text-xs">
-                {educationList.length > 0 ? (
-                  educationList.slice(0, 2).map((edu, idx) => (
-                    <div key={idx}>
-                      <p className="font-semibold text-gray-800">
-                        {edu.degree || edu.level || 'Degree'}
-                      </p>
-                      <p className="text-gray-400 text-[11px]">
-                        {edu.school || 'University'}{edu.yearGraduated ? ` • ${edu.yearGraduated}` : ''}
-                      </p>
-                    </div>
-                  ))
+        <section className="@container min-w-0">
+          <div className="flex h-full min-w-0 flex-col gap-6 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 @xl:flex-row @xl:items-start">
+            {/* Avatar and Basic Role */}
+            <div className="flex w-full shrink-0 flex-col items-center text-center @xl:w-44">
+              <div className="mb-3 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-amber-300 sm:h-28 sm:w-28">
+                {profile.photoUrl ? (
+                  <img src={profile.photoUrl} alt={fullName} className="h-full w-full object-cover" />
                 ) : (
-                  <p className="text-gray-400 text-xs italic">No education details recorded yet.</p>
+                  <span className="text-3xl font-bold text-amber-800">
+                    {fullName
+                      .split(' ')
+                      .map((n) => n[0])
+                      .join('')
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <h2 className="text-base font-semibold text-gray-900 sm:text-lg">{fullName}</h2>
+              <p className="text-xs text-gray-500 sm:text-sm">{department}</p>
+              <p className="text-xs text-gray-500 sm:text-sm">{position}</p>
+            </div>
+
+            {/* Profile Details (divided) */}
+            <div className="flex min-w-0 flex-1 flex-col justify-between self-stretch border-t border-gray-100 pt-4 @xl:border-t-0 @xl:border-l @xl:border-gray-200 @xl:pl-6 @xl:pt-0">
+              <div>
+                <InfoRow label="Email">{email}</InfoRow>
+                <InfoRow label="Phone">{phone}</InfoRow>
+                <InfoRow label="Address">{address}</InfoRow>
+              </div>
+
+              {/* Educational Attainment block */}
+              <div className="mt-4 border-t border-gray-200 pt-3">
+                <span className="block text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  Educational Attainment
+                </span>
+                {educationList.length > 0 ? (
+                  <ul className="mt-2 divide-y divide-gray-100 text-sm">
+                    {educationList.map((item, idx) => (
+                      <li key={idx} className="py-2.5 first:pt-1 last:pb-0">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="font-semibold text-gray-900">{item.degree || 'Degree'}</span>
+                          <span className="text-xs text-gray-400">{item.year || ''}</span>
+                        </div>
+                        <div className="text-xs text-gray-500">{item.institution || ''}</div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="py-2.5 text-sm italic text-gray-400">No education details recorded yet.</p>
                 )}
               </div>
             </div>
-          </div>
 
-          {/* Actions: Edit Profile & Updated PDS / View PDS Buttons */}
-          <div className="flex flex-col gap-2.5 shrink-0 w-full sm:w-auto md:w-36 self-stretch justify-start">
-            <button
-              type="button"
-              onClick={() => navigate('/instructors/profile')}
-              className="w-full px-4 py-2 text-xs font-semibold text-white bg-brand-orange hover:bg-orange-600 rounded-xl shadow-xs transition text-center cursor-pointer"
-            >
-              Edit Profile
-            </button>
-            {pdsDoc && (
+            {/* Actions: Edit Profile & PDS */}
+            <div className="flex w-full shrink-0 flex-col justify-start gap-2.5 border-t border-gray-100 pt-4 sm:flex-row @xl:w-36 @xl:flex-col @xl:border-t-0 @xl:pt-0">
               <button
                 type="button"
-                onClick={() => setPreviewOpen(true)}
-                className="w-full px-4 py-2 text-xs font-semibold text-brand-purple bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-xl shadow-xs transition text-center cursor-pointer flex items-center justify-center gap-1.5"
+                onClick={() => navigate('/instructors/profile')}
+                className="w-full cursor-pointer rounded-lg bg-brand-orange px-4 py-2 text-center text-xs font-semibold text-white transition hover:bg-orange-600 sm:text-sm"
               >
-                <Eye size={14} />
-                View PDS
+                Edit Profile
               </button>
-            )}
-            {/* PDS button: "Upload PDS" when none, "Replace PDS" after. Always enabled, so the
-                instructor can reupload at any time (the server keeps the old file as a version). */}
-            <button
-              type="button"
-              onClick={() => setPdsOpen(true)}
-              className="w-full px-4 py-2 text-xs font-semibold text-white bg-brand-purple hover:bg-[#494673] rounded-xl shadow-xs transition text-center cursor-pointer"
-            >
-              {pdsDoc ? 'Replace PDS' : 'Upload PDS'}
-            </button>
+              {pdsDoc && (
+                <button
+                  type="button"
+                  onClick={() => setPreviewOpen(true)}
+                  className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-center text-xs font-semibold text-brand-purple shadow-xs transition hover:bg-purple-100 sm:text-sm"
+                >
+                  <Eye size={14} />
+                  View PDS
+                </button>
+              )}
+              {/* PDS button: "Upload PDS" when none, "Replace PDS" after. Always enabled, so the
+                  instructor can reupload at any time (the server keeps the old file as a version). */}
+              <button
+                type="button"
+                onClick={() => setPdsOpen(true)}
+                className="w-full cursor-pointer rounded-lg bg-brand-purple px-4 py-2 text-center text-xs font-semibold text-white transition hover:bg-[#494673] sm:text-sm"
+              >
+                {pdsDoc ? 'Replace PDS' : 'Upload PDS'}
+              </button>
+            </div>
           </div>
         </section>
 
-        {/* Right Column: Completion Status Progress Card */}
-        <section className="col-span-1 rounded-2xl border border-gray-100 bg-white p-6 shadow-xs flex flex-col items-center justify-center text-center">
-          <h3 className="text-sm font-semibold text-gray-600">Completion Status</h3>
-          <p className="mt-2 text-6xl font-extrabold tracking-tight text-[#48b560]">
-            {completionPercent}%
-          </p>
-          <p className="mt-3 text-xs text-gray-500 max-w-[200px] leading-relaxed">
-            {completionPercent === 100
-              ? 'Your portfolio has been verified and approved!'
-              : totalSubmitted === 0
-                ? 'No files submitted yet.'
-                : `${totalApproved} of ${totalSubmitted} files approved.`}
-          </p>
+        {/* Right Column: Completion Status Progress Card matching ReviewFacultyPortfolio */}
+        <section className="@container min-w-0">
+          <div className="flex h-full min-w-0 flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
+            <h2 className="text-lg font-medium text-brand-purple sm:text-2xl">Completion Status</h2>
+
+            <div className="flex flex-1 flex-col gap-5 @md:flex-row @md:items-center">
+              <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+                <p className="text-5xl font-extrabold leading-none text-[#6aaa64] sm:text-6xl @md:text-7xl">
+                  {completionPercent}%
+                </p>
+                <p className="mt-4 text-sm leading-snug text-gray-400">{completionMessage}</p>
+              </div>
+
+              <ul className="w-full shrink-0 divide-y divide-gray-100 border-t border-gray-200 pt-2 @md:flex @md:w-56 @md:flex-col @md:justify-center @md:self-stretch @md:border-l @md:border-t-0 @md:pl-6 @md:pt-0">
+                {legend.map((item) => (
+                  <li
+                    key={item.label}
+                    className="flex items-center justify-between gap-3 py-2.5 text-sm text-gray-500"
+                  >
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <span
+                        className="h-3 w-3 shrink-0 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="truncate">{item.label}</span>
+                    </span>
+                    <span className="font-semibold tabular-nums text-gray-800">{item.value ?? '—'}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </section>
       </div>
 

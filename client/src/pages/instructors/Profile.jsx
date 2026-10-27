@@ -10,6 +10,24 @@ const RANKS = [
   "Professor I", "Professor II", "Professor III", "Professor IV", "Professor V", "Professor VI",
 ];
 
+// Academic / Administrative positions shown in the "Position" dropdown
+const POSITIONS = [
+  "Faculty Member",
+  "Full-Time Faculty",
+  "Part-Time Faculty",
+  "Department Chairperson",
+  "Program Head",
+  "College Dean",
+  "Associate Dean",
+  "College Secretary",
+  "Research Coordinator",
+  "Extension Coordinator",
+  "OJT / Practicum Coordinator",
+  "Quality Assurance Officer",
+  "Laboratory In-Charge",
+  "Visiting Lecturer",
+];
+
 function getInitials(name = "") {
   return name
     .split(" ")
@@ -97,13 +115,36 @@ function Profile() {
         return res.json();
       })
       .then((me) => {
-        setProfile(me.profile || {});
+        const prof = me.profile || {};
+        setProfile(prof);
 
-        if (me.fullName) {
+        const computed = [prof.firstName, prof.middleName, prof.lastName]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
+        const activeName = computed || me.fullName;
+
+        if (activeName) {
           setInstructor((prev) => ({
             ...prev,
-            fullName: me.fullName,
+            fullName: activeName,
           }));
+
+          const stored = localStorage.getItem('instructor');
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              if (parsed.fullName !== activeName) {
+                localStorage.setItem(
+                  'instructor',
+                  JSON.stringify({ ...parsed, fullName: activeName })
+                );
+                window.dispatchEvent(new Event('instructor-updated'));
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          }
         }
       })
       .catch(() => {
@@ -318,6 +359,12 @@ function Profile() {
   const p = profile || {};
   const education = p.education || [];
 
+  const profileFullName = [p.firstName, p.middleName, p.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  const displayName = profileFullName || instructor.fullName || 'Instructor';
+
   return (
     <div className="space-y-6">
 
@@ -334,13 +381,13 @@ function Profile() {
             />
           ) : (
             <div className="w-20 h-20 rounded-full bg-orange-500 text-white flex items-center justify-center text-2xl font-semibold">
-              {getInitials(instructor.fullName)}
+              {getInitials(displayName)}
             </div>
           )}
 
           <div>
             <p className="text-lg font-bold text-gray-800">
-              {instructor.fullName}
+              {displayName}
             </p>
 
             <p className="text-gray-500 text-sm">
@@ -751,13 +798,19 @@ function Profile() {
                       Position
                     </label>
 
-                    <input
-                      type="text"
+                    <select
                       name="position"
                       value={form.position}
                       onChange={handleChange}
-                      className="w-full mt-1 border rounded-lg px-3 py-2"
-                    />
+                      className="w-full mt-1 border rounded-lg px-3 py-2 bg-white"
+                    >
+                      <option value="">Select Position</option>
+                      {POSITIONS.map((pos) => (
+                        <option key={pos} value={pos}>
+                          {pos}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Academic Rank */}

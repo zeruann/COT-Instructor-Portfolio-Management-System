@@ -138,7 +138,7 @@ function PortfolioCard({ card, summary, instructorId, menuOpen, onToggleMenu, on
             className="mt-1.5 h-3 w-3 shrink-0 rounded-full"
             style={{ backgroundColor: card.accent }}
           />
-          <h3 className="min-w-0 break-words text-base font-semibold leading-tight text-gray-900 group-hover:underline sm:text-lg">
+          <h3 className="min-w-0 break-words text-base font-semibold leading-tight text-gray-900 sm:text-lg">
             {card.title}
           </h3>
         </Link>
@@ -304,37 +304,6 @@ export default function ReviewFacultyPortfolio() {
   ].sort();
 
 
-const viewByOptions = [
-  { value: 'all', label: 'All' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'review', label: 'For review' },
-  { value: 'rejected', label: 'Needs revision' },
-  { value: 'empty', label: 'No documents' },
-];
-
-const getInstructorStatus = (inst) => {
-  const completion = getCompletion(inst);
-  if (!completion) return 'empty';
-  if (!completion.counts) {
-    return completion.percent >= 100 ? 'completed' : completion.percent > 0 ? 'review' : 'empty';
-  }
-  const { approved, pending, rejected } = completion.counts;
-  if (rejected > 0) return 'rejected';
-  if (pending > 0) return 'review';
-  if (completion.percent >= 100) return 'completed';
-  return approved > 0 ? 'review' : 'empty';
-};
-
-const filteredInstructors = instructors.filter((inst) => {
-  const name = inst.fullName || '';
-  const email = inst.email || '';
-  const query = searchQuery.toLowerCase();
-  const matchSearch = name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
-  const matchDept = departmentFilter === 'all' || inst.department === departmentFilter;
-  const matchView = viewBy === 'all' || getInstructorStatus(inst) === viewBy;
-  return matchSearch && matchDept && matchView;
-});
-
   // Completion for an instructor, based on their approved / pending / rejected documents.
   // Returns null until their summary has loaded (unless the API already sends a number).
   const getCompletion = (inst) => {
@@ -356,6 +325,64 @@ const filteredInstructors = instructors.filter((inst) => {
     }
     return null;
   };
+
+  const viewByOptions = [
+    { value: 'all', label: 'All' },
+    { value: 'last_updated', label: 'Last Updated' },
+    { value: 'name_asc', label: 'Name (A to Z)' },
+    { value: 'name_desc', label: 'Name (Z to A)' },
+    { value: 'completion_high', label: 'Highest Completion' },
+    { value: 'completion_low', label: 'Lowest Completion' },
+  ];
+
+  // Prioritise profile first/last name over the root fullName which may be stale
+  const getDisplayName = (inst) => {
+    const p = inst?.profile || {};
+    const parts = [p.firstName, p.middleName, p.lastName].filter(Boolean);
+    if (parts.length > 0) return parts.join(' ');
+    return inst?.fullName || '';
+  };
+
+  const filteredInstructors = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+
+    const result = instructors.filter((inst) => {
+      // Show instructors only; exclude Administrators
+      if (inst.accountType === 'Administrator') return false;
+
+      const name = getDisplayName(inst);
+      const email = inst.email || '';
+      const matchSearch = name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
+      const matchDept = departmentFilter === 'all' || inst.department === departmentFilter;
+
+      return matchSearch && matchDept;
+    });
+
+    return result.sort((a, b) => {
+      if (viewBy === 'last_updated') {
+        const dateA = new Date(a.updatedAt || a.createdAt || 0);
+        const dateB = new Date(b.updatedAt || b.createdAt || 0);
+        return dateB - dateA;
+      }
+      if (viewBy === 'name_asc') {
+        return getDisplayName(a).localeCompare(getDisplayName(b));
+      }
+      if (viewBy === 'name_desc') {
+        return getDisplayName(b).localeCompare(getDisplayName(a));
+      }
+      if (viewBy === 'completion_high') {
+        const pctA = getCompletion(a)?.percent ?? -1;
+        const pctB = getCompletion(b)?.percent ?? -1;
+        return pctB - pctA;
+      }
+      if (viewBy === 'completion_low') {
+        const pctA = getCompletion(a)?.percent ?? 999;
+        const pctB = getCompletion(b)?.percent ?? 999;
+        return pctA - pctB;
+      }
+      return 0;
+    });
+  }, [instructors, searchQuery, departmentFilter, viewBy, summariesById]);
 
   // Auto-fit grid: columns are added/removed based on the space actually available
   // (works regardless of sidebar width), and cards never get narrower than 300px.
@@ -426,31 +453,34 @@ const filteredInstructors = instructors.filter((inst) => {
         <div className="flex h-full min-w-0 flex-col rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 @2xl:flex-row">
           {/* Identity */}
           <div className="flex min-w-0 flex-col items-center gap-4 border-b border-gray-200 pb-5 text-center @md:flex-row @md:text-left @2xl:shrink-0 @2xl:border-b-0 @2xl:border-r @2xl:pb-0 @2xl:pr-6">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f6c85f] @md:h-28 @md:w-28">
+            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 @md:h-28 @md:w-28">
               {profile.photoUrl ? (
                 <img
                   src={profile.photoUrl}
-                  alt={selectedInstructor.fullName}
+                  alt={getDisplayName(selectedInstructor)}
                   className="h-full w-full object-cover"
                 />
               ) : (
                 <svg
+                  xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="h-14 w-14 text-white/80 sm:h-16 sm:w-16"
+                  fill="none"
+                  stroke="#fb923c"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-12 w-12 sm:h-14 sm:w-14"
                   aria-hidden="true"
                 >
-                  <path
-                    fillRule="evenodd"
-                    d="M12 2a5 5 0 100 10 5 5 0 000-10zm-7 18a7 7 0 0114 0H5z"
-                    clipRule="evenodd"
-                  />
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
                 </svg>
               )}
             </div>
+
             <div className="min-w-0 w-full @md:w-auto @md:max-w-[220px]">
               <h2 className="break-words text-lg font-semibold leading-tight text-gray-900 sm:text-xl">
-                {selectedInstructor.fullName}
+                {getDisplayName(selectedInstructor)}
               </h2>
               <p className="mt-1 break-words text-sm text-gray-500">{rank}</p>
               <p className="break-words text-sm text-gray-500">{department}</p>
@@ -688,7 +718,7 @@ const filteredInstructors = instructors.filter((inst) => {
         <div className={instructorGridClass}>
           {filteredInstructors.map((inst) => {
             const id = inst._id || inst.id;
-            const name = inst.fullName || 'Instructor';
+            const name = getDisplayName(inst) || 'Instructor';
             const rank =
               inst.profile?.rank || inst.profile?.position || 'Assistant Professor IV';
             const department = inst.department || 'IT Department';
@@ -703,24 +733,27 @@ const filteredInstructors = instructors.filter((inst) => {
                 className="group flex min-w-0 cursor-pointer items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs transition-all hover:border-orange-300 hover:shadow-md sm:gap-5 sm:p-5"
               >
                 {/* Left: Avatar */}
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-[#f3f4f6] sm:h-24 sm:w-24">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 sm:h-24 sm:w-24">
                   {photoUrl ? (
                     <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
                   ) : (
                     <svg
+                      xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 24 24"
-                      fill="currentColor"
-                      className="h-14 w-14 text-[#d1d5db] sm:h-16 sm:w-16"
+                      fill="none"
+                      stroke="#fb923c"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-10 w-10 sm:h-12 sm:w-12"
                       aria-hidden="true"
                     >
-                      <path
-                        fillRule="evenodd"
-                        d="M12 2a5 5 0 100 10 5 5 0 000-10zm-7 18a7 7 0 0114 0H5z"
-                        clipRule="evenodd"
-                      />
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
                     </svg>
                   )}
                 </div>
+
 
                 {/* Right: Info + Progress + View button */}
                 <div className="flex min-w-0 flex-1 flex-col justify-between">
@@ -736,13 +769,41 @@ const filteredInstructors = instructors.filter((inst) => {
                   </div>
 
                   <div className="mt-3">
-                    <div className="mb-1 flex items-center justify-between gap-2 text-xs">
+                    <div className="mb-1.5 flex items-center justify-between gap-2 text-xs">
                       <span className="truncate font-semibold text-[#2e2a72]">
                         Completion Status
                       </span>
                       <span className="shrink-0 font-bold text-[#10b981]">
                         {percent != null ? `${percent}%` : '—'}
                       </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="flex h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                      {completion?.approvedPct > 0 && (
+                        <div
+                          style={{ width: `${completion.approvedPct}%` }}
+                          className="bg-[#10b981] transition-all duration-300"
+                          title={`Approved: ${Math.round(completion.approvedPct)}%`}
+                        />
+                      )}
+                      {completion?.pendingPct > 0 && (
+                        <div
+                          style={{ width: `${completion.pendingPct}%` }}
+                          className="bg-amber-400 transition-all duration-300"
+                          title={`Pending: ${Math.round(completion.pendingPct)}%`}
+                        />
+                      )}
+                      {completion?.rejectedPct > 0 && (
+                        <div
+                          style={{ width: `${completion.rejectedPct}%` }}
+                          className="bg-red-400 transition-all duration-300"
+                          title={`Rejected: ${Math.round(completion.rejectedPct)}%`}
+                        />
+                      )}
+                      {(!percent || percent === 0) && (!completion?.pendingPct && !completion?.rejectedPct) && (
+                        <div className="w-full bg-gray-200" />
+                      )}
                     </div>
                   </div>
 
