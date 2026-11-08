@@ -521,7 +521,6 @@ export default function AcademicPeriod() {
   // Filtered & Sorted periods (Unified Table)
   const unifiedPeriods = useMemo(() => {
     const semOrder = { '1st': 1, '2nd': 2, Summer: 3 };
-    const activeYear = activePeriod?.schoolYear;
 
     const filtered = displayPeriods.filter((p) => {
       // Tab filter
@@ -549,21 +548,12 @@ export default function AcademicPeriod() {
     });
 
     return filtered.sort((a, b) => {
-      // 1) Active school year always first
-      if (activeYear) {
-        const aIsActiveYear = a.schoolYear === activeYear;
-        const bIsActiveYear = b.schoolYear === activeYear;
-        if (aIsActiveYear !== bIsActiveYear) return aIsActiveYear ? -1 : 1;
-      }
-
-      // 2) Then newest school year first
-      const yearComp = b.schoolYear.localeCompare(a.schoolYear);
+      // Newest academic year and latest term first.
+      const yearComp = b.schoolYear.localeCompare(a.schoolYear, undefined, { numeric: true });
       if (yearComp !== 0) return yearComp;
-
-      // 3) Within a year: 1st, 2nd, Summer
-      return (semOrder[a.semester] || 99) - (semOrder[b.semester] || 99);
+      return (semOrder[b.semester] || 0) - (semOrder[a.semester] || 0);
     });
-  }, [displayPeriods, activeTab, statusFilter, semesterFilter, searchQuery, activePeriod]);
+  }, [displayPeriods, activeTab, statusFilter, semesterFilter, searchQuery]);
 
   // Pagination calculations
   const totalItems = unifiedPeriods.length;

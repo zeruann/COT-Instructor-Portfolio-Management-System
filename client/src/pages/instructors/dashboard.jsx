@@ -30,7 +30,7 @@ function getNotificationStyle(type) {
 
 function Metric({ icon: Icon, label, value, detail, tone }) {
   const tones = {
-    purple: 'bg-orange-50 text-brand-orange',
+    purple: 'bg-purple-50 text-brand-purple',
     orange: 'bg-orange-50 text-orange-600',
     amber: 'bg-amber-50 text-amber-700',
     green: 'bg-[#eaf5e7] text-[#5cab5f]',
@@ -39,11 +39,11 @@ function Metric({ icon: Icon, label, value, detail, tone }) {
     <article className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-      <p className="text-sm font-medium text-gray-500">{label}</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900">{number(value)}</p>
+          <p className="text-sm font-medium text-gray-500">{label}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">{number(value)}</p>
           <p className="mt-1 text-xs text-gray-500">{detail}</p>
         </div>
-        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}>
           <Icon size={20} />
         </span>
       </div>
@@ -127,14 +127,17 @@ function Dashboard() {
   if (!instructor) return null;
 
   return (
-    <div className="w-full min-w-0 space-y-5 pb-5">
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-        <div className="flex items-center gap-3">
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-brand-orange"><BookOpen size={25} /></span>
-          <div>
-            <h1 className="text-2xl font-bold leading-8 text-gray-800">Good day, {greetingName}</h1>
-            <p className="mt-1 text-sm text-gray-500">Here’s an overview of your portfolios.</p>
+    <div className="w-full min-w-0 space-y-6 pb-6">
+      <section className="rounded-xl border border-gray-200 bg-white px-5 py-6 sm:px-7">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-brand-purple"><BookOpen size={23} /></span>
+            <div>
+              <h1 className="text-2xl font-semibold leading-8 text-gray-900 sm:text-3xl">Welcome, {greetingName}</h1>
+              <p className="mt-1 text-sm text-gray-600">Your classes and portfolio progress</p>
+            </div>
           </div>
+          <button onClick={() => navigate('/instructors/class-portfolio')} className="inline-flex w-fit items-center gap-2 rounded-lg bg-brand-purple px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-purple focus:ring-offset-2">View classes <ArrowRight size={16} /></button>
         </div>
       </section>
 
@@ -147,13 +150,13 @@ function Dashboard() {
         <Metric icon={CheckCircle2} label="Approved items" value={totals.approved} detail={`${completion}% of required items approved`} tone="green" />
       </section>
 
-      <div className="grid w-full min-w-0 grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.85fr)]">
-        <section className="min-w-0 rounded-xl border border-gray-200 bg-white">
-          <div className="flex flex-col gap-3 border-b border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3"><span className="mt-0.5 rounded-lg bg-orange-50 p-2 text-brand-orange"><FolderOpen size={18} /></span><div><h2 className="text-lg font-semibold text-indigo-900">Your classes</h2><p className="mt-1 text-sm text-gray-500">Portfolio completion by course and section</p></div></div>
-            <div className="flex items-center gap-3">
+      <div className="grid w-full min-w-0 grid-cols-1 items-stretch gap-5 xl:grid-cols-3">
+        <section className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white">
+          <div className="flex flex-col gap-3 border-b border-gray-200 p-4">
+            <div className="flex items-start gap-3"><span className="mt-0.5 rounded-lg bg-purple-50 p-2 text-brand-purple"><FolderOpen size={18} /></span><div className="min-w-0"><h2 className="text-lg font-semibold text-gray-900">Your classes</h2><p className="mt-1 text-sm text-gray-500">Portfolio progress by course and section</p></div></div>
+            <div className="flex min-w-0 items-center gap-2">
               <label htmlFor="dashboard-period" className="sr-only">Filter by academic period</label>
-              <select id="dashboard-period" value={selectedPeriod} onChange={(event) => setSelectedPeriod(event.target.value)} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand-purple focus:outline-none focus:ring-2 focus:ring-brand-purple/20">
+              <select id="dashboard-period" value={selectedPeriod} onChange={(event) => setSelectedPeriod(event.target.value)} className="min-w-0 flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand-purple focus:outline-none focus:ring-2 focus:ring-brand-purple/20">
                 <option value="all">All periods</option>
                 {periods.map((period) => <option key={period.id} value={period.id}>{period.label}{period.current ? ' · Current' : ''}</option>)}
               </select>
@@ -177,31 +180,29 @@ function Dashboard() {
                   </button>;
                 })}
               </div>}
-          {!loading && visibleClasses.length > 0 && <div className="border-t border-gray-100 px-5 py-3"><button onClick={() => navigate('/instructors/class-portfolio')} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-purple hover:underline">View all classes <ArrowRight size={15} /></button></div>}
+          {!loading && visibleClasses.length > 0 && <div className="mt-auto border-t border-gray-100 px-5 py-3"><button onClick={() => navigate('/instructors/class-portfolio')} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-purple hover:underline">View all classes <ArrowRight size={15} /></button></div>}
         </section>
 
-        <div className="space-y-6">
-          <section className="rounded-xl border border-gray-200 bg-white">
-            <div className="flex items-center justify-between border-b border-gray-200 p-4"><div className="flex items-start gap-3"><span className="mt-0.5 rounded-lg bg-orange-50 p-2 text-brand-orange"><TriangleAlert size={18} /></span><div><h2 className="text-lg font-semibold text-indigo-900">Action center</h2><p className="mt-1 text-sm text-gray-500">Items worth a closer look</p></div></div><span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">{totals.action + reviewQueue.length}</span></div>
-            <div className="space-y-3 p-5">
+        <section className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white">
+            <div className="flex items-center justify-between border-b border-gray-200 p-4"><div className="flex items-start gap-3"><span className="mt-0.5 rounded-lg bg-orange-50 p-2 text-brand-orange"><TriangleAlert size={18} /></span><div><h2 className="text-lg font-semibold text-gray-900">Needs attention</h2><p className="mt-1 text-sm text-gray-500">Items to review or update</p></div></div><span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">{totals.action + reviewQueue.length}</span></div>
+            <div className="flex flex-1 flex-col space-y-3 p-5">
               {totals.action > 0 && <button onClick={() => navigate('/instructors/class-portfolio')} className="flex w-full items-start gap-3 rounded-xl border border-orange-100 bg-orange-50/70 p-3 text-left hover:bg-orange-50"><span className="mt-0.5 text-orange-700"><TriangleAlert size={18} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-800">Rejected portfolio items</span><span className="mt-0.5 block text-xs text-gray-600">{totals.action} item{totals.action === 1 ? '' : 's'} across your classes may need updates.</span></span><ArrowRight size={16} className="mt-1 shrink-0 text-orange-700" /></button>}
               {reviewQueue.slice(0, 3).map((item, index) => <button key={item._id || item.id || index} onClick={() => item.actionLink ? navigate(item.actionLink) : navigate('/instructors/notifications')} className="flex w-full items-start gap-3 rounded-xl border border-gray-100 p-3 text-left hover:bg-gray-50"><span className="mt-0.5 text-brand-purple"><FileCheck2 size={18} /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-gray-800">{item.title || 'Portfolio update'}</span><span className="mt-0.5 block line-clamp-2 text-xs text-gray-500">{item.message || item.body || 'A portfolio notification needs your attention.'}</span></span><ArrowRight size={16} className="mt-1 shrink-0 text-gray-400" /></button>)}
               {totals.action === 0 && reviewQueue.length === 0 && <div className="rounded-xl bg-emerald-50 p-4 text-center"><CheckCircle2 className="mx-auto text-emerald-700" size={22} /><p className="mt-2 text-sm font-semibold text-emerald-800">You’re all caught up</p><p className="mt-1 text-xs text-emerald-700">No outstanding portfolio actions right now.</p></div>}
-              <button onClick={() => navigate('/instructors/notifications')} className="inline-flex items-center gap-1 pt-1 text-sm font-semibold text-brand-purple hover:underline">Open notifications <ArrowRight size={15} /></button>
+              <button onClick={() => navigate('/instructors/notifications')} className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-semibold text-brand-purple hover:underline">Open notifications <ArrowRight size={15} /></button>
             </div>
-          </section>
+        </section>
 
-          <section className="rounded-xl border border-gray-200 bg-white">
-            <div className="flex items-center justify-between border-b border-gray-200 p-4"><div className="flex items-start gap-3"><span className="mt-0.5 rounded-lg bg-orange-50 p-2 text-brand-orange"><Bell size={18} /></span><div><h2 className="text-lg font-semibold text-indigo-900">Recent updates</h2><p className="mt-1 text-sm text-gray-500">Latest portfolio notifications</p></div></div></div>
-            <div className="divide-y divide-gray-100">
+        <section className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white">
+            <div className="flex items-center justify-between border-b border-gray-200 p-4"><div className="flex items-start gap-3"><span className="mt-0.5 rounded-lg bg-purple-50 p-2 text-brand-purple"><Bell size={18} /></span><div><h2 className="text-lg font-semibold text-gray-900">Recent notifications</h2><p className="mt-1 text-sm text-gray-500">Latest updates about your portfolio</p></div></div></div>
+            <div className="flex-1 divide-y divide-gray-100">
               {recent.length === 0 ? <div className="p-5 text-sm text-gray-500">No recent notifications.</div> : recent.map((item, index) => {
                 const notificationStyle = getNotificationStyle(item.type);
                 return <button key={item._id || item.id || index} onClick={() => item.actionLink ? navigate(item.actionLink) : navigate('/instructors/notifications')} className="flex w-full items-start gap-4 p-4 text-left hover:bg-gray-50"><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${notificationStyle.background}`}>{notificationStyle.icon}</span><span className="min-w-0 flex-1"><span className="flex items-center gap-2"><span className="block truncate text-sm font-semibold text-gray-800">{item.title || (item.type === 'approved' ? 'Approved' : 'Notification')}</span>{!item.readAt && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-orange" />}</span><span className="mt-1 block line-clamp-2 text-xs text-gray-600">{item.message || item.body || ''}</span><span className="mt-1 block text-[11px] text-gray-400">{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</span></span></button>;
               })}
             </div>
-            <div className="border-t border-gray-100 p-4"><button onClick={() => navigate('/instructors/notifications')} className="text-sm font-semibold text-brand-purple hover:underline">See all notifications</button></div>
-          </section>
-        </div>
+            <div className="mt-auto border-t border-gray-100 p-4"><button onClick={() => navigate('/instructors/notifications')} className="text-sm font-semibold text-brand-purple hover:underline">See all notifications</button></div>
+        </section>
       </div>
     </div>
   );

@@ -572,7 +572,7 @@ export default function InstructorReports() {
 
       {/* ================================ PAGE TITLE ================================ */}
       <div className="print:hidden">
-        <h1 className="text-2xl font-bold tracking-tight text-brand-purple">Reports</h1>
+        <h1 className="text-2xl font-medium tracking-tight text-brand-purple">Reports</h1>
         <p className="mt-1 text-sm text-brand-gray">
           Review your Faculty Compliance Checklist, then print it or download it as Excel.
         </p>

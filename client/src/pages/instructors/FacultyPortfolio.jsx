@@ -24,53 +24,53 @@ const PDS_REQUIREMENT = {
 const requirementCards = [
   {
     title: 'Educational Attainment',
-    description: "TOR, Diploma or Certificate of Units Earned for your Bachelor's, Master's and PhD.",
+    description: "Upload your transcript of records, diploma, or certificate of units earned for your bachelor's, master's, and doctoral degrees.",
     path: 'educational-attainment',
     accent: '#6aaa64',
   },
   {
     title: 'Service Records',
-    description: 'Upload your service records.',
+    description: 'Upload your official service records.',
     path: 'service-records',
     accent: '#f0a93b',
   },
   {
     title: 'Seminars and Workshops',
     description:
-      'List of seminars and workshops with certificates, from August 2019 to present. Add new ones as you attend.',
+      'Upload certificates for seminars and workshops attended from August 2019 to the present. Add new records as you attend more.',
     path: 'seminars-and-workshops',
     accent: '#4b4687',
   },
   {
     title: 'Achievements',
-    description: 'Grants, Awards, Certification of Commendation.',
+    description: 'Upload documents supporting your grants, awards, and certificates of commendation.',
     path: 'achievements',
     accent: '#ef6c35',
   },
   {
     title: 'Research',
     description:
-      'Research proposals and finished or published research, with certificate of publication and abstract.',
+      'Upload your research proposals and completed or published studies. Include the abstract and certificate of publication, when applicable.',
     path: 'research',
     accent: '#6aaa64',
   },
   {
     title: 'Extension Involvement',
     description:
-      "Certificates of extension involvement, project leaders' training designs, or related proof.",
+      'Upload certificates or other evidence of extension involvement, including training designs for projects you lead.',
     path: 'extension-involvement',
     accent: '#6aaa64',
   },
   {
     title: 'Production',
     description:
-      "Certificates of Copyrighted IM's, Patent or utility model approved application 1st or 2nd certificate.",
+      'Upload certificates for copyrighted instructional materials, patents, or approved utility model applications, including first- or second-stage certificates.',
     path: 'production',
     accent: '#6aaa64',
   },
   {
     title: 'Professional Organization',
-    description: 'Sample copy of your professional membership form.',
+    description: 'Upload proof of membership in your professional organizations, such as a membership certificate or form.',
     path: 'other-requirements',
     accent: '#6aaa64',
   },
@@ -160,12 +160,12 @@ function PortfolioCard({ card, summary, menuOpen, onToggleMenu, onCloseMenu }) {
     <div className="relative flex h-full min-w-0 flex-col rounded-xl bg-[#f5f5f5] px-4 pt-5 pb-4 sm:px-5 sm:pt-6 sm:pb-5 min-h-[220px]">
       {/* Title row */}
       <div className="flex items-start justify-between gap-2">
-        <Link to={href} className="group flex min-w-0 items-start gap-3">
+        <Link to={href} className="group flex min-w-0 items-start gap-3 no-underline hover:no-underline">
           <span
             className="mt-1.5 h-3 w-3 shrink-0 rounded-full"
             style={{ backgroundColor: card.accent }}
           />
-          <h3 className="min-w-0 break-words text-base font-semibold leading-tight text-gray-900 group-hover:underline sm:text-lg">
+          <h3 className="min-w-0 break-words text-base font-semibold leading-tight text-gray-900 sm:text-lg">
             {card.title}
           </h3>
         </Link>
@@ -198,8 +198,12 @@ function PortfolioCard({ card, summary, menuOpen, onToggleMenu, onCloseMenu }) {
       <div className="mt-3 h-[3px] w-full rounded-full" style={{ backgroundColor: card.accent }} />
 
       {/* Description */}
-      <Link to={href} className="mt-4 flex-1 sm:mt-5">
-        <p className="break-words text-sm leading-snug text-gray-500 sm:text-[15px]">
+      <Link
+        to={href}
+        className="mt-4 flex-1 !no-underline sm:mt-5"
+        style={{ textDecoration: 'none' }}
+      >
+        <p className="break-words text-sm leading-snug text-gray-500 no-underline hover:no-underline sm:text-[15px]">
           {card.description}
         </p>
       </Link>
