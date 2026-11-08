@@ -189,6 +189,7 @@ const getDisplayName = (inv) => {
 function InviteInstructor() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [invitations, setInvitations] = useState([]);
+  const [isSending, setIsSending] = useState(false);
   // Ids currently mid-request (blocks rapid double-clicks while waiting on the server)
   const [resendingIds, setResendingIds] = useState(() => new Set());
   const { modal, close, notify, confirm } = useAppModal();
@@ -216,10 +217,12 @@ function InviteInstructor() {
   };
 
   const handleSend = async () => {
+    if (isSending) return;
     if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.department) {
       notify('error', 'Missing information', 'Fill in the instructor’s first name, last name, email, and department before sending the invitation.');
       return;
     }
+    setIsSending(true);
     try {
       const res = await fetch('/api/invitations', {
         method: 'POST',
@@ -234,12 +237,14 @@ function InviteInstructor() {
         return;
       }
 
-      setInvitations([data, ...invitations]);
+      setInvitations((current) => [data, ...current]);
       setForm(EMPTY_FORM);
       notify('success', 'Invitation sent', `${getDisplayName(data)} will receive an email to join as an instructor.`);
     } catch (err) {
       console.error('Failed to send invitation:', err);
       notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -363,9 +368,10 @@ function InviteInstructor() {
           </button>
           <button
             onClick={handleSend}
-            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-orange-200 transition-all"
+            disabled={isSending}
+            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:cursor-wait disabled:opacity-60 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-orange-200 transition-all"
           >
-            Send Invitation
+            {isSending ? 'Sending…' : 'Send Invitation'}
           </button>
         </div>
       </div>
