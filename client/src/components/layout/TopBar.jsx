@@ -69,10 +69,10 @@ function TopBar({ role, user, onMenuClick, unreadCount = 0 }) {
         </Link>
 
         {menu.accountInTopBar ? (
-          // Admin: a menu with My Profile, Security and Logout
+          // Account dropdown with profile, security, and logout options
           <ProfileMenu role={role} menu={menu} name={name} avatarUrl={avatarUrl} />
         ) : (
-          // Instructor: a link to the profile page
+          // Fallback for roles that use a direct profile link
           <Link to={menu.profilePath} aria-label={`${name}, ${menu.roleLabel}: open profile`} className="flex items-center gap-3">
             <UserBadge name={name} roleLabel={menu.roleLabel} avatarUrl={avatarUrl} />
             <ChevronRight size={20} className="hidden text-brand-gray sm:block" />

@@ -29,7 +29,9 @@ export const NAV = {
     defaultName: 'Instructor',
     homePath: '/instructors/dashboard',
     profilePath: '/instructors/profile',
+    securityPath: '/instructors/security',
     notificationsPath: '/instructors/notifications',
+    accountInTopBar: true,
     showSectionInBreadcrumb: false, // Home > Faculty Portfolio
 
     sections: [
