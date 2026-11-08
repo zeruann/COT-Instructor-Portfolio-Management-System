@@ -94,22 +94,21 @@ function AppLayout({ role }) {
       .then((me) => {
         if (!me) return;
         const displayName = getDisplayNameFromProfile(me);
-        if (displayName) {
-          setUser((prev) => ({
-            ...(prev || {}),
-            ...me,
-            fullName: displayName,
-          }));
+        const resolvedName = displayName || me.fullName;
+        setUser((prev) => ({
+          ...(prev || {}),
+          ...me,
+          fullName: resolvedName || prev?.fullName,
+        }));
 
-          // Keep localStorage up to date
-          const storageKey = role === 'admin' ? 'admin' : 'instructor';
-          const existing = localStorage.getItem(storageKey);
-          const parsed = existing ? JSON.parse(existing) : {};
-          localStorage.setItem(
-            storageKey,
-            JSON.stringify({ ...parsed, ...me, fullName: displayName })
-          );
-        }
+        // Keep localStorage up to date
+        const storageKey = role === 'admin' ? 'admin' : 'instructor';
+        const existing = localStorage.getItem(storageKey);
+        const parsed = existing ? JSON.parse(existing) : {};
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify({ ...parsed, ...me, ...(resolvedName ? { fullName: resolvedName } : {}) })
+        );
       })
       .catch((err) => console.warn('Could not fetch current profile for topbar:', err));
   }, [role]);

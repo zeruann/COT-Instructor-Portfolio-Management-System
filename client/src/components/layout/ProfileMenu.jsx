@@ -9,7 +9,7 @@ const linkItem = `${itemBase} hover:bg-gray-50 hover:text-brand-purple`;
 const logoutItem = `${itemBase} border-t border-gray-200 hover:bg-red-50 hover:text-red-600`;
 
 // The profile button in the top bar. Click it to open: My Profile, Security, Logout.
-function ProfileMenu({ role, menu, name }) {
+function ProfileMenu({ role, menu, name, avatarUrl }) {
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
   const { askToLogout, logoutModal } = useLogout(role);
@@ -41,7 +41,7 @@ function ProfileMenu({ role, menu, name }) {
         aria-label={`${name}, ${menu.roleLabel}: account menu`}
         className="flex items-center gap-3"
       >
-        <UserBadge name={name} roleLabel={menu.roleLabel} />
+        <UserBadge name={name} roleLabel={menu.roleLabel} avatarUrl={avatarUrl} />
         <ChevronDown
           size={20}
           className={`hidden text-brand-gray sm:block ${open ? 'rotate-180' : ''}`}

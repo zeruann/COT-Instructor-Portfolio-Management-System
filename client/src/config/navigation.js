@@ -20,6 +20,7 @@ import {
   ClipboardList,
   Settings,
   History,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export const NAV = {
@@ -38,6 +39,7 @@ export const NAV = {
           { to: '/instructors/dashboard', label: 'Dashboard', icon: Home },
           { to: '/instructors/faculty-portfolio', label: 'Faculty Portfolio', icon: Briefcase },
           { to: '/instructors/class-portfolio', label: 'Class Portfolio', icon: FolderOpen },
+          { to: '/instructors/reports', label: 'Reports', icon: FileSpreadsheet },
           { to: '/instructors/archive', label: 'Archive', icon: Archive },
           { to: '/instructors/notifications', label: 'Notifications', icon: Bell },
         ],
@@ -118,6 +120,7 @@ export const NAV = {
       {
         heading: 'Records',
         items: [
+          { to: '/admin/reports', label: 'Reports', icon: FileSpreadsheet },
           { to: '/admin/archive', label: 'Archive', icon: Archive },
           { to: '/admin/academic-period', label: 'Academic Period', icon: Calendar },
           { to: '/admin/activity-logs', label: 'Activity Logs', icon: History },

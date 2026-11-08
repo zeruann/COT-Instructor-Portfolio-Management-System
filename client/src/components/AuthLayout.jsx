@@ -1,9 +1,11 @@
+
+
 function AuthLayout({ children }) {
   return (
     <div className="relative min-h-screen overflow-hidden">
       <div
         className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/buksu_bg.png')", opacity:0.15 }}
+        style={{ backgroundImage: "url('/buksu_bg.png')", opacity: 0.15 }}
       ></div>
       <div
         className="absolute inset-y-0 left-0 w-1/2"

@@ -76,6 +76,7 @@ function Profile() {
 
   const [instructor, setInstructor] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [avatarError, setAvatarError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -117,7 +118,11 @@ function Profile() {
       })
       .then((me) => {
         const prof = me.profile || {};
+        if (me.googlePhotoUrl && !prof.photoUrl) {
+          prof.photoUrl = me.googlePhotoUrl;
+        }
         setProfile(prof);
+        setAvatarError(false);
 
         const computed = [prof.firstName, prof.middleName, prof.lastName]
           .filter(Boolean)
@@ -366,6 +371,8 @@ function Profile() {
     .trim();
   const displayName = profileFullName || instructor.fullName || 'Instructor';
 
+  const avatarUrl = p.photoUrl || instructor.googlePhotoUrl || instructor.photoUrl;
+
   return (
     <div className="space-y-6">
 
@@ -374,11 +381,13 @@ function Profile() {
 
         <div className="flex items-center gap-4">
 
-          {p.photoUrl ? (
+          {avatarUrl && !avatarError ? (
             <img
-              src={p.photoUrl}
-              alt="Profile"
-              className="w-20 h-20 rounded-full object-cover"
+              src={avatarUrl}
+              alt={displayName}
+              referrerPolicy="no-referrer"
+              onError={() => setAvatarError(true)}
+              className="w-20 h-20 rounded-full object-cover border-2 border-orange-200"
             />
           ) : (
             <div className="w-20 h-20 rounded-full bg-orange-500 text-white flex items-center justify-center text-2xl font-semibold">

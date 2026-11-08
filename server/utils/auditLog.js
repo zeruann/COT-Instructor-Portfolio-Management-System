@@ -68,14 +68,19 @@ async function logAudit({
     const actorId = actor ? (actor._id || actor.id) : null;
     const actorName = actor
       && (actor.fullName || actor.name || actor.email)
-        ? actor.fullName || actor.name || actor.email
-        : 'System';
+      ? actor.fullName || actor.name || actor.email
+      : 'System';
+
+    const actorPhoto = actor
+      ? (actor.googlePhotoUrl || actor.profile?.photoUrl || (typeof actor.photoUrl === 'string' ? actor.photoUrl : null))
+      : null;
 
     await AuditLog.create({
       logId: generatedLogId,
       actorId: actorId ? new mongoose.Types.ObjectId(String(actorId)) : null,
       actorRole,
       actorName,
+      actorPhoto,
       category: String(action).split('.')[0],
       action,
       outcome,

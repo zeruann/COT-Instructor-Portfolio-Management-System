@@ -35,6 +35,9 @@ const publicInstructor = (user) => ({
   accountType: user.accountType,
   accountStatus: user.accountStatus,
   onlineStatus: user.onlineStatus,
+  googlePhotoUrl: user.googlePhotoUrl || user.profile?.photoUrl,
+  photoUrl: user.profile?.photoUrl || user.googlePhotoUrl,
+  profile: user.profile,
 });
 
 /* ------------------------------ Login ------------------------------ */
@@ -138,6 +141,28 @@ exports.googleLogin = async (req, res) => {
     if (!instructor.googleId) {
       instructor.googleId = payload.sub;
     }
+
+    // Save or refresh Google profile information
+    if (payload.picture) {
+      instructor.googlePhotoUrl = payload.picture;
+      if (!instructor.profile) {
+        instructor.profile = {};
+      }
+      if (!instructor.profile.photoUrl || instructor.profile.photoUrl.startsWith('https://lh3.googleusercontent.com')) {
+        instructor.profile.photoUrl = payload.picture;
+      }
+    }
+
+    if (payload.given_name || payload.family_name) {
+      if (!instructor.profile) instructor.profile = {};
+      if (!instructor.profile.firstName && payload.given_name) {
+        instructor.profile.firstName = payload.given_name;
+      }
+      if (!instructor.profile.lastName && payload.family_name) {
+        instructor.profile.lastName = payload.family_name;
+      }
+    }
+
     instructor.onlineStatus = 'Online';
     await instructor.save();
 

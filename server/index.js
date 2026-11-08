@@ -23,6 +23,7 @@ app.use('/api/classes', require('./routes/classRoutes'));
 app.use('/api/requirements', require('./routes/requirementRoutes'));
 app.use('/api/settings', require('./routes/settingRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/reports', require('./routes/reportRoutes'));
 
 mongoose
   .connect(process.env.MONGO_URI)

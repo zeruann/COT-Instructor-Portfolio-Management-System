@@ -67,6 +67,7 @@ function AdminInstructorProfile() {
 
   const [instructor, setInstructor] = useState(null); // account record
   const [profile, setProfile] = useState({}); // full profile (same shape as /api/profile/me)
+  const [avatarError, setAvatarError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -194,7 +195,7 @@ function AdminInstructorProfile() {
   const statusKey = (instructor.accountStatus || "active").toLowerCase();
   const isActive = statusKey === "active";
 
-  const avatar = p.photoUrl;
+  const avatar = p.photoUrl || instructor.googlePhotoUrl || instructor.profile?.photoUrl;
 
   return (
     <div className="space-y-6">
@@ -202,10 +203,12 @@ function AdminInstructorProfile() {
       <div className="bg-white rounded-2xl shadow p-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-6">
           <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-2xl border-2 border-orange-500 shrink-0 overflow-hidden">
-            {avatar ? (
+            {avatar && !avatarError ? (
               <img
                 src={avatar}
                 alt={displayName}
+                referrerPolicy="no-referrer"
+                onError={() => setAvatarError(true)}
                 className="w-full h-full rounded-full object-cover"
               />
             ) : (
@@ -217,9 +220,8 @@ function AdminInstructorProfile() {
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
               <span
-                className={`px-3 py-0.5 text-[11px] font-bold rounded-full tracking-wider ${
-                  statusStyles[statusKey] || statusStyles.inactive
-                }`}
+                className={`px-3 py-0.5 text-[11px] font-bold rounded-full tracking-wider ${statusStyles[statusKey] || statusStyles.inactive
+                  }`}
               >
                 {(instructor.accountStatus || "ACTIVE").toUpperCase()}
               </span>
@@ -258,17 +260,16 @@ function AdminInstructorProfile() {
           <button
             onClick={handleToggleStatus}
             disabled={updatingStatus}
-            className={`px-6 py-2 rounded-full text-sm font-semibold transition shadow-sm cursor-pointer disabled:opacity-50 ${
-              isActive
+            className={`px-6 py-2 rounded-full text-sm font-semibold transition shadow-sm cursor-pointer disabled:opacity-50 ${isActive
                 ? "border border-red-200 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white"
                 : "border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white"
-            }`}
+              }`}
           >
             {updatingStatus
               ? "Saving..."
               : isActive
-              ? "Deactivate"
-              : "Reactivate"}
+                ? "Deactivate"
+                : "Reactivate"}
           </button>
         </div>
       </div>

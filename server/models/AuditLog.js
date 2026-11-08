@@ -19,6 +19,7 @@ const auditLogSchema = new mongoose.Schema(
       },
       
       actorName: { type: String }, // copy at the time of the action, so the log still reads well if the account changes
+      actorPhoto: { type: String }, // snapshot of avatar/Google photo at time of action
       category: { type: String }, // auth, account, invitation, document, period, settings, system
 
       action: { type: String, required: true }, // use constants/auditActions.js

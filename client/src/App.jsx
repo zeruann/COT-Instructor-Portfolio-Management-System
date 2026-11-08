@@ -17,6 +17,7 @@ import InstructorArchive from "./pages/instructors/InstructorArchive";
 import InstructorNotifications from "./pages/instructors/InstructorNotifications";
 import InstructorSecurity from "./pages/instructors/InstructorSecurity";
 import InstructorActivityLogs from "./pages/instructors/InstructorActivityLogs";
+import InstructorReports from "./pages/instructors/InstructorReports";
 
 // ADMIN
 
@@ -167,6 +168,9 @@ function App() {
             <Route path="/instructors/class-portfolio" element={<ClassPortfolio />} />
             <Route path="/instructors/class-portfolio/:id" element={<ViewClassPortfolio />} />
             <Route path="/instructors/class-portfolio/:id/:reqPath" element={<ClassRequirementDetail />} />
+
+            {/* REPORTS */}
+            <Route path="/instructors/reports" element={<InstructorReports />} />
 
             {/* 3. SHARED PORTFOLIO REQUIREMENTS - INSTRUCTOR VIEW */}
 

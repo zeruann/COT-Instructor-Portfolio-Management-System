@@ -141,6 +141,7 @@ exports.getAuditLogs = async (req, res) => {
 
         const [rawLogs, total] = await Promise.all([
             AuditLog.find(query)
+                .populate('actorId', 'fullName profile googlePhotoUrl')
                 .sort({ at: -1 })
                 .skip(skip)
                 .limit(parsedLimit)
@@ -161,6 +162,14 @@ exports.getAuditLogs = async (req, res) => {
                     : (item._id ? String(parseInt(item._id.toString().slice(-4), 16) % 10000) : String(index + 1));
                 cleanLogId = `LOG${yr}-${suffix.padStart(4, '0')}`;
             }
+
+            const actorObj = item.actorId && typeof item.actorId === 'object' ? item.actorId : null;
+            const actorId = actorObj?._id || item.actorId || null;
+            const actorPhoto =
+                item.actorPhoto ||
+                actorObj?.profile?.photoUrl ||
+                actorObj?.googlePhotoUrl ||
+                null;
 
             const documentRaw =
                 item.documentName ||
@@ -186,6 +195,8 @@ exports.getAuditLogs = async (req, res) => {
 
             return {
                 ...item,
+                actorId,
+                actorPhoto,
                 logId: cleanLogId,
                 details,
                 document,

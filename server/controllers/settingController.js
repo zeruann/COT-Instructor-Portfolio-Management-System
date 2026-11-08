@@ -80,15 +80,17 @@ exports.getSettingOrEnv = async (key, envVar) => {
         const customEnvVar = config?.customEnv;
 
         // 1. Custom API configured in database (via UI) takes highest priority
-        const record = await Setting.findOne({ key });
-        if (
-            record &&
-            record.value !== undefined &&
-            record.value !== null &&
-            typeof record.value === 'string' &&
-            record.value.trim() !== ''
-        ) {
-            return record.value.trim();
+        if (require('mongoose').connection?.readyState === 1) {
+            const record = await Setting.findOne({ key });
+            if (
+                record &&
+                record.value !== undefined &&
+                record.value !== null &&
+                typeof record.value === 'string' &&
+                record.value.trim() !== ''
+            ) {
+                return record.value.trim();
+            }
         }
 
         // 2. Custom API configured in .env (e.g. CUSTOM_EMAIL_USER)
@@ -97,15 +99,17 @@ exports.getSettingOrEnv = async (key, envVar) => {
         }
 
         // 3. Default API database override
-        const defaultRecord = await Setting.findOne({ key: `DEFAULT_${key}` });
-        if (
-            defaultRecord &&
-            defaultRecord.value !== undefined &&
-            defaultRecord.value !== null &&
-            typeof defaultRecord.value === 'string' &&
-            defaultRecord.value.trim() !== ''
-        ) {
-            return defaultRecord.value.trim();
+        if (require('mongoose').connection?.readyState === 1) {
+            const defaultRecord = await Setting.findOne({ key: `DEFAULT_${key}` });
+            if (
+                defaultRecord &&
+                defaultRecord.value !== undefined &&
+                defaultRecord.value !== null &&
+                typeof defaultRecord.value === 'string' &&
+                defaultRecord.value.trim() !== ''
+            ) {
+                return defaultRecord.value.trim();
+            }
         }
     } catch (err) {
         console.warn(`[Settings] Failed reading key "${key}":`, err.message);

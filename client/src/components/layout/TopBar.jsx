@@ -43,6 +43,7 @@ function TopBar({ role, user, onMenuClick, unreadCount = 0 }) {
   if (!menu) return null;
 
   const name = user?.fullName || menu.defaultName;
+  const avatarUrl = user?.profile?.photoUrl || user?.googlePhotoUrl || user?.photoUrl;
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4 sm:px-6 lg:h-header">
@@ -69,11 +70,11 @@ function TopBar({ role, user, onMenuClick, unreadCount = 0 }) {
 
         {menu.accountInTopBar ? (
           // Admin: a menu with My Profile, Security and Logout
-          <ProfileMenu role={role} menu={menu} name={name} />
+          <ProfileMenu role={role} menu={menu} name={name} avatarUrl={avatarUrl} />
         ) : (
           // Instructor: a link to the profile page
           <Link to={menu.profilePath} aria-label={`${name}, ${menu.roleLabel}: open profile`} className="flex items-center gap-3">
-            <UserBadge name={name} roleLabel={menu.roleLabel} />
+            <UserBadge name={name} roleLabel={menu.roleLabel} avatarUrl={avatarUrl} />
             <ChevronRight size={20} className="hidden text-brand-gray sm:block" />
           </Link>
         )}

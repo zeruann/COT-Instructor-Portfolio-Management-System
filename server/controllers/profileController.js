@@ -27,7 +27,7 @@ const FIELD_LABELS = {
 // GET /api/profile/me
 exports.getMyProfile = async (req, res) => {
   try {
-    const me = await Instructor.findById(req.user.id).select('fullName email department profile');
+    const me = await Instructor.findById(req.user.id).select('fullName email department profile googlePhotoUrl');
     if (!me) return res.status(404).json({ message: 'Account not found.' });
     res.json(me);
   } catch (err) {
@@ -39,7 +39,7 @@ exports.getMyProfile = async (req, res) => {
 // GET /api/profile/:id (Admin view)
 exports.getProfileById = async (req, res) => {
   try {
-    const instructor = await Instructor.findById(req.params.id).select('fullName email department profile accountStatus onlineStatus createdAt');
+    const instructor = await Instructor.findById(req.params.id).select('fullName email department profile accountStatus onlineStatus createdAt googlePhotoUrl');
     if (!instructor) return res.status(404).json({ message: 'Instructor not found.' });
     res.json(instructor);
   } catch (err) {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, ChevronDown, RotateCw, ChevronLeft, ChevronRight, Calendar, X } from 'lucide-react';
 
 const CATEGORY_OPTIONS = [
@@ -154,7 +155,18 @@ const formatTargetLabel = (label) => {
   return label;
 };
 
+function getInitials(name = '') {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'U';
+}
+
 export default function ActivityLogsTable({ role = 'admin' }) {
+  const navigate = useNavigate();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -470,25 +482,62 @@ export default function ActivityLogsTable({ role = 'admin' }) {
                     {/* Actor (Admin only) */}
                     {role === 'admin' && (
                       <td className="py-4 pr-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              width="18"
-                              height="18"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="#fb923c"
-                              strokeWidth="1.8"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
+                        <div
+                          className={`flex items-center gap-3 ${item.actorId && item.actorRole === 'Instructor'
+                              ? 'cursor-pointer group'
+                              : ''
+                            }`}
+                          onClick={() => {
+                            if (item.actorId && item.actorRole === 'Instructor') {
+                              navigate(`/admin/instructors/${item.actorId}`);
+                            }
+                          }}
+                        >
+                          <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center shrink-0 overflow-hidden border border-orange-100">
+                            {item.actorPhoto ? (
+                              <img
+                                src={item.actorPhoto}
+                                alt={item.actorName || 'Actor'}
+                                referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  const fallback = e.currentTarget.parentElement?.querySelector('.avatar-fallback');
+                                  if (fallback) fallback.style.display = 'flex';
+                                }}
+                                className="w-full h-full object-cover rounded-full"
+                              />
+                            ) : null}
+                            <div
+                              className="avatar-fallback w-full h-full rounded-full bg-orange-100 text-orange-600 font-semibold text-xs flex items-center justify-center"
+                              style={{ display: item.actorPhoto ? 'none' : 'flex' }}
                             >
-                              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                              <circle cx="12" cy="7" r="4" />
-                            </svg>
+                              {item.actorRole === 'System' ? (
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  width="18"
+                                  height="18"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="#fb923c"
+                                  strokeWidth="1.8"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                >
+                                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                  <circle cx="12" cy="7" r="4" />
+                                </svg>
+                              ) : (
+                                getInitials(item.actorName)
+                              )}
+                            </div>
                           </div>
                           <div>
-                            <p className="text-[15px] font-medium text-gray-800 leading-tight">
+                            <p
+                              className={`text-[15px] font-medium text-gray-800 leading-tight ${item.actorId && item.actorRole === 'Instructor'
+                                  ? 'group-hover:text-orange-600 transition-colors'
+                                  : ''
+                                }`}
+                            >
                               {item.actorName || 'System'}
                             </p>
                             <p className="text-[13px] text-gray-400 leading-tight">
