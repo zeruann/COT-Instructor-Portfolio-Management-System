@@ -1,9 +1,28 @@
 const Instructor = require('../models/Instructor');
+const bcrypt = require('bcryptjs');
+const { logAudit } = require('../utils/auditLog');
+const { ACTION } = require('../constants/auditActions');
+const { isPasswordValid } = require('../utils/passwordRules');
 
 const EDITABLE = [
   'firstName', 'middleName', 'lastName', 'gender', 'civilStatus', 'birthdate',
   'contactNumber', 'alternateEmail', 'address', 'education', 'position', 'rank',
 ];
+
+const FIELD_LABELS = {
+  firstName: 'first name',
+  middleName: 'middle name',
+  lastName: 'last name',
+  gender: 'gender',
+  civilStatus: 'civil status',
+  birthdate: 'birthdate',
+  contactNumber: 'contact number',
+  alternateEmail: 'alternate email',
+  address: 'address',
+  education: 'education',
+  position: 'position',
+  rank: 'academic rank',
+};
 
 // GET /api/profile/me
 exports.getMyProfile = async (req, res) => {
@@ -13,6 +32,18 @@ exports.getMyProfile = async (req, res) => {
     res.json(me);
   } catch (err) {
     console.error('getMyProfile error:', err);
+    res.status(500).json({ message: 'Failed to load profile.' });
+  }
+};
+
+// GET /api/profile/:id (Admin view)
+exports.getProfileById = async (req, res) => {
+  try {
+    const instructor = await Instructor.findById(req.params.id).select('fullName email department profile accountStatus onlineStatus createdAt');
+    if (!instructor) return res.status(404).json({ message: 'Instructor not found.' });
+    res.json(instructor);
+  } catch (err) {
+    console.error('getProfileById error:', err);
     res.status(500).json({ message: 'Failed to load profile.' });
   }
 };
@@ -61,6 +92,17 @@ exports.createMyProfile = async (req, res) => {
       }
     ).select('fullName email department profile');
 
+    await logAudit({
+      actor: created,
+      action: ACTION.PROFILE_CREATE,
+      targetType: 'instructor',
+      targetId: created._id,
+      targetLabel: created.fullName || created.email,
+      details: 'Created initial profile information',
+      meta: { profile: created.profile },
+      req,
+    });
+
     res.status(201).json({
       message: 'Profile created successfully.',
       profile: created.profile,
@@ -78,26 +120,41 @@ exports.createMyProfile = async (req, res) => {
 
 exports.updateMyProfile = async (req, res) => {
   try {
+    const meBefore = await Instructor.findById(req.user.id);
+    if (!meBefore) {
+      return res.status(404).json({ message: 'Account not found.' });
+    }
+
+    const changedFields = [];
     const $set = {};
 
     for (const key of EDITABLE) {
       if (req.body[key] !== undefined) {
         $set[`profile.${key}`] = req.body[key];
+
+        const oldVal = JSON.stringify(meBefore.profile?.[key] ?? '');
+        const newVal = JSON.stringify(req.body[key] ?? '');
+        if (oldVal !== newVal) {
+          changedFields.push(FIELD_LABELS[key] || key);
+        }
       }
     }
 
     // Sync fullName if first or last name is updated
     const computedFullName = [
-      req.body.firstName,
-      req.body.middleName,
-      req.body.lastName,
+      req.body.firstName !== undefined ? req.body.firstName : meBefore.profile?.firstName,
+      req.body.middleName !== undefined ? req.body.middleName : meBefore.profile?.middleName,
+      req.body.lastName !== undefined ? req.body.lastName : meBefore.profile?.lastName,
     ]
       .filter(Boolean)
       .join(' ')
       .trim();
 
-    if (computedFullName) {
+    if (computedFullName && computedFullName !== meBefore.fullName) {
       $set.fullName = computedFullName;
+      if (!changedFields.includes('full name')) {
+        changedFields.unshift('full name');
+      }
     }
 
     const me = await Instructor.findByIdAndUpdate(
@@ -105,6 +162,22 @@ exports.updateMyProfile = async (req, res) => {
       { $set },
       { new: true, runValidators: true }
     ).select('fullName email department profile');
+
+    const details =
+      changedFields.length > 0
+        ? `Changed: ${changedFields.join(', ')}`
+        : 'Updated profile details';
+
+    await logAudit({
+      actor: me,
+      action: ACTION.PROFILE_UPDATE,
+      targetType: 'instructor',
+      targetId: me._id,
+      targetLabel: me.fullName || me.email,
+      details,
+      meta: { changedFields },
+      req,
+    });
 
     res.json(me);
   } catch (err) {
@@ -114,5 +187,59 @@ exports.updateMyProfile = async (req, res) => {
 
     console.error('updateMyProfile error:', err);
     res.status(500).json({ message: 'Failed to save profile.' });
+  }
+};
+
+// PUT /api/profile/change-password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        message: 'Current password and new password are required.',
+      });
+    }
+
+    const instructor = await Instructor.findById(req.user.id);
+    if (!instructor) {
+      return res.status(404).json({ message: 'Account not found.' });
+    }
+
+    if (!instructor.password) {
+      return res.status(400).json({
+        message: 'No password is set for this account (Google Sign-In user).',
+      });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, instructor.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Incorrect current password.' });
+    }
+
+    if (!isPasswordValid(newPassword)) {
+      return res.status(400).json({
+        message:
+          'Password must be at least 8 characters and include uppercase, lowercase, number, and special character.',
+      });
+    }
+
+    instructor.password = await bcrypt.hash(newPassword, 10);
+    await instructor.save();
+
+    await logAudit({
+      actor: instructor,
+      action: ACTION.PASSWORD_CHANGE,
+      targetType: 'account',
+      targetId: instructor._id,
+      targetLabel: instructor.fullName || instructor.email,
+      details: 'Changed account password',
+      req,
+    });
+
+    res.json({ message: 'Password changed successfully.' });
+  } catch (err) {
+    console.error('changePassword error:', err);
+    res.status(500).json({ message: 'Failed to change password.' });
   }
 };

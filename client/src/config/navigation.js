@@ -19,6 +19,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Settings,
+  History,
 } from 'lucide-react';
 
 export const NAV = {
@@ -45,6 +46,7 @@ export const NAV = {
         heading: 'Account',
         items: [
           { to: '/instructors/profile', label: 'Profile', icon: User },
+          { to: '/instructors/activity-logs', label: 'Activity Logs', icon: History },
           { to: '/instructors/security', label: 'Security', icon: Lock },
         ],
       },
@@ -118,6 +120,7 @@ export const NAV = {
         items: [
           { to: '/admin/archive', label: 'Archive', icon: Archive },
           { to: '/admin/academic-period', label: 'Academic Period', icon: Calendar },
+          { to: '/admin/activity-logs', label: 'Activity Logs', icon: History },
         ],
       },
       {

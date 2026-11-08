@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Mail,
   Ban,
@@ -8,8 +8,13 @@ import {
   CircleCheck,
   TriangleAlert,
   X,
+  ChevronLeft,
+  ChevronRight,
+  UserPlus,
 } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate';
+
+const INVITE_PAGE_SIZE = 8;
 
 const statusStyles = {
   Pending: 'bg-yellow-100 text-yellow-700',
@@ -187,6 +192,8 @@ function InviteInstructor() {
   // Ids currently mid-request (blocks rapid double-clicks while waiting on the server)
   const [resendingIds, setResendingIds] = useState(() => new Set());
   const { modal, close, notify, confirm } = useAppModal();
+  const [invitePage, setInvitePage] = useState(1);
+  const [tableVisible, setTableVisible] = useState(true);
 
   useEffect(() => {
     fetch('/api/invitations')
@@ -194,6 +201,15 @@ function InviteInstructor() {
       .then((data) => setInvitations(data))
       .catch((err) => console.error('Failed to load invitations:', err));
   }, []);
+
+  // Fade table on page change
+  const isFirstPageRender = useRef(true);
+  useEffect(() => {
+    if (isFirstPageRender.current) { isFirstPageRender.current = false; return; }
+    setTableVisible(false);
+    const t = setTimeout(() => setTableVisible(true), 200);
+    return () => clearTimeout(t);
+  }, [invitePage]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -288,6 +304,9 @@ function InviteInstructor() {
 
   return (
     <>
+      {/* PAGE HEADER */}
+
+
       {/* Invite Form */}
       <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-6 mb-6 hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-shadow">
         <div className="flex items-center gap-3 mb-6">
@@ -354,10 +373,10 @@ function InviteInstructor() {
       {/* Recent Invitations Table */}
       <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-6 hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-shadow">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="font-semibold text-lg text-gray-800">Recent Invitations</h2>
-          <a href="#" className="text-orange-500 text-sm font-medium hover:underline">
-            View All
-          </a>
+          <div>
+            <h2 className="font-semibold text-lg text-gray-800">Recent Invitations</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{invitations.length} total invitation{invitations.length !== 1 ? 's' : ''}</p>
+          </div>
         </div>
 
         <table className="w-full text-sm">
@@ -370,7 +389,7 @@ function InviteInstructor() {
               <th className="py-3 font-medium">Action</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className={`transition-opacity duration-300 ${tableVisible ? 'opacity-100' : 'opacity-0'}`}>
             {invitations.length === 0 ? (
               <tr>
                 <td colSpan="5" className="text-center py-16">
@@ -382,70 +401,112 @@ function InviteInstructor() {
                 </td>
               </tr>
             ) : (
-              invitations.map((inv) => {
-                const isResending = resendingIds.has(inv._id);
+              invitations
+                .slice((invitePage - 1) * INVITE_PAGE_SIZE, invitePage * INVITE_PAGE_SIZE)
+                .map((inv) => {
+                  const isResending = resendingIds.has(inv._id);
 
-                return (
-                  <tr key={inv._id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors">
-                    <td className="py-3.5 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center">
-                        <User className="text-orange-400" size={18} />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-800">{getDisplayName(inv)}</p>
-                        <p className="text-gray-400 text-xs">{inv.email}</p>
-                      </div>
-                    </td>
-                    <td className="text-gray-600">{inv.department}</td>
-                    <td className="text-gray-600">{formatDate(inv.dateSent)}</td>
-                    <td>
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[inv.status]}`}
-                      >
-                        {inv.status?.toUpperCase()}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="flex items-center gap-3">
-                        {inv.status === 'Accepted' && (
-                          inv.accountStatus === 'Active' ? (
-                            <a href="#" className="text-blue-500 text-xs font-medium hover:underline">
-                              View Profile
-                            </a>
-                          ) : (
-                            <span className="text-xs font-medium text-gray-400">Setting up…</span>
-                          )
-                        )}
+                  return (
+                    <tr key={inv._id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors duration-150">
+                      <td className="py-3.5 flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center">
+                          <User className="text-orange-400" size={18} />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-800">{getDisplayName(inv)}</p>
+                          <p className="text-gray-400 text-xs">{inv.email}</p>
+                        </div>
+                      </td>
+                      <td className="text-gray-600">{inv.department}</td>
+                      <td className="text-gray-600">{formatDate(inv.dateSent)}</td>
+                      <td>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[inv.status]}`}
+                        >
+                          {inv.status?.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          {inv.status === 'Accepted' && (
+                            inv.accountStatus === 'Active' ? (
+                              <a href="#" className="text-blue-500 text-xs font-medium hover:underline">
+                                View Profile
+                              </a>
+                            ) : (
+                              <span className="text-xs font-medium text-gray-400">Setting up…</span>
+                            )
+                          )}
 
-                        {(inv.status === 'Rejected' || inv.status === 'Expired') && (
-                          <button
-                            onClick={() => handleResend(inv._id)}
-                            disabled={isResending}
-                            className={`flex items-center gap-1 text-xs font-medium transition-colors ${isResending ? 'text-orange-300 cursor-wait' : 'text-orange-500 hover:underline'
-                              }`}
-                          >
-                            <RotateCcw size={13} className={isResending ? 'animate-spin' : ''} />
-                            {isResending ? 'Sending…' : 'Resend'}
-                          </button>
-                        )}
+                          {(inv.status === 'Rejected' || inv.status === 'Expired') && (
+                            <button
+                              onClick={() => handleResend(inv._id)}
+                              disabled={isResending}
+                              className={`flex items-center gap-1 text-xs font-medium transition-colors ${isResending ? 'text-orange-300 cursor-wait' : 'text-orange-500 hover:underline'
+                                }`}
+                            >
+                              <RotateCcw size={13} className={isResending ? 'animate-spin' : ''} />
+                              {isResending ? 'Sending…' : 'Resend'}
+                            </button>
+                          )}
 
-                        {inv.status === 'Pending' && (
-                          <button
-                            onClick={() => handleCancelInvitation(inv)}
-                            className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors"
-                          >
-                            <Ban size={13} />
-                            Cancel
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+                          {inv.status === 'Pending' && (
+                            <button
+                              onClick={() => handleCancelInvitation(inv)}
+                              className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors"
+                            >
+                              <Ban size={13} />
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
             )}
           </tbody>
         </table>
+
+        {/* PAGINATION */}
+        {invitations.length > INVITE_PAGE_SIZE && (
+          <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100 text-[13px] text-gray-500">
+            <span>
+              Showing {(invitePage - 1) * INVITE_PAGE_SIZE + 1}–{Math.min(invitePage * INVITE_PAGE_SIZE, invitations.length)} of {invitations.length}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={invitePage <= 1}
+                onClick={() => setInvitePage((p) => p - 1)}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition"
+              >
+                <ChevronLeft className="w-4 h-4 inline" />
+              </button>
+              {Array.from({ length: Math.ceil(invitations.length / INVITE_PAGE_SIZE) }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setInvitePage(p)}
+                  className={`w-8 h-8 rounded-lg text-xs font-medium border transition ${p === invitePage
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                    }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={invitePage >= Math.ceil(invitations.length / INVITE_PAGE_SIZE)}
+                onClick={() => setInvitePage((p) => p + 1)}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition"
+              >
+                <ChevronRight className="w-4 h-4 inline" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <AppModal modal={modal} onClose={close} />

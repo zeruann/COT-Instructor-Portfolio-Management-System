@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown, Plus } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, ChevronDown, Plus, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+
+const PAGE_SIZE = 10;
 
 const API_URL = 'http://localhost:5000/api/instructors';
 
@@ -31,6 +33,8 @@ export default function ViewInstructors() {
   const [updatingId, setUpdatingId] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [tableVisible, setTableVisible] = useState(true);
 
   // Fetch instructors from backend API
   useEffect(() => {
@@ -103,6 +107,7 @@ export default function ViewInstructors() {
     setStatusFilter('all');
     setDepartmentFilter('all');
     setSearchQuery('');
+    setCurrentPage(1);
   };
 
   // Delete (local only, same as before)
@@ -225,73 +230,104 @@ export default function ViewInstructors() {
     );
   };
 
+  const totalPages = Math.ceil(filteredInstructors.length / PAGE_SIZE);
+  const pagedInstructors = filteredInstructors.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, departmentFilter]);
+
+  // Fade the table out then back in whenever the visible rows change
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    setTableVisible(false);
+    const t = setTimeout(() => setTableVisible(true), 200);
+    return () => clearTimeout(t);
+  }, [searchQuery, statusFilter, departmentFilter, currentPage]);
+
   return (
     <>
+      {/* PAGE HEADER */}
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-1">
+
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Instructors</h1>
+        </div>
+        <p className="text-sm text-gray-500">
+          Manage and monitor all registered faculty members.
+        </p>
+      </div>
+
       {/* SEARCH + FILTERS */}
-      <div className="flex items-center justify-between mb-6 gap-3">
-        <div className="flex items-center gap-3 flex-1">
-          {/* Search */}
-          <div className="relative flex-1 max-w-xl">
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-lg py-3 pl-4 pr-10 text-[14px] text-gray-700 placeholder-gray-400 focus:outline-none focus:border-orange-500 transition"
-            />
-            <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
-          </div>
-
-          {/* Department filter */}
-          <div className="relative w-56 shrink-0">
-            <select
-              value={departmentFilter}
-              onChange={(e) => setDepartmentFilter(e.target.value)}
-              aria-label="Filter by department"
-              className="w-full appearance-none bg-white border border-gray-200 rounded-lg py-3 pl-4 pr-9 text-[14px] text-gray-700 focus:outline-none focus:border-orange-500 transition cursor-pointer"
-            >
-              <option value="all">All departments</option>
-              {departmentOptions.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
-
-          {/* Status filter */}
-          <div className="relative w-48 shrink-0">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              aria-label="Filter by account status"
-              className="w-full appearance-none bg-white border border-gray-200 rounded-lg py-3 pl-4 pr-9 text-[14px] text-gray-700 focus:outline-none focus:border-orange-500 transition cursor-pointer"
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-          </div>
+      <div className="flex items-center gap-3 mb-6">
+        {/* Search */}
+        <div className="relative flex-[2] min-w-0">
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-white border border-gray-200 rounded-lg py-3 pl-4 pr-10 text-[14px] text-gray-700 placeholder-gray-400 focus:outline-none focus:border-orange-500 transition"
+          />
+          <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
 
+        {/* Department filter */}
+        <div className="relative flex-1 min-w-0">
+          <select
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            aria-label="Filter by department"
+            className="w-full appearance-none bg-white border border-gray-200 rounded-lg py-3 pl-4 pr-9 text-[14px] text-gray-700 focus:outline-none focus:border-orange-500 transition cursor-pointer"
+          >
+            <option value="all">All departments</option>
+            {departmentOptions.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        </div>
+
+        {/* Status filter */}
+        <div className="relative flex-1 min-w-0">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            aria-label="Filter by account status"
+            className="w-full appearance-none bg-white border border-gray-200 rounded-lg py-3 pl-4 pr-9 text-[14px] text-gray-700 focus:outline-none focus:border-orange-500 transition cursor-pointer"
+          >
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+        </div>
+
+        {/* Add button */}
         <button
           onClick={() => navigate('/admin/invite-instructor')}
           className="shrink-0 inline-flex items-center gap-2 px-10 py-3 text-[14px] font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 transition"
         >
           <Plus className="w-4 h-4" />
-          Add Instructor
+          Invite Instructor
         </button>
       </div>
+
 
       {/* TABLE CARD */}
       <div className="bg-white rounded-2xl shadow-xs border border-gray-100 p-6">
         <div className="flex items-center justify-between gap-4 mb-6">
           <h2 className="text-base font-bold text-gray-800">Instructors</h2>
-          <button className="text-xs font-semibold text-orange-500 hover:underline">View All</button>
+          <span className="text-xs font-medium text-gray-400">
+            {filteredInstructors.length} {filteredInstructors.length === 1 ? 'result' : 'results'}
+          </span>
         </div>
 
         <div className="overflow-x-auto">
@@ -306,7 +342,7 @@ export default function ViewInstructors() {
                 <th className="pb-3">ACTION</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 text-sm">
+            <tbody className={`divide-y divide-gray-100 text-sm transition-opacity duration-300 ${tableVisible ? 'opacity-100' : 'opacity-0'}`}>
               {loading ? (
                 <tr>
                   <td colSpan="6" className="py-8 text-center text-xs text-gray-400">
@@ -319,8 +355,8 @@ export default function ViewInstructors() {
                     {error}
                   </td>
                 </tr>
-              ) : filteredInstructors.length > 0 ? (
-                filteredInstructors.map((item) => {
+              ) : pagedInstructors.length > 0 ? (
+                pagedInstructors.map((item) => {
                   const id = item._id || item.id;
                   const name = getDisplayName(item) || 'Unknown';
 
@@ -328,12 +364,12 @@ export default function ViewInstructors() {
                     <tr
                       key={id}
                       onClick={() => navigate(`/admin/instructors/${id}`)}
-                      className="hover:bg-gray-50/50 transition cursor-pointer"
+                      className="hover:bg-gray-50/50 transition-colors duration-150 cursor-pointer"
                     >
                       <td className="py-4 pr-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                           </div>
                           <div>
                             <p className="text-[16px] text-gray-800 leading-tight">{name}</p>
@@ -369,6 +405,46 @@ export default function ViewInstructors() {
             </tbody>
           </table>
         </div>
+
+        {/* PAGINATION */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100 text-[13px] text-gray-500">
+            <span>
+              Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filteredInstructors.length)} of {filteredInstructors.length}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => p - 1)}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition"
+              >
+                <ChevronLeft className="w-4 h-4 inline" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setCurrentPage(p)}
+                  className={`w-8 h-8 rounded-lg text-xs font-medium border transition ${p === currentPage
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                    }`}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => p + 1)}
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition"
+              >
+                <ChevronRight className="w-4 h-4 inline" />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

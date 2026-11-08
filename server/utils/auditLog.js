@@ -12,22 +12,78 @@ const AuditLog = require('../models/AuditLog');
  *     req,                                  // optional: stores IP and browser
  *   });
  */
-async function logAudit({ actor, action, outcome = 'success', targetType, targetId, targetLabel, meta, req }) {
+async function logAudit({
+  actor,
+  action,
+  outcome = 'success',
+  targetType,
+  targetId,
+  targetLabel,
+  details,
+  documentName,
+  fileName,
+  logId,
+  meta,
+  req,
+}) {
   try {
     const type = actor && actor.accountType;
+    const currentYear = new Date().getFullYear();
+
+    let generatedLogId = logId;
+    if (!generatedLogId) {
+      try {
+        const latestLog = await AuditLog.findOne({
+          logId: new RegExp(`^LOG${currentYear}-\\d+`),
+        })
+          .sort({ at: -1 })
+          .select('logId')
+          .lean();
+
+        let nextNum = 1;
+        if (latestLog && latestLog.logId) {
+          const match = latestLog.logId.match(new RegExp(`^LOG${currentYear}-(\\d+)`));
+          if (match && match[1]) {
+            nextNum = parseInt(match[1], 10) + 1;
+          }
+        } else {
+          const count = await AuditLog.countDocuments({
+            at: {
+              $gte: new Date(currentYear, 0, 1),
+              $lte: new Date(currentYear, 11, 31, 23, 59, 59, 999),
+            },
+          });
+          nextNum = count + 1;
+        }
+        generatedLogId = `LOG${currentYear}-${String(nextNum).padStart(4, '0')}`;
+      } catch {
+        generatedLogId = `LOG${currentYear}-${String(Math.floor(1 + Math.random() * 9999)).padStart(4, '0')}`;
+      }
+    }
+
+    const actorName =
+      actor && (actor.fullName || actor.name || actor.email)
+        ? actor.fullName || actor.name || actor.email
+        : 'System';
+
     await AuditLog.create({
-      actorId: actor ? actor._id : null,
+      logId: generatedLogId,
+      actorId: actor ? (actor._id || actor.id) : null,
       actorRole: actor ? (type === 'Administrator' ? 'Administrator' : 'Instructor') : 'System',
-      actorName: actor ? actor.fullName : 'System',
+      actorName,
       category: String(action).split('.')[0],
       action,
       outcome,
       targetType,
       targetId,
       targetLabel,
+      details,
+      documentName,
+      fileName,
       meta,
-      ip: req ? req.ip : undefined,
+      ip: req ? (req.ip || req.connection?.remoteAddress) : undefined,
       userAgent: req && req.get ? req.get('user-agent') : undefined,
+      at: new Date(),
     });
   } catch (err) {
     console.error('Audit log failed:', err.message);

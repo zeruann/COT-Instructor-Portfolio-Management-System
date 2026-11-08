@@ -1,28 +1,110 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
+// ---------- helpers ----------
+const show = (value) =>
+  value === undefined || value === null || value === "" ? "—" : value;
+
+const formatDate = (value) => {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+};
+
+function getInitials(name = "") {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+const getNameParts = (fullName = "") => {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  return {
+    firstName: parts[0] || "",
+    middleName: parts.length > 2 ? parts.slice(1, -1).join(" ") : "",
+    lastName: parts.length > 1 ? parts[parts.length - 1] : "",
+  };
+};
+
+function Info({ label, value, className = "" }) {
+  return (
+    <div className={className}>
+      <p className="text-sm font-medium text-gray-500 mb-1">{label}</p>
+      <p className="text-sm text-gray-800 break-words">{show(value)}</p>
+    </div>
+  );
+}
+
+function Section({ title, children }) {
+  return (
+    <section className="bg-white rounded-2xl shadow p-6">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-orange-500 font-bold">{title}</h2>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+const statusStyles = {
+  active: "bg-emerald-100 text-emerald-600",
+  deactivated: "bg-red-100 text-red-500",
+  inactive: "bg-gray-100 text-gray-500",
+  pending: "bg-amber-100 text-amber-600",
+};
+
 function AdminInstructorProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [instructor, setInstructor] = useState(null);
+  const [instructor, setInstructor] = useState(null); // account record
+  const [profile, setProfile] = useState({}); // full profile (same shape as /api/profile/me)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
-    const fetchInstructor = async () => {
+    const token = localStorage.getItem("token");
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const fetchInstructorProfile = async () => {
       try {
         setLoading(true);
         setError("");
 
-        const res = await fetch(`http://localhost:5000/api/instructors/${id}`);
+        // Fetch instructor account and profile details
+        const res = await fetch(`/api/instructors/${id}`, { headers });
         const data = await res.json();
-
         if (!res.ok) {
           throw new Error(data.message || "Failed to load instructor.");
         }
 
         setInstructor(data);
+
+        // Populate profile from embedded profile field or via /api/profile/:id
+        if (data.profile && Object.keys(data.profile).length > 0) {
+          setProfile(data.profile);
+        } else {
+          try {
+            const profileRes = await fetch(`/api/profile/${id}`, { headers });
+            if (profileRes.ok) {
+              const profileData = await profileRes.json();
+              setProfile(profileData.profile || profileData || {});
+            } else {
+              setProfile(data.profile || {});
+            }
+          } catch {
+            setProfile(data.profile || {});
+          }
+        }
       } catch (err) {
         console.error("Failed to load instructor:", err);
         setError(err.message);
@@ -31,43 +113,58 @@ function AdminInstructorProfile() {
       }
     };
 
-    fetchInstructor();
+    fetchInstructorProfile();
   }, [id]);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "";
+  // Handle Deactivate / Reactivate status toggle
+  const handleToggleStatus = async () => {
+    if (!instructor) return;
+    const isActive = (instructor.accountStatus || "").toLowerCase() === "active";
+    const newStatus = isActive ? "Deactivated" : "Active";
+    const verb = isActive ? "deactivate" : "reactivate";
 
-    return date.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
+    const name = displayName;
+    if (!confirm(`Are you sure you want to ${verb} ${name}?`)) return;
 
-  const getNameParts = (fullName = "") => {
-    const parts = fullName.trim().split(/\s+/);
-    return {
-      firstName: parts[0] || "",
-      middleName:
-        parts.length > 2 ? parts.slice(1, -1).join(" ") : "",
-      lastName:
-        parts.length > 1 ? parts[parts.length - 1] : "",
-    };
+    try {
+      setUpdatingStatus(true);
+      const token = localStorage.getItem("token");
+      const res = await fetch(`/api/instructors/${id}/status`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ accountStatus: newStatus }),
+      });
+      if (!res.ok) throw new Error(`Failed to ${verb} instructor.`);
+      const updated = await res.json();
+      setInstructor((prev) => ({
+        ...prev,
+        accountStatus: updated.accountStatus ?? newStatus,
+      }));
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setUpdatingStatus(false);
+    }
   };
 
   if (loading) {
-    return <p className="text-gray-500">Loading instructor profile...</p>;
+    return (
+      <div className="flex items-center justify-center p-12 bg-white rounded-2xl shadow">
+        <p className="text-gray-500 font-medium">Loading instructor profile...</p>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="bg-white rounded-2xl p-6">
-        <p className="text-red-500">{error}</p>
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <p className="text-red-500 font-medium">{error}</p>
         <button
           onClick={() => navigate("/admin/instructors")}
-          className="mt-4 text-sm text-orange-500 hover:underline"
+          className="mt-4 text-sm text-orange-500 hover:underline cursor-pointer"
         >
           ← Back to Instructors
         </button>
@@ -75,172 +172,174 @@ function AdminInstructorProfile() {
     );
   }
 
-  if (!instructor) {
-    return null;
-  }
+  if (!instructor) return null;
 
-  const { firstName, middleName, lastName } = getNameParts(instructor.fullName);
+  const p = profile || {};
+  const education = p.education || [];
 
-  const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-    instructor.fullName || "Instructor"
-  )}&background=f97316&color=fff`;
+  // Name: profile parts first, then the account's full name
+  const fallbackParts = getNameParts(instructor.fullName);
+  const firstName = p.firstName || fallbackParts.firstName;
+  const middleName = p.middleName || fallbackParts.middleName;
+  const lastName = p.lastName || fallbackParts.lastName;
+
+  const displayName =
+    [p.firstName, p.middleName, p.lastName].filter(Boolean).join(" ").trim() ||
+    instructor.fullName ||
+    "Instructor";
+
+  const position = p.position || instructor.position;
+  const rank = p.rank || instructor.rank;
+  const contactNumber = p.contactNumber || instructor.contactNumber;
+  const statusKey = (instructor.accountStatus || "active").toLowerCase();
+  const isActive = statusKey === "active";
+
+  const avatar = p.photoUrl;
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-
+    <div className="space-y-6">
       {/* PROFILE HEADER CARD */}
-      <div className="flex items-center justify-between pb-8 border-b border-gray-100">
+      <div className="bg-white rounded-2xl shadow p-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-6">
-          {/* Avatar with Orange Border Ring */}
-          <div className="p-1 rounded-full border-2 border-orange-500">
-            <img
-              src={avatar}
-              alt={instructor.fullName}
-              className="w-24 h-24 rounded-full object-cover"
-            />
+          <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-2xl border-2 border-orange-500 shrink-0 overflow-hidden">
+            {avatar ? (
+              <img
+                src={avatar}
+                alt={displayName}
+                className="w-full h-full rounded-full object-cover"
+              />
+            ) : (
+              getInitials(displayName)
+            )}
           </div>
 
-          {/* Name and Role */}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {instructor.fullName || "Erica L. Egama"}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
+              <span
+                className={`px-3 py-0.5 text-[11px] font-bold rounded-full tracking-wider ${
+                  statusStyles[statusKey] || statusStyles.inactive
+                }`}
+              >
+                {(instructor.accountStatus || "ACTIVE").toUpperCase()}
+              </span>
+            </div>
             <p className="text-sm text-gray-500 mt-1">
-              {instructor.position || "Instructor"}, {instructor.department || "IT Department"}
+              {[position, instructor.department].filter(Boolean).join(", ") ||
+                "Instructor"}
             </p>
           </div>
 
-          {/* Vertical Separator Line */}
           <div className="h-16 w-[1px] bg-gray-200 mx-2 hidden md:block"></div>
 
-          {/* Details Stack */}
           <div className="text-sm text-gray-500 space-y-1">
             <p>
               <span className="text-gray-400">Instructor ID: </span>
-              {instructor._id || "241108179124971"}
+              {show(instructor._id)}
             </p>
             <p>
               <span className="text-gray-400">Email: </span>
-              {instructor.email || "ericaegama@gmail.com"}
+              {show(instructor.email)}
             </p>
             <p>
               <span className="text-gray-400">Contact: </span>
-              {instructor.contactNumber || "093435 0384 335"}
+              {show(contactNumber)}
             </p>
           </div>
         </div>
 
-        {/* ACTION BUTTONS (Upper Right) */}
         <div className="flex items-center gap-3 self-start">
           <button
             onClick={() => navigate("/admin/instructors")}
-            className="px-6 py-2 border border-gray-300 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-50 transition"
+            className="px-6 py-2 border border-gray-300 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-50 transition cursor-pointer"
           >
             Back
           </button>
           <button
-            className="px-6 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-full text-sm font-medium transition shadow-sm"
+            onClick={handleToggleStatus}
+            disabled={updatingStatus}
+            className={`px-6 py-2 rounded-full text-sm font-semibold transition shadow-sm cursor-pointer disabled:opacity-50 ${
+              isActive
+                ? "border border-red-200 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white"
+                : "border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white"
+            }`}
           >
-            Deactivate
+            {updatingStatus
+              ? "Saving..."
+              : isActive
+              ? "Deactivate"
+              : "Reactivate"}
           </button>
         </div>
       </div>
 
-      {/* MAIN FORM / INFORMATION SECTION */}
-      <div className="pt-8 grid grid-cols-1 lg:grid-cols-12 gap-10">
+      {/* BASIC INFORMATION */}
+      <Section title="Basic Information">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Info label="First Name" value={firstName} />
+          <Info label="Middle Name" value={middleName} />
+          <Info label="Last Name" value={lastName} />
+          <Info label="Gender" value={p.gender || instructor.gender} />
+          <Info
+            label="Civil Status"
+            value={p.civilStatus || instructor.civilStatus}
+          />
+          <Info
+            label="Birthdate"
+            value={formatDate(p.birthdate || instructor.birthdate)}
+          />
+        </div>
+      </Section>
 
-        {/* LEFT COLUMN: BASIC INFORMATION */}
-        <div className="lg:col-span-7">
-          <h2 className="text-base font-bold text-orange-500 mb-4">
-            Basic Information
-          </h2>
+      {/* CONTACT INFORMATION */}
+      <Section title="Contact Information">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Info label="Contact Number" value={contactNumber} />
+          <Info label="Alternate Email" value={p.alternateEmail} />
+          <Info label="Address" value={p.address} className="md:col-span-2" />
+        </div>
+      </Section>
 
+      {/* EDUCATIONAL BACKGROUND */}
+      <Section title="Educational Background">
+        {education.length === 0 ? (
+          <p className="text-sm text-gray-400">
+            No educational background added yet.
+          </p>
+        ) : (
           <div className="space-y-4">
-            {/* First Name & Middle Name */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">First Name</label>
-                <div className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-700 bg-white">
-                  {firstName || "First Name"}
+            {education.map((ed, i) => (
+              <div
+                key={ed._id || i}
+                className="border border-gray-100 rounded-xl p-4"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                  <Info label="Level" value={ed.level} />
+                  <Info label="Degree / Program" value={ed.degree} />
+                  <Info label="School / University" value={ed.school} />
+                  <Info label="Year Graduated" value={ed.yearGraduated} />
                 </div>
               </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Middle Name</label>
-                <div className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-700 bg-white">
-                  {middleName || "Middle Name"}
-                </div>
-              </div>
-            </div>
-
-            {/* Last Name & Civil Status */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Last Name</label>
-                <div className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-700 bg-white">
-                  {lastName || "Last Name"}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Civil Status</label>
-                <div className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-700 bg-white">
-                  {instructor.civilStatus || "Civil Status"}
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Number */}
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Contact Number</label>
-              <div className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-700 bg-white">
-                {instructor.contactNumber || "Contact Number"}
-              </div>
-            </div>
-
-            {/* Gender & Birthdate */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Gender</label>
-                <div className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-700 bg-white">
-                  {instructor.gender || "Gender"}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Birthdate</label>
-                <div className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-700 bg-white">
-                  {formatDate(instructor.birthdate) || "Birthdate"}
-                </div>
-              </div>
-            </div>
+            ))}
           </div>
+        )}
+      </Section>
+
+      {/* POSITION / RANK */}
+      <Section title="Position / Rank">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Info label="Position" value={position} />
+          <Info label="Academic Rank" value={rank} />
         </div>
+      </Section>
 
-        {/* RIGHT COLUMN: LOGIN INFORMATION */}
-        <div className="lg:col-span-5">
-          <h2 className="text-base font-bold text-orange-500 mb-4">
-            Login Information
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Email</label>
-              <div className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-700 bg-white truncate">
-                {instructor.email || "Email"}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Password</label>
-              <div className="w-full border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-700 bg-white">
-                ••••••••
-              </div>
-            </div>
-          </div>
+      {/* LOGIN INFORMATION */}
+      <Section title="Login Information">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Info label="Email" value={instructor.email} />
+          <Info label="Password" value="••••••••" />
         </div>
-
-      </div>
+      </Section>
     </div>
   );
 }

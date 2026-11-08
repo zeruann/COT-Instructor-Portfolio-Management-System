@@ -18,6 +18,7 @@ app.use("/api/invitations", invitationRoutes);
 app.use("/api/instructors", instructorRoutes);
 app.use('/api/profile', require('./routes/profileRoutes'));
 app.use('/api/documents', require('./routes/documentRoutes'));
+app.use('/api/academic-periods', require('./routes/academicPeriodRoutes'));
 app.use('/api/requirements', require('./routes/requirementRoutes'));
 app.use('/api/settings', require('./routes/settingRoutes'));
 

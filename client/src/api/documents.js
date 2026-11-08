@@ -16,9 +16,8 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-/**
- * Upload a document or re-upload a new version
- */
+// Upload a document or re-upload a new version
+
 export async function uploadDocument({
   file,
   requirementKey,
@@ -60,17 +59,14 @@ export async function uploadDocument({
   return res.data;
 }
 
-/**
- * Fetch list of documents (by requirementKey, instructorId, etc.)
- */
+// Fetch list of documents (by requirementKey, instructorId, etc.)
 export async function fetchDocuments(params = {}) {
   const res = await api.get('/documents', { params });
   return res.data;
 }
 
-/**
- * Fetch a single document by ID
- */
+
+// Fetch a single document by ID
 export async function fetchDocumentById(id) {
   const res = await api.get(`/documents/${id}`);
   return res.data;
@@ -78,7 +74,7 @@ export async function fetchDocumentById(id) {
 
 /**
  * Helper to get the stream URL for previewing or downloading a file.
- * Automatically adds the JWT token as a query parameter or header for preview if needed,
+ * Automatically add the JWT token as a query parameter or header for preview if needed,
  * or returns a streaming URL.
  */
 export function getDocumentFileUrl(id, version) {
@@ -91,9 +87,7 @@ export function getDocumentFileUrl(id, version) {
   return `${API_BASE}/documents/${id}/file${qs}`;
 }
 
-/**
- * Fetch stream as blob for authenticated download
- */
+// Fetch stream as blob for authenticated download
 export async function downloadDocumentFile(id, version) {
   const res = await api.get(`/documents/${id}/file`, {
     params: { version },
@@ -102,42 +96,38 @@ export async function downloadDocumentFile(id, version) {
   return res.data;
 }
 
-/**
- * Review a document (Admin only)
- */
+
+//Review a document (Admin only)
 export async function reviewDocument(id, { decision, comment }) {
   const res = await api.patch(`/documents/${id}/review`, { decision, comment });
   return res.data;
 }
 
-/**
- * Delete a document entry (Draft or Rejected only)
- */
+
+// Delete a document entry (Draft or Rejected only)
 export async function deleteDocument(id) {
   const res = await api.delete(`/documents/${id}`);
   return res.data;
 }
 
-/**
- * Get card summaries for Faculty Portfolio overview
- */
+
+// Get card summaries for Faculty Portfolio overview
 export async function fetchFacultySummary(instructorId) {
   const params = instructorId ? { instructorId } : {};
   const res = await api.get('/documents/summary/faculty', { params });
   return res.data;
 }
 
-/**
- * Fetch requirement details by key
- */
+
+// Fetch requirement details by key
+
 export async function fetchRequirement(key) {
   const res = await api.get(`/requirements/${key}`);
   return res.data;
 }
 
-/**
- * Fetch all requirements by scope
- */
+// Fetch all requirements by scope
+
 export async function fetchRequirements(params = { scope: 'faculty' }) {
   const res = await api.get('/requirements', { params });
   return res.data;

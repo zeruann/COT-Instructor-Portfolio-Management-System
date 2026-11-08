@@ -43,10 +43,10 @@ const show = (value) =>
 const formatDate = (value) =>
   value
     ? new Date(value).toLocaleDateString("en-PH", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
     : "—";
 
 function Info({ label, value, className = "" }) {
@@ -108,6 +108,7 @@ function Profile() {
       },
     })
       .then(async (res) => {
+        fetch
         if (!res.ok) {
           throw new Error("Failed to load profile.");
         }
@@ -179,11 +180,11 @@ function Profile() {
       education:
         p.education && p.education.length > 0
           ? p.education.map((ed) => ({
-              level: ed.level || "",
-              degree: ed.degree || "",
-              school: ed.school || "",
-              yearGraduated: ed.yearGraduated || "",
-            }))
+            level: ed.level || "",
+            degree: ed.degree || "",
+            school: ed.school || "",
+            yearGraduated: ed.yearGraduated || "",
+          }))
           : [],
 
       position: p.position || "",

@@ -1,3 +1,5 @@
+const { logAudit } = require('../utils/auditLog');
+const { ACTION } = require('../constants/auditActions');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
@@ -75,6 +77,16 @@ exports.login = async (req, res) => {
     instructor.onlineStatus = 'Online';
     await instructor.save();
 
+    await logAudit({
+      actor: instructor,
+      action: ACTION.LOGIN,
+      targetType: 'account',
+      targetId: instructor._id,
+      targetLabel: instructor.fullName || instructor.email,
+      details: 'Logged in via Email',
+      req,
+    });
+
     res.json({ token, instructor: publicInstructor(instructor) });
   } catch (err) {
     console.error('Login error:', err);
@@ -94,6 +106,8 @@ exports.googleLogin = async (req, res) => {
     const { credential } = req.body;
     if (!credential) {
       return res.status(400).json({ message: 'Missing Google credential.' });
+
+
     }
 
     const clientId = await getSettingOrEnv('googleClientId', 'GOOGLE_CLIENT_ID');
@@ -129,6 +143,17 @@ exports.googleLogin = async (req, res) => {
 
     const token = signToken(instructor);
 
+    await logAudit({
+      actor: instructor,
+      action: ACTION.LOGIN,
+      targetType: 'account',
+      targetId: instructor._id,
+      targetLabel: instructor.fullName || instructor.email,
+      details: 'Logged in via Google Sign-In',
+      meta: { method: 'google' },
+      req,
+    });
+
     res.json({ token, instructor: publicInstructor(instructor) });
   } catch (err) {
     console.error('Google login error:', err);
@@ -136,12 +161,24 @@ exports.googleLogin = async (req, res) => {
   }
 };
 
-// Add the auth middleware to this route so req.user exists:
-// router.post('/logout', auth, logout)
 exports.logout = async (req, res) => {
   try {
     if (req.user?.id) {
-      await Instructor.updateOne({ _id: req.user.id }, { $set: { onlineStatus: 'Offline' } });
+      const instructor = await Instructor.findById(req.user.id);
+      if (instructor) {
+        instructor.onlineStatus = 'Offline';
+        await instructor.save();
+
+        await logAudit({
+          actor: instructor,
+          action: ACTION.LOGOUT,
+          targetType: 'account',
+          targetId: instructor._id,
+          targetLabel: instructor.fullName || instructor.email,
+          details: 'Logged out of system',
+          req,
+        });
+      }
     }
     res.json({ message: 'Logged out successfully' });
   } catch (err) {
@@ -222,6 +259,16 @@ exports.resetPassword = async (req, res) => {
     instructor.resetPasswordToken = undefined;
     instructor.resetPasswordExpires = undefined;
     await instructor.save();
+
+    await logAudit({
+      actor: instructor,
+      action: ACTION.PASSWORD_RESET,
+      targetType: 'account',
+      targetId: instructor._id,
+      targetLabel: instructor.fullName || instructor.email,
+      details: 'Reset password via email token',
+      req,
+    });
 
     res.json({ message: 'Password reset successful' });
   } catch (err) {

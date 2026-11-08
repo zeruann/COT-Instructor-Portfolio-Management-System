@@ -5,10 +5,10 @@ import ConfirmLogoutModal from '../components/ConfirmLogoutModal';
 
 const API_BASE = 'http://localhost:5000/api/auth';
 
-// What logout does for each role (same as before).
+// What logout does for each role.
 const LOGOUT = {
-  admin: { keysToRemove: ['token', 'instructor'], callApi: false },
-  instructor: { keysToRemove: ['token', 'instructor'], callApi: true },
+  admin: { keysToRemove: ['token', 'instructor', 'admin', 'user'], callApi: true },
+  instructor: { keysToRemove: ['token', 'instructor', 'user'], callApi: true },
 };
 
 // Shared by every Logout button.
@@ -20,13 +20,17 @@ export default function useLogout(role) {
   const [loggingOut, setLoggingOut] = useState(false);
 
   async function logout() {
-    const settings = LOGOUT[role];
-    if (!settings) return;
+    const settings = LOGOUT[role] || LOGOUT.instructor;
 
     setLoggingOut(true);
     if (settings.callApi) {
       try {
-        await axios.post(`${API_BASE}/logout`);
+        const token = localStorage.getItem('token');
+        await axios.post(
+          `${API_BASE}/logout`,
+          {},
+          token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+        );
       } catch {
         // The token is stateless, so logging out still works here even if this call fails.
       }

@@ -4,10 +4,12 @@ const Document = require('../models/Document');
 const Requirement = require('../models/Requirement');
 const Instructor = require('../models/Instructor');
 const Setting = require('../models/Setting');
+const AcademicPeriod = require('../models/AcademicPeriod');
 const { STATUS, assertTransition } = require('../constants/documentStatus');
 const storageService = require('../utils/storageService');
 const driveNaming = require('../utils/driveNaming');
 const { logAudit } = require('../utils/auditLog');
+const { ACTION } = require('../constants/auditActions');
 
 /**
  * Helper to safely parse stringified JSON (from multipart/form-data)
@@ -66,6 +68,22 @@ exports.uploadDocument = async (req, res) => {
     if (!requirement) {
       return res.status(404).json
         ({ message: `Requirement "${requirementKey}" not found.` });
+    }
+
+    // Check academic period status: if specified or default active period is closed/archived
+    let targetPeriodId = academicPeriodId;
+    if (!targetPeriodId) {
+      const activePeriod = await AcademicPeriod.findOne({ isCurrent: true });
+      if (activePeriod) targetPeriodId = activePeriod._id;
+    }
+
+    if (targetPeriodId) {
+      const targetPeriod = await AcademicPeriod.findById(targetPeriodId);
+      if (targetPeriod && (targetPeriod.status === 'Closed' || targetPeriod.status === 'Archived')) {
+        return res.status(403).json({
+          message: `The academic period (${targetPeriod.schoolYear} · ${targetPeriod.semester} Semester) is ${targetPeriod.status.toLowerCase()}. Submissions and changes are not allowed.`,
+        });
+      }
     }
 
     //4. Check if replacing an existing document or creating a new one
@@ -185,6 +203,29 @@ exports.uploadDocument = async (req, res) => {
         submittedAt: new Date(),
       });
     }
+
+    const docName = requirement.label || requirement.card || requirement.name || requirementKey;
+    const isReupload = Boolean(existingDoc);
+
+    await logAudit({
+      actor: instructor,
+      action: isReupload ? ACTION.DOC_REUPLOAD : ACTION.DOC_UPLOAD,
+      targetType: 'document',
+      targetId: savedDoc._id,
+      targetLabel: docName,
+      documentName: docName,
+      fileName: req.file.originalname,
+      details: isReupload
+        ? `Re-uploaded ${req.file.originalname} for ${docName}`
+        : `Uploaded ${req.file.originalname} for ${docName}`,
+      meta: {
+        requirementKey,
+        document: docName,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+      },
+      req,
+    });
 
     //9. Send success response back to the client
     return res.status(201).json({
@@ -363,13 +404,21 @@ exports.reviewDocument = async (req, res) => {
     doc.reviewedAt = new Date();
     await doc.save();
 
+    const reqDef = await Requirement.findOne({ key: doc.requirementKey });
+    const docName = reqDef ? (reqDef.label || reqDef.card) : doc.requirementKey;
+    const currentVer = doc.versions?.find((v) => v.n === doc.currentVersion);
+    const fileName = currentVer?.originalName || 'file';
+
     await logAudit({
       actor: req.user,
-      action: `document.${decision}`,
+      action: decision === 'approved' ? ACTION.DOC_APPROVE : ACTION.DOC_REJECT,
       targetType: 'document',
       targetId: doc._id,
-      targetLabel: doc.requirementKey,
-      meta: { decision, comment },
+      targetLabel: docName,
+      documentName: docName,
+      fileName,
+      details: decision === 'approved' ? `Approved document ${fileName}` : `Rejected document ${fileName}: ${comment || ''}`,
+      meta: { decision, comment, document: docName, fileName },
       req,
     });
 
@@ -387,6 +436,7 @@ exports.reviewDocument = async (req, res) => {
  * DELETE /api/documents/:id
  * Remove draft or rejected document entry
  */
+
 exports.deleteDocument = async (req, res) => {
   try {
     const { id } = req.params;
@@ -400,6 +450,16 @@ exports.deleteDocument = async (req, res) => {
     const isAdmin = req.user.accountType === 'Administrator';
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: 'Access denied.' });
+    }
+
+    // Check if period is closed or archived
+    if (doc.academicPeriodId) {
+      const period = await AcademicPeriod.findById(doc.academicPeriodId);
+      if (period && (period.status === 'Closed' || period.status === 'Archived')) {
+        return res.status(403).json({
+          message: `This document belongs to a ${period.status.toLowerCase()} academic period. Deletions and modifications are locked.`,
+        });
+      }
     }
 
     // Business rule: Approved documents cannot be deleted by instructors
@@ -420,15 +480,28 @@ exports.deleteDocument = async (req, res) => {
       }
     }
 
+    const reqDef = await Requirement.findOne({ key: doc.requirementKey });
+    const docName = reqDef ? (reqDef.label || reqDef.card) : doc.requirementKey;
+    const currentVer = doc.versions?.[doc.versions.length - 1];
+    const fileName = currentVer?.originalName || 'file';
+
     // Delete MongoDB document
     await Document.findByIdAndDelete(id);
 
     await logAudit({
       actor: req.user,
-      action: 'document.delete',
+      action: ACTION.DOC_DELETE,
       targetType: 'document',
       targetId: id,
-      targetLabel: doc.requirementKey,
+      targetLabel: docName,
+      documentName: docName,
+      fileName,
+      details: `Deleted ${fileName} from ${docName}`,
+      meta: {
+        document: docName,
+        fileName,
+        requirementKey: doc.requirementKey,
+      },
       req,
     });
 
@@ -436,6 +509,70 @@ exports.deleteDocument = async (req, res) => {
   } catch (err) {
     console.error('Error in deleteDocument:', err);
     return res.status(500).json({ message: err.message || 'Failed to delete document.' });
+  }
+};
+
+/**
+ * PATCH /api/documents/:id
+ * Update document details/metadata
+ */
+exports.updateDocument = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { meta } = req.body;
+
+    const doc = await Document.findById(id);
+    if (!doc) {
+      return res.status(404).json({ message: 'Document not found.' });
+    }
+
+    const isOwner = String(doc.ownerId) === String(req.user.id);
+    const isAdmin = req.user.accountType === 'Administrator';
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ message: 'Access denied.' });
+    }
+
+    // Check if period is closed or archived
+    if (doc.academicPeriodId) {
+      const period = await AcademicPeriod.findById(doc.academicPeriodId);
+      if (period && (period.status === 'Closed' || period.status === 'Archived')) {
+        return res.status(403).json({
+          message: `This document belongs to a ${period.status.toLowerCase()} academic period. Deletions and modifications are locked.`,
+        });
+      }
+    }
+
+    if (meta && typeof meta === 'object') {
+      doc.meta = { ...doc.meta, ...meta };
+    }
+    await doc.save();
+
+    const reqDef = await Requirement.findOne({ key: doc.requirementKey });
+    const docName = reqDef ? (reqDef.label || reqDef.card) : doc.requirementKey;
+    const currentVer = doc.versions?.find((v) => v.n === doc.currentVersion) || doc.versions?.[doc.versions.length - 1];
+    const fileName = currentVer?.originalName || 'file';
+
+    await logAudit({
+      actor: req.user,
+      action: ACTION.DOC_EDIT,
+      targetType: 'document',
+      targetId: id,
+      targetLabel: docName,
+      documentName: docName,
+      fileName,
+      details: `Edited details for ${docName} (${fileName})`,
+      meta: {
+        document: docName,
+        fileName,
+        requirementKey: doc.requirementKey,
+      },
+      req,
+    });
+
+    return res.json({ message: 'Document updated successfully.', document: doc });
+  } catch (err) {
+    console.error('Error in updateDocument:', err);
+    return res.status(500).json({ message: err.message || 'Failed to update document.' });
   }
 };
 

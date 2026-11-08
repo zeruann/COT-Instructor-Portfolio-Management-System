@@ -18,6 +18,7 @@ router.post('/upload', upload.single('file'), documentController.uploadDocument)
 // Individual document routes
 router.get('/:id', documentController.getDocumentById);
 router.get('/:id/file', documentController.streamDocumentFile);
+router.patch('/:id', documentController.updateDocument);
 router.patch('/:id/review', documentController.reviewDocument);
 router.delete('/:id', documentController.deleteDocument);
 

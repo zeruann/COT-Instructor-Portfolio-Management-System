@@ -1,16 +1,45 @@
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, ChevronRight, Menu } from 'lucide-react';
 import { NAV } from '../../config/navigation';
 import UserBadge from './UserBadge';
 import ProfileMenu from './ProfileMenu';
 
-// Placeholder text until a real "current academic period" exists in the system.
-const CURRENT_PERIOD = '2026–2027 · 1st Semester';
-
 // The bar at the top of every page.
 // On big screens its height (h-header) is the same as the sidebar logo, so their bottom lines line up.
 function TopBar({ role, user, onMenuClick }) {
   const menu = NAV[role];
+  const [currentPeriodText, setCurrentPeriodText] = useState('Loading period...');
+
+  const fetchCurrentPeriod = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/academic-periods/current', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentPeriodText(data.formatted || 'No Active Period');
+      } else {
+        setCurrentPeriodText('No Active Period');
+      }
+    } catch (err) {
+      console.warn('Could not fetch active academic period:', err);
+      setCurrentPeriodText('No Active Period');
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCurrentPeriod();
+
+    const handlePeriodUpdate = () => {
+      fetchCurrentPeriod();
+    };
+
+    window.addEventListener('academic-period-updated', handlePeriodUpdate);
+    return () => window.removeEventListener('academic-period-updated', handlePeriodUpdate);
+  }, [fetchCurrentPeriod]);
+
   if (!menu) return null;
 
   const name = user?.fullName || menu.defaultName;
@@ -23,8 +52,8 @@ function TopBar({ role, user, onMenuClick }) {
           <Menu size={24} />
         </button>
         <div>
-          <p className="text-sm text-brand-gray">Current Academic Period</p>
-          <p className="text-base font-medium text-gray-900 lg:text-xl">{CURRENT_PERIOD}</p>
+          <p className="text-sm text-brand-gray mt-[5px]">Current Academic Period</p>
+          <p className="text-base font-medium text-gray-900 lg:text-[17px]">{currentPeriodText}</p>
         </div>
       </div>
 

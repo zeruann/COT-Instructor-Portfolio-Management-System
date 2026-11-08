@@ -1,5 +1,17 @@
 // server/controllers/settingController.js
 const Setting = require('../models/Setting');
+const { logAudit } = require('../utils/auditLog');
+const { ACTION } = require('../constants/auditActions');
+// ==============================================================================================
+// ⚙️ DEVELOPER SWITCH: ALLOW DEFAULT APIS EDITING
+// ==============================================================================================
+// Change this flag to `true` to allow administrators/developers to view and edit the default APIs
+// directly from the settings interface.
+// When set to `false` (default), the default APIs are locked and hidden in read-only mode.
+//
+// File Location: server/controllers/settingController.js (Line 14)
+// ==============================================================================================
+const ALLOW_DEFAULT_API_EDIT = false; // <-- CHANGE TO `true` TO ENABLE EDITING DEFAULT APIS
 
 // Default toggle states
 const TOGGLE_DEFAULTS = {
@@ -9,33 +21,65 @@ const TOGGLE_DEFAULTS = {
     googleAuthEnabled: true,
 };
 
-// Map of credential keys and their .env fallbacks
+// Map of credential keys, their default .env fallback, and optional custom .env override
 const CREDENTIAL_CONFIG = {
     // Google Mail
-    emailUser: { env: 'EMAIL_USER', sensitive: false },
-    emailPass: { env: 'EMAIL_PASS', sensitive: true },
+    emailUser: { env: 'EMAIL_USER', customEnv: 'CUSTOM_EMAIL_USER', sensitive: false, isEmail: true },
+    emailPass: { env: 'EMAIL_PASS', customEnv: 'CUSTOM_EMAIL_PASS', sensitive: true },
 
     // Google Drive
-    googleDriveClientId: { env: 'GOOGLE_DRIVE_CLIENT_ID', sensitive: false },
-    googleDriveClientSecret: { env: 'GOOGLE_DRIVE_CLIENT_SECRET', sensitive: true },
-    googleDriveRefreshToken: { env: 'GOOGLE_DRIVE_REFRESH_TOKEN', sensitive: true },
-    googleDriveRootFolderId: { env: 'GOOGLE_DRIVE_ROOT_FOLDER_ID', sensitive: false },
+    googleDriveClientId: { env: 'GOOGLE_DRIVE_CLIENT_ID', customEnv: 'CUSTOM_GOOGLE_DRIVE_CLIENT_ID', sensitive: false },
+    googleDriveClientSecret: { env: 'GOOGLE_DRIVE_CLIENT_SECRET', customEnv: 'CUSTOM_GOOGLE_DRIVE_CLIENT_SECRET', sensitive: true },
+    googleDriveRefreshToken: { env: 'GOOGLE_DRIVE_REFRESH_TOKEN', customEnv: 'CUSTOM_GOOGLE_DRIVE_REFRESH_TOKEN', sensitive: true },
+    googleDriveRootFolderId: { env: 'GOOGLE_DRIVE_ROOT_FOLDER_ID', customEnv: 'CUSTOM_GOOGLE_DRIVE_ROOT_FOLDER_ID', sensitive: false },
 
     // Google Sign-In
-    googleClientId: { env: 'GOOGLE_CLIENT_ID', sensitive: false },
+    googleClientId: { env: 'GOOGLE_CLIENT_ID', customEnv: 'CUSTOM_GOOGLE_CLIENT_ID', sensitive: false },
 
     // Google reCAPTCHA
-    recaptchaSiteKey: { env: 'VITE_RECAPTCHA_SITE_KEY', sensitive: false },
-    recaptchaSecret: { env: 'RECAPTCHA_SECRET', sensitive: true },
+    recaptchaSiteKey: { env: 'VITE_RECAPTCHA_SITE_KEY', customEnv: 'CUSTOM_VITE_RECAPTCHA_SITE_KEY', sensitive: false },
+    recaptchaSecret: { env: 'RECAPTCHA_SECRET', customEnv: 'CUSTOM_RECAPTCHA_SECRET', sensitive: true },
 };
 
 const MASK_PLACEHOLDER = '••••••••••••••••';
 
 /**
- * Helper to fetch a setting with fallback to process.env
+ * Helper to censor email address (e.g. cotportfolio@gmail.com -> co•••••io@gmail.com)
+ */
+const censorEmail = (email) => {
+    if (!email || typeof email !== 'string') return '';
+    const atIndex = email.indexOf('@');
+    if (atIndex === -1) {
+        if (email.length <= 4) return '••••';
+        return email.slice(0, 2) + '••••' + email.slice(-2);
+    }
+    const user = email.slice(0, atIndex);
+    const domain = email.slice(atIndex);
+    if (user.length <= 2) {
+        return user[0] + '•' + domain;
+    }
+    if (user.length <= 4) {
+        return user[0] + '••' + user.slice(-1) + domain;
+    }
+    const visibleStart = user.slice(0, 2);
+    const visibleEnd = user.slice(-2);
+    const maskedPart = '•'.repeat(Math.min(user.length - 4, 5));
+    return `${visibleStart}${maskedPart}${visibleEnd}${domain}`;
+};
+
+/**
+ * Helper to fetch a setting with fallback:
+ * 1. Custom API from DB (Setting collection configured via Admin UI)
+ * 2. Custom API from .env (e.g. CUSTOM_EMAIL_USER)
+ * 3. Default API override in DB (if modified when ALLOW_DEFAULT_API_EDIT was true)
+ * 4. Default API from .env (e.g. EMAIL_USER)
  */
 exports.getSettingOrEnv = async (key, envVar) => {
     try {
+        const config = CREDENTIAL_CONFIG[key];
+        const customEnvVar = config?.customEnv;
+
+        // 1. Custom API configured in database (via UI) takes highest priority
         const record = await Setting.findOne({ key });
         if (
             record &&
@@ -46,9 +90,27 @@ exports.getSettingOrEnv = async (key, envVar) => {
         ) {
             return record.value.trim();
         }
+
+        // 2. Custom API configured in .env (e.g. CUSTOM_EMAIL_USER)
+        if (customEnvVar && process.env[customEnvVar] && process.env[customEnvVar].trim() !== '') {
+            return process.env[customEnvVar].trim();
+        }
+
+        // 3. Default API database override
+        const defaultRecord = await Setting.findOne({ key: `DEFAULT_${key}` });
+        if (
+            defaultRecord &&
+            defaultRecord.value !== undefined &&
+            defaultRecord.value !== null &&
+            typeof defaultRecord.value === 'string' &&
+            defaultRecord.value.trim() !== ''
+        ) {
+            return defaultRecord.value.trim();
+        }
     } catch (err) {
         console.warn(`[Settings] Failed reading key "${key}":`, err.message);
     }
+    // 4. Fallback to process.env default
     return envVar ? process.env[envVar] : undefined;
 };
 
@@ -57,9 +119,10 @@ exports.getSettings = async (req, res) => {
     try {
         const toggleKeys = Object.keys(TOGGLE_DEFAULTS);
         const credKeys = Object.keys(CREDENTIAL_CONFIG);
+        const defaultCredKeys = credKeys.map((k) => `DEFAULT_${k}`);
 
         const records = await Setting.find({
-            key: { $in: [...toggleKeys, ...credKeys] },
+            key: { $in: [...toggleKeys, ...credKeys, ...defaultCredKeys] },
         });
 
         const recordMap = {};
@@ -75,36 +138,71 @@ exports.getSettings = async (req, res) => {
             }
         });
 
-        // 2. Build credentials
-        const credentials = {};
+        // 2. Build custom credentials (Left column) and default credentials (Right column)
+        const customCredentials = {};
+        const defaultCredentials = {};
         const credentialStatus = {};
 
         credKeys.forEach((key) => {
             const config = CREDENTIAL_CONFIG[key];
             const dbVal = recordMap[key];
-            const envVal = process.env[config.env];
-            const hasValue = Boolean(
-                (dbVal && String(dbVal).trim() !== '') || (envVal && String(envVal).trim() !== '')
-            );
-            const isCustomizedInDb = Boolean(dbVal && String(dbVal).trim() !== '');
+            const envCustomVal = config.customEnv ? process.env[config.customEnv] : undefined;
+            const effectiveCustomVal =
+                dbVal && String(dbVal).trim() !== ''
+                    ? dbVal
+                    : envCustomVal && String(envCustomVal).trim() !== ''
+                        ? envCustomVal
+                        : '';
+
+            const defaultDbVal = recordMap[`DEFAULT_${key}`];
+            const envVal = defaultDbVal || process.env[config.env] || '';
+
+            const hasCustom = Boolean(effectiveCustomVal && String(effectiveCustomVal).trim() !== '');
+            const hasDefault = Boolean(envVal && String(envVal).trim() !== '');
 
             credentialStatus[key] = {
-                isConfigured: hasValue,
-                source: isCustomizedInDb ? 'Database (Institutional)' : envVal ? '.env (Default)' : 'Not Set',
+                hasCustom,
+                hasDefault,
+                isConfigured: hasCustom || hasDefault,
+                activeSource: hasCustom ? (dbVal ? 'database' : 'env_custom') : hasDefault ? 'default' : 'none',
             };
 
+            // Custom credentials (Left Column)
             if (config.sensitive) {
-                credentials[key] = hasValue ? MASK_PLACEHOLDER : '';
+                customCredentials[key] = hasCustom ? MASK_PLACEHOLDER : '';
+            } else if (config.isEmail && hasCustom) {
+                customCredentials[key] = censorEmail(effectiveCustomVal);
             } else {
-                credentials[key] = isCustomizedInDb ? dbVal : envVal || '';
+                customCredentials[key] = effectiveCustomVal || '';
+            }
+
+            // Default credentials (Right Column)
+            if (!ALLOW_DEFAULT_API_EDIT) {
+                // Read-only / locked mode
+                if (config.sensitive) {
+                    defaultCredentials[key] = hasDefault ? MASK_PLACEHOLDER : '';
+                } else if (config.isEmail) {
+                    defaultCredentials[key] = censorEmail(envVal);
+                } else {
+                    defaultCredentials[key] = envVal;
+                }
+            } else {
+                // Editable mode enabled via backend switch
+                if (config.sensitive) {
+                    defaultCredentials[key] = hasDefault ? MASK_PLACEHOLDER : '';
+                } else {
+                    defaultCredentials[key] = envVal;
+                }
             }
         });
 
         res.json({
             success: true,
             settings,
-            credentials,
+            customCredentials,
+            defaultCredentials,
             credentialStatus,
+            allowDefaultEdit: ALLOW_DEFAULT_API_EDIT,
         });
     } catch (err) {
         console.error('Failed to get settings:', err);
@@ -115,7 +213,7 @@ exports.getSettings = async (req, res) => {
 // PUT /api/settings (Admin only)
 exports.updateSettings = async (req, res) => {
     try {
-        const { settings, credentials } = req.body;
+        const { settings, credentials, customCredentials, defaultCredentials } = req.body;
         const userId = req.user?.id;
 
         const updates = [];
@@ -135,13 +233,14 @@ exports.updateSettings = async (req, res) => {
             });
         }
 
-        // 2. Update credentials if provided
-        if (credentials && typeof credentials === 'object') {
+        // 2. Update custom credentials (Left column)
+        const customToUpdate = customCredentials || credentials;
+        if (customToUpdate && typeof customToUpdate === 'object') {
             Object.keys(CREDENTIAL_CONFIG).forEach((key) => {
-                const val = credentials[key];
+                const val = customToUpdate[key];
                 const config = CREDENTIAL_CONFIG[key];
 
-                // Skip masked placeholder (means user left existing password unchanged)
+                // Skip masked placeholder
                 if (config.sensitive && val === MASK_PLACEHOLDER) {
                     return;
                 }
@@ -149,12 +248,46 @@ exports.updateSettings = async (req, res) => {
                 if (typeof val === 'string') {
                     const trimmed = val.trim();
                     if (trimmed === '') {
-                        // If empty, remove from DB to revert to .env fallback
+                        // Empty string deletes from DB (falls back to default API)
                         updates.push(Setting.deleteOne({ key }));
                     } else {
                         updates.push(
                             Setting.findOneAndUpdate(
                                 { key },
+                                { value: trimmed, updatedBy: userId },
+                                { upsert: true, new: true }
+                            )
+                        );
+                    }
+                }
+            });
+        }
+
+        // 3. Update default credentials (Right column) - ONLY allowed if ALLOW_DEFAULT_API_EDIT is enabled
+        if (defaultCredentials && typeof defaultCredentials === 'object') {
+            if (!ALLOW_DEFAULT_API_EDIT) {
+                return res.status(403).json({
+                    message: 'Default APIs cannot be edited. Enable ALLOW_DEFAULT_API_EDIT in server/controllers/settingController.js.',
+                });
+            }
+
+            Object.keys(CREDENTIAL_CONFIG).forEach((key) => {
+                const val = defaultCredentials[key];
+                const config = CREDENTIAL_CONFIG[key];
+
+                if (config.sensitive && val === MASK_PLACEHOLDER) {
+                    return;
+                }
+
+                if (typeof val === 'string') {
+                    const trimmed = val.trim();
+                    const defaultKey = `DEFAULT_${key}`;
+                    if (trimmed === '') {
+                        updates.push(Setting.deleteOne({ key: defaultKey }));
+                    } else {
+                        updates.push(
+                            Setting.findOneAndUpdate(
+                                { key: defaultKey },
                                 { value: trimmed, updatedBy: userId },
                                 { upsert: true, new: true }
                             )
@@ -175,6 +308,20 @@ exports.updateSettings = async (req, res) => {
         } catch (e) {
             // ignore
         }
+
+        // Record audit log for admin settings update
+        await logAudit({
+            actor: req.user,
+            action: ACTION.SETTING_UPDATE,
+            targetType: 'setting',
+            targetLabel: 'System & API Settings',
+            meta: {
+                hasTogglesUpdated: Boolean(settings),
+                hasCustomCredentialsUpdated: Boolean(customCredentials || credentials),
+                hasDefaultCredentialsUpdated: Boolean(defaultCredentials),
+            },
+            req,
+        });
 
         res.json({ success: true, message: 'Settings and API credentials updated successfully.' });
     } catch (err) {
@@ -205,9 +352,15 @@ exports.getPublicSettings = async (req, res) => {
                     ? recordMap.googleAuthEnabled
                     : TOGGLE_DEFAULTS.googleAuthEnabled,
             recaptchaSiteKey:
-                recordMap.recaptchaSiteKey || process.env.VITE_RECAPTCHA_SITE_KEY || '',
+                recordMap.recaptchaSiteKey ||
+                process.env.CUSTOM_VITE_RECAPTCHA_SITE_KEY ||
+                process.env.VITE_RECAPTCHA_SITE_KEY ||
+                '',
             googleClientId:
-                recordMap.googleClientId || process.env.GOOGLE_CLIENT_ID || '',
+                recordMap.googleClientId ||
+                process.env.CUSTOM_GOOGLE_CLIENT_ID ||
+                process.env.GOOGLE_CLIENT_ID ||
+                '',
         };
 
         res.json(publicSettings);
@@ -266,16 +419,37 @@ exports.verifyAdminPassword = async (req, res) => {
             recordMap[r.key] = r.value;
         });
 
+        const unmaskedCustomCredentials = {};
+        const unmaskedDefaultCredentials = {};
         const unmaskedCredentials = {};
+
         Object.keys(CREDENTIAL_CONFIG).forEach((key) => {
             const config = CREDENTIAL_CONFIG[key];
-            const dbVal = recordMap[key];
-            const envVal = process.env[config.env];
-            const val = (dbVal && String(dbVal).trim() !== '') ? dbVal : (envVal || '');
-            unmaskedCredentials[key] = val;
+            const dbVal = recordMap[key] || '';
+            const envCustomVal = config.customEnv ? process.env[config.customEnv] : '';
+            const effectiveCustom = dbVal && dbVal.trim() !== '' ? dbVal : (envCustomVal || '');
+
+            const dbDefault = recordMap[`DEFAULT_${key}`];
+            const envVal = dbDefault || process.env[config.env] || '';
+
+            unmaskedCustomCredentials[key] = effectiveCustom;
+            if (ALLOW_DEFAULT_API_EDIT) {
+                unmaskedDefaultCredentials[key] = envVal;
+            } else {
+                unmaskedDefaultCredentials[key] = config.isEmail ? censorEmail(envVal) : (config.sensitive ? MASK_PLACEHOLDER : envVal);
+            }
+
+            // Fallback unmasked
+            unmaskedCredentials[key] = effectiveCustom && effectiveCustom.trim() !== '' ? effectiveCustom : envVal;
         });
 
-        res.json({ success: true, unmaskedCredentials });
+        res.json({
+            success: true,
+            unmaskedCustomCredentials,
+            unmaskedDefaultCredentials,
+            unmaskedCredentials,
+            allowDefaultEdit: ALLOW_DEFAULT_API_EDIT,
+        });
     } catch (err) {
         console.error('verifyAdminPassword error:', err);
         res.status(500).json({ message: 'Verification failed. Please try again.' });

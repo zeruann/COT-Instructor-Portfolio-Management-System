@@ -67,6 +67,18 @@
    Example: py-5 short:py-3 -> less padding on short screens. */
 @custom-variant short (@media (max-height: 700px));
 
+/* Smooth slide-in for custom date pickers when "Custom Range" is selected */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Hides the scrollbar but keeps scrolling working (mouse wheel, touch). */
 @utility no-scrollbar {
   scrollbar-width: none;
@@ -136,4 +148,4 @@
   height: auto;
   border-radius: 4px;
   margin: 0.5rem 0;
-}
+}

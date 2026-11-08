@@ -14,6 +14,7 @@ import ClassPortfolio from "./pages/instructors/ClassPortfolio";
 import InstructorArchive from "./pages/instructors/InstructorArchive";
 import InstructorNotifications from "./pages/instructors/InstructorNotifications";
 import InstructorSecurity from "./pages/instructors/InstructorSecurity";
+import InstructorActivityLogs from "./pages/instructors/InstructorActivityLogs";
 
 // ADMIN
 
@@ -29,6 +30,7 @@ import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminProfile from "./pages/admin/AdminProfile";
 import AdminSecurity from "./pages/admin/AdminSecurity";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminActivityLogs from "./pages/admin/AdminActivityLogs";
 
 // SHARED LAYOUT (sidebar + top bar + breadcrumb) FOR EVERY SIGNED-IN PAGE
 
@@ -127,6 +129,7 @@ function App() {
 
             <Route path="/admin/archive" element={<AdminArchive />} />
             <Route path="/admin/academic-period" element={<AcademicPeriod />} />
+            <Route path="/admin/activity-logs" element={<AdminActivityLogs />} />
             <Route path="/admin/notifications" element={<AdminNotifications />} />
             <Route path="/admin/profile" element={<AdminProfile />} />
             <Route path="/admin/security" element={<AdminSecurity />} />
@@ -180,6 +183,7 @@ function App() {
             {/* Archive and Account Settings */}
 
             <Route path="/instructors/archive" element={<InstructorArchive />} />
+            <Route path="/instructors/activity-logs" element={<InstructorActivityLogs />} />
             <Route path="/instructors/notifications" element={<InstructorNotifications />} />
             <Route path="/instructors/security" element={<InstructorSecurity />} />
           </Route>
