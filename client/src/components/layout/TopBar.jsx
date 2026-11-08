@@ -9,7 +9,7 @@ const CURRENT_PERIOD = '2026–2027 · 1st Semester';
 
 // The bar at the top of every page.
 // On big screens its height (h-header) is the same as the sidebar logo, so their bottom lines line up.
-function TopBar({ role, user, onMenuClick }) {
+function TopBar({ role, user, onMenuClick, unreadCount = 0 }) {
   const menu = NAV[role];
   if (!menu) return null;
 
@@ -29,8 +29,13 @@ function TopBar({ role, user, onMenuClick }) {
       </div>
 
       <div className="flex items-center gap-4">
-        <Link to={menu.notificationsPath} aria-label="Notifications" className="text-brand-gray hover:text-brand-orange">
+        <Link to={menu.notificationsPath} aria-label="Notifications" className="relative text-brand-gray hover:text-brand-orange">
           <Bell size={24} />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-orange text-[10px] font-bold leading-none text-white">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
         </Link>
 
         {menu.accountInTopBar ? (

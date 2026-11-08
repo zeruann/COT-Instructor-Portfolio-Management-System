@@ -21,11 +21,11 @@ export default function SharedRequirementHeader({
     selectedInstructor?._id ||
     selectedInstructor?.id;
 
-  const backDestination = isAdmin
+  const backDestination = backTo || (isAdmin
     ? instructorId
       ? `/admin/review/faculty-portfolio?instructorId=${instructorId}`
       : '/admin/review/faculty-portfolio'
-    : backTo || '/instructors/faculty-portfolio';
+    : '/instructors/faculty-portfolio');
   
 
     

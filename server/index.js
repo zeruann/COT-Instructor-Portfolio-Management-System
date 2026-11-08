@@ -18,12 +18,17 @@ app.use("/api/invitations", invitationRoutes);
 app.use("/api/instructors", instructorRoutes);
 app.use('/api/profile', require('./routes/profileRoutes'));
 app.use('/api/documents', require('./routes/documentRoutes'));
+app.use('/api/classes', require('./routes/classRoutes'));
 app.use('/api/requirements', require('./routes/requirementRoutes'));
 app.use('/api/settings', require('./routes/settingRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
+  .then(() => {
+    console.log("MongoDB connected");
+    require('./utils/ensureClassRequirements')();
+  })
   .catch((err) => console.error(err));
 
 app.get("/api/hello", (req, res) => {

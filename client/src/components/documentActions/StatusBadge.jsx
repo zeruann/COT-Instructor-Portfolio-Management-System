@@ -19,7 +19,7 @@ const STATUS_CONFIG = {
   },
   missing: {
     label: 'Not submitted',
-    className: 'doc-status doc-status--pending text-gray-500 bg-gray-100',
+    className: 'doc-status doc-status--pending',
   },
 };
 

@@ -95,6 +95,8 @@ function UploadModalContent({
         documentId: existingDoc?._id,
         meta,
         slot,
+        classIds: requirement?.classIds,
+        academicPeriodId: requirement?.academicPeriodId,
         onProgress: (p) => setUploadProgress(p),
       });
 

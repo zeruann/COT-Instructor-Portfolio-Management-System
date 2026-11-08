@@ -15,15 +15,21 @@ const AuditLog = require('../models/AuditLog');
 async function logAudit({ actor, action, outcome = 'success', targetType, targetId, targetLabel, meta, req }) {
   try {
     const type = actor && actor.accountType;
+    const actorRole = actor
+      ? (type === 'Administrator' ? 'Administrator' : 'Instructor')
+      : 'System';
+    const actorId = actor ? (actor._id || actor.id) : null;
+    const actorName = actor ? (actor.fullName || actor.name || 'User') : 'System';
+
     await AuditLog.create({
-      actorId: actor ? actor._id : null,
-      actorRole: actor ? (type === 'Administrator' ? 'Administrator' : 'Instructor') : 'System',
-      actorName: actor ? actor.fullName : 'System',
+      actorId: actorId ? new mongoose.Types.ObjectId(String(actorId)) : null,
+      actorRole,
+      actorName,
       category: String(action).split('.')[0],
       action,
       outcome,
       targetType,
-      targetId,
+      targetId: targetId ? new mongoose.Types.ObjectId(String(targetId)) : undefined,
       targetLabel,
       meta,
       ip: req ? req.ip : undefined,
