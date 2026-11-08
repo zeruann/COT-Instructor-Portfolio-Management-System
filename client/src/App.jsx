@@ -11,6 +11,8 @@ import ResetPassword from "./pages/instructors/ResetPassword";
 import SetNewPassword from "./pages/instructors/SetNew_Password";
 import FacultyPortfolio from "./pages/instructors/FacultyPortfolio";
 import ClassPortfolio from "./pages/instructors/ClassPortfolio";
+import ViewClassPortfolio from "./pages/instructors/ViewClassPortfolio";
+import ClassRequirementDetail from "./pages/instructors/ClassRequirementDetail";
 import InstructorArchive from "./pages/instructors/InstructorArchive";
 import InstructorNotifications from "./pages/instructors/InstructorNotifications";
 import InstructorSecurity from "./pages/instructors/InstructorSecurity";
@@ -24,6 +26,7 @@ import ViewInstructors from "./pages/admin/ViewInstructors";
 import AdminInstructorProfile from "./pages/admin/AdminInstructorProfile";
 import ReviewFacultyPortfolio from "./pages/admin/ReviewFacultyPortfolio";
 import ReviewClassPortfolio from "./pages/admin/ReviewClassPortfolio";
+import AdminViewClassPortfolio from "./pages/admin/AdminViewClassPortfolio";
 import AdminArchive from "./pages/admin/AdminArchive";
 import AcademicPeriod from "./pages/admin/AcademicPeriod";
 import AdminNotifications from "./pages/admin/AdminNotifications";
@@ -105,6 +108,8 @@ function App() {
 
             <Route path="/admin/review/faculty-portfolio" element={<ReviewFacultyPortfolio />} />
             <Route path="/admin/review/class-portfolio" element={<ReviewClassPortfolio />} />
+            <Route path="/admin/class-portfolio/:id" element={<AdminViewClassPortfolio />} />
+            <Route path="/admin/class-portfolio/:id/:reqPath" element={<ClassRequirementDetail />} />
 
             {/* SHARED PORTFOLIO REQUIREMENTS - ADMIN VIEW */}
 
@@ -160,6 +165,8 @@ function App() {
             {/* 2. CLASS PORTFOLIO */}
 
             <Route path="/instructors/class-portfolio" element={<ClassPortfolio />} />
+            <Route path="/instructors/class-portfolio/:id" element={<ViewClassPortfolio />} />
+            <Route path="/instructors/class-portfolio/:id/:reqPath" element={<ClassRequirementDetail />} />
 
             {/* 3. SHARED PORTFOLIO REQUIREMENTS - INSTRUCTOR VIEW */}
 

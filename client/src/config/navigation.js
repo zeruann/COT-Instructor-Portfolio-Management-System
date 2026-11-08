@@ -170,6 +170,14 @@ export const NAV = {
 function matches(item, pathname) {
   if (!item.to) return false;
 
+  if (item.to === '/admin/review/class-portfolio') {
+    return (
+      pathname === item.to ||
+      pathname.startsWith(item.to + '/') ||
+      pathname.startsWith('/admin/class-portfolio/')
+    );
+  }
+
   return pathname === item.to || pathname.startsWith(item.to + '/');
 }
 

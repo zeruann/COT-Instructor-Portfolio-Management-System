@@ -5,7 +5,7 @@ const academicPeriodSchema = new mongoose.Schema(
         schoolYear: {
             type: String,
             required: true,
-            match: /^\d{4}-\d{4}$/ /// e.g. 2026-2027
+            match: /^\d{4}-\d{4}$/, // e.g. 2026-2027
         },
 
         semester: {

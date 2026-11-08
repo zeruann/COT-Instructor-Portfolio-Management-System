@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const AuditLog = require('../models/AuditLog');
 
 /**
@@ -61,21 +62,25 @@ async function logAudit({
       }
     }
 
-    const actorName =
-      actor && (actor.fullName || actor.name || actor.email)
+    const actorRole = actor
+      ? (type === 'Administrator' ? 'Administrator' : 'Instructor')
+      : 'System';
+    const actorId = actor ? (actor._id || actor.id) : null;
+    const actorName = actor
+      && (actor.fullName || actor.name || actor.email)
         ? actor.fullName || actor.name || actor.email
         : 'System';
 
     await AuditLog.create({
       logId: generatedLogId,
-      actorId: actor ? (actor._id || actor.id) : null,
-      actorRole: actor ? (type === 'Administrator' ? 'Administrator' : 'Instructor') : 'System',
+      actorId: actorId ? new mongoose.Types.ObjectId(String(actorId)) : null,
+      actorRole,
       actorName,
       category: String(action).split('.')[0],
       action,
       outcome,
       targetType,
-      targetId,
+      targetId: targetId ? new mongoose.Types.ObjectId(String(targetId)) : undefined,
       targetLabel,
       details,
       documentName,

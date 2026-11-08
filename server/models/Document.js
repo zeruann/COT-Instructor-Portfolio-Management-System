@@ -48,6 +48,7 @@ const documentSchema = new mongoose.Schema(
 
     // Which part of the requirement this file fills, when the requirement is split.
     slot: {
+      type: { type: String }, // e.g. 'instruction', 'output', 'rubrics', 'return_receipt'
       term: { type: String, enum: ['Midterm', 'Finalterm'] }, // TOS, test questionnaire
       co: { type: String, enum: ['CO1', 'CO2', 'CO3', 'CO4', 'CO5'] }, // sample checked activities
       source: { type: String, enum: ['SIAS', 'Google Classroom'] }, // official class list
@@ -76,7 +77,7 @@ const documentSchema = new mongoose.Schema(
 
 documentSchema.statics.buildSlotKey = function ({ ownerId, requirementKey, academicPeriodId, classIds = [], slot = {} }) {
   const classPart = [...classIds].map(String).sort().join(',') || '-';
-  const slotPart = [slot.term, slot.co, slot.source].filter(Boolean).join('/') || '-';
+  const slotPart = [slot.type, slot.term, slot.co, slot.source].filter(Boolean).join('/') || '-';
   return [ownerId, requirementKey, academicPeriodId || '-', classPart, slotPart].join(':');
 };
 

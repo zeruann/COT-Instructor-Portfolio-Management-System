@@ -161,8 +161,11 @@ function Sidebar({ role, isOpen, onClose }) {
     // Administrator Class Portfolio and its nested pages.
 
     if (role === 'admin' && to === '/admin/review/class-portfolio') {
-      return pathname === to ||
-        pathname.startsWith('/admin/review/class-portfolio/');
+      return (
+        pathname === to ||
+        pathname.startsWith('/admin/review/class-portfolio') ||
+        pathname.startsWith('/admin/class-portfolio/')
+      );
     }
 
     return false;

@@ -25,6 +25,7 @@ export async function uploadDocument({
   meta = {},
   slot = {},
   academicPeriodId,
+  classIds,
   onProgress,
 }) {
   const formData = new FormData();
@@ -36,6 +37,9 @@ export async function uploadDocument({
   }
   if (academicPeriodId) {
     formData.append('academicPeriodId', academicPeriodId);
+  }
+  if (classIds && Array.isArray(classIds) && classIds.length > 0) {
+    formData.append('classIds', JSON.stringify(classIds));
   }
   if (meta && Object.keys(meta).length > 0) {
     formData.append('meta', JSON.stringify(meta));

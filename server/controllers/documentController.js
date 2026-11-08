@@ -5,6 +5,8 @@ const Requirement = require('../models/Requirement');
 const Instructor = require('../models/Instructor');
 const Setting = require('../models/Setting');
 const AcademicPeriod = require('../models/AcademicPeriod');
+const Notification = require('../models/Notification');
+const Class = require('../models/Class');
 const { STATUS, assertTransition } = require('../constants/documentStatus');
 const storageService = require('../utils/storageService');
 const driveNaming = require('../utils/driveNaming');
@@ -46,7 +48,7 @@ exports.uploadDocument = async (req, res) => {
     const { requirementKey, documentId, academicPeriodId } = req.body;
     const meta = parseJsonSafe(req.body.meta, {});
     const slot = parseJsonSafe(req.body.slot, {});
-    const classIds = parseJsonSafe(req.body.class, []);
+    const classIds = parseJsonSafe(req.body.class || req.body.classIds, []);
 
     if (!requirementKey) {
       return res.status(400).json({
@@ -116,12 +118,33 @@ exports.uploadDocument = async (req, res) => {
     }
 
     //6. Build Google Drive folder path and filename
-    const folderPath = driveNaming.facultyFolderPath({
-      department: instructor.department || 'General',
-      fullName: instructor.fullName,
-      instructorId: ownerId,
-      requirement,
-    });
+    let folderPath;
+    if (requirement.scope === 'class' && classIds.length > 0) {
+      const Class = require('../models/Class');
+      const AcademicPeriod = require('../models/AcademicPeriod');
+      const classDoc = await Class.findById(classIds[0]);
+      let period = null;
+      if (academicPeriodId) {
+        period = await AcademicPeriod.findById(academicPeriodId);
+      } else if (classDoc?.academicPeriodId) {
+        period = await AcademicPeriod.findById(classDoc.academicPeriodId);
+      }
+      folderPath = driveNaming.classFolderPath({
+        department: instructor.department || 'General',
+        fullName: instructor.fullName,
+        instructorId: ownerId,
+        period: period || { schoolYear: '2026-2027', semester: '1st' },
+        classDoc,
+        co: slot.co || null,
+      });
+    } else {
+      folderPath = driveNaming.facultyFolderPath({
+        department: instructor.department || 'General',
+        fullName: instructor.fullName,
+        instructorId: ownerId,
+        requirement,
+      });
+    }
 
     const targetDocId = existingDoc ? existingDoc._id : new mongoose.Types.ObjectId();
     const fileName = driveNaming.buildFileName({
@@ -251,19 +274,20 @@ exports.uploadDocument = async (req, res) => {
 
 exports.getDocuments = async (req, res) => {
   try {
-    const { requirementKey, instructorId, academicPeriodId, status } = req.query;
+    const { requirementKey, instructorId, academicPeriodId, status, classId } = req.query;
 
-    let targetOwnerId = req.user.id;
+    const filter = { archivedAt: null };
     if (req.user.accountType === 'Administrator') {
       if (instructorId) {
-        targetOwnerId = instructorId;
+        filter.ownerId = instructorId;
       }
+    } else {
+      filter.ownerId = req.user.id;
     }
-
-    const filter = { ownerId: targetOwnerId };
     if (requirementKey) filter.requirementKey = requirementKey;
     if (academicPeriodId) filter.academicPeriodId = academicPeriodId;
     if (status) filter.status = status;
+    if (classId) filter.classIds = classId;
 
     const documents = await Document.find(filter)
       .sort({ updatedAt: -1 })
@@ -408,6 +432,69 @@ exports.reviewDocument = async (req, res) => {
     const docName = reqDef ? (reqDef.label || reqDef.card) : doc.requirementKey;
     const currentVer = doc.versions?.find((v) => v.n === doc.currentVersion);
     const fileName = currentVer?.originalName || 'file';
+
+    // Create Notification for the document owner
+    try {
+      const reqTitle = docName;
+
+      let classInfoStr = '';
+      let actionLink = null;
+      if (doc.classIds && doc.classIds.length > 0) {
+        const cls = await Class.findById(doc.classIds[0]);
+        if (cls) {
+          const sCode = cls.subject?.code || '';
+          const secCode = cls.section?.code || cls.section?.name || '';
+          classInfoStr = ` for ${sCode} · ${secCode}`;
+          actionLink = `/instructors/class-portfolio/${cls._id}`;
+        }
+      } else {
+        actionLink = '/instructors/faculty-portfolio';
+      }
+
+      const legacyType = decision === 'approved' ? 'document_approved' : 'document_rejected';
+      const uiType = decision === 'approved' ? 'approved' : 'resubmission';
+      const notifTitle = decision === 'approved' ? 'Approved' : 'Resubmission Requested';
+      let message = '';
+
+      if (decision === 'approved') {
+        message = `${reqTitle}${classInfoStr} was approved.`;
+      } else {
+        const commentPart = comment && comment.trim() ? ` Comment: "${comment.trim()}"` : '';
+        message = `A new version of ${reqTitle}${classInfoStr} was requested.${commentPart}`;
+      }
+
+      console.log(`[Notification] Creating notification for owner ${doc.ownerId}: ${message}`);
+
+      try {
+        await Notification.create({
+          userId: doc.ownerId,
+          type: uiType,
+          title: notifTitle,
+          message,
+          comment: comment ? comment.trim() : '',
+          documentId: doc._id,
+          requirementKey: doc.requirementKey,
+          actionLink,
+          category: decision === 'approved' ? 'all' : 'pending_review',
+        });
+      } catch (insertErr) {
+        // If MongoDB collection level validator restricts 'type' enum to legacy values, fallback to legacy type
+        console.warn('[Notification] Primary insert failed, trying legacy enum format:', insertErr.message);
+        await Notification.create({
+          userId: doc.ownerId,
+          type: legacyType,
+          title: notifTitle,
+          message,
+          comment: comment ? comment.trim() : '',
+          documentId: doc._id,
+          requirementKey: doc.requirementKey,
+          actionLink,
+          category: decision === 'approved' ? 'all' : 'pending_review',
+        });
+      }
+    } catch (notifErr) {
+      console.error('Could not create notification for review:', notifErr);
+    }
 
     await logAudit({
       actor: req.user,
