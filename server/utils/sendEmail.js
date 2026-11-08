@@ -57,7 +57,7 @@ async function sendEmail({ to, subject, html }) {
 const sendInvitationEmail = async (to, fullName, token) => {
   const inviteLink = `${process.env.CLIENT_URL}/accept-invitation/${token}`;
 
-  return sendEmail({
+  const sent = await sendEmail({
     to,
     subject: "You've been invited to join as an Instructor",
     html: `
@@ -72,6 +72,14 @@ const sendInvitationEmail = async (to, fullName, token) => {
       </div>
     `,
   });
+
+  if (!sent) {
+    const error = new Error('Google Mail is disabled in administrator settings.');
+    error.code = 'GOOGLE_MAIL_DISABLED';
+    throw error;
+  }
+
+  return true;
 };
 
 module.exports = { sendEmail, sendInvitationEmail };
