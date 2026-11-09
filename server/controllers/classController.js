@@ -214,19 +214,13 @@ exports.createClass = async (req, res) => {
 
     let targetPeriodId = academicPeriodId;
     if (!targetPeriodId) {
-      // Use current period or most recent period
       let currentPeriod = await AcademicPeriod.findOne({ isCurrent: true });
       if (!currentPeriod) {
-        currentPeriod = await AcademicPeriod.findOne().sort({ createdAt: -1 });
+        currentPeriod = await AcademicPeriod.findOne({ status: 'Active' })
+          .sort({ schoolYear: -1, createdAt: -1 });
       }
       if (!currentPeriod) {
-        // Create a default academic period if none exists in db yet
-        currentPeriod = await AcademicPeriod.create({
-          schoolYear: '2026-2027',
-          semester: '1st',
-          isCurrent: true,
-          setBy: ownerId,
-        });
+        return res.status(400).json({ message: 'There is no current academic period. Please set one before adding a class.' });
       }
       targetPeriodId = currentPeriod._id;
     }

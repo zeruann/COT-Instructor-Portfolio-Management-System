@@ -331,7 +331,7 @@ function UploadModalContent({
           {uploading && (
             <div className="space-y-1">
               <div className="flex justify-between text-[11px] text-gray-500">
-                <span>Uploading to Google Drive...</span>
+                <span>Uploading...</span>
                 <span>{uploadProgress}%</span>
               </div>
               <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">

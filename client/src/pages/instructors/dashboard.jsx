@@ -17,15 +17,26 @@ const periodName = (item) => {
 
 function getNotificationStyle(type) {
   if (type === 'approved' || type === 'document_approved') {
-    return { icon: <Check size={18} className="text-emerald-600 stroke-[2.5]" />, background: 'bg-emerald-100' };
+    return { icon: <Check size={18} className="text-emerald-600 stroke-[2.5]" />, background: 'bg-emerald-100', title: 'text-emerald-700' };
   }
   if (type === 'resubmission' || type === 'document_rejected') {
-    return { icon: <RefreshCw size={17} className="text-orange-600 stroke-[2.3]" />, background: 'bg-orange-100' };
+    return { icon: <RefreshCw size={17} className="text-orange-600 stroke-[2.3]" />, background: 'bg-orange-100', title: 'text-orange-600' };
   }
   if (type === 'reminder') {
-    return { icon: <span className="text-base font-bold text-amber-700">!</span>, background: 'bg-amber-100' };
+    return { icon: <span className="text-base font-bold text-amber-700">!</span>, background: 'bg-amber-100', title: 'text-amber-700' };
   }
-  return { icon: <Info size={18} className="text-purple-600 stroke-[2.3]" />, background: 'bg-purple-100' };
+  return { icon: <Info size={18} className="text-purple-600 stroke-[2.3]" />, background: 'bg-purple-100', title: 'text-[#474378]' };
+}
+
+function formatNotificationTimestamp(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '';
+  const diffDays = Math.floor((new Date() - date) / (1000 * 60 * 60 * 24));
+  const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  if (diffDays === 0) return `Today, ${time}`;
+  if (diffDays === 1) return `Yesterday, ${time}`;
+  return `${date.toLocaleDateString('en-US', { month: 'short' })} ${date.getDate()}, ${time}`;
 }
 
 function Metric({ icon: Icon, label, value, detail, tone }) {
@@ -198,7 +209,7 @@ function Dashboard() {
             <div className="flex-1 divide-y divide-gray-100">
               {recent.length === 0 ? <div className="p-5 text-sm text-gray-500">No recent notifications.</div> : recent.map((item, index) => {
                 const notificationStyle = getNotificationStyle(item.type);
-                return <button key={item._id || item.id || index} onClick={() => item.actionLink ? navigate(item.actionLink) : navigate('/instructors/notifications')} className="flex w-full items-start gap-4 p-4 text-left hover:bg-gray-50"><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${notificationStyle.background}`}>{notificationStyle.icon}</span><span className="min-w-0 flex-1"><span className="flex items-center gap-2"><span className="block truncate text-sm font-semibold text-gray-800">{item.title || (item.type === 'approved' ? 'Approved' : 'Notification')}</span>{!item.readAt && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-orange" />}</span><span className="mt-1 block line-clamp-2 text-xs text-gray-600">{item.message || item.body || ''}</span><span className="mt-1 block text-[11px] text-gray-400">{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</span></span></button>;
+                return <button key={item._id || item.id || index} onClick={() => item.actionLink ? navigate(item.actionLink) : navigate('/instructors/notifications')} className={`flex w-full flex-col items-start gap-4 rounded-xl p-4 text-left transition hover:bg-gray-50/60 sm:flex-row sm:items-center sm:justify-between ${!item.readAt ? 'bg-orange-50/20' : ''}`}><span className="flex min-w-0 items-start gap-4"><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${notificationStyle.background}`}>{notificationStyle.icon}</span><span className="min-w-0"><span className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className={`block truncate text-sm font-semibold ${notificationStyle.title}`}>{item.title || (item.type === 'approved' ? 'Approved' : 'Notification')}</span>{!item.readAt && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-orange" />}<span className="text-xs text-gray-400">{formatNotificationTimestamp(item.createdAt || item.timestamp)}</span></span><span className="mt-1 block line-clamp-2 text-xs text-gray-600 sm:text-sm">{item.message || item.body || ''}</span>{item.comment && item.type !== 'approved' && item.type !== 'document_approved' && <span className="mt-1.5 block rounded-lg border border-gray-200/80 bg-gray-50 px-3 py-1.5 text-xs text-gray-600"><span className="font-semibold text-gray-700">Admin Remarks:</span> {item.comment}</span>}</span></span>{item.actionLink && <span className="inline-flex shrink-0 items-center gap-1 self-start rounded-xl border border-brand-purple/40 bg-white px-4 py-2 text-sm font-medium text-brand-purple sm:self-auto">Open portfolio <ArrowRight size={16} /></span>}</button>;
               })}
             </div>
             <div className="mt-auto border-t border-gray-100 p-4"><button onClick={() => navigate('/instructors/notifications')} className="text-sm font-semibold text-brand-purple hover:underline">See all notifications</button></div>
