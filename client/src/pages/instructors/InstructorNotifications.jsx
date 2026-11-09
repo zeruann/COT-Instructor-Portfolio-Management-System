@@ -8,6 +8,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import PlaceholderPage from '../../components/layout/PlaceholderPage';
+import { getNotificationTitle } from '../../utils/notificationDisplay';
 import {
   fetchNotifications,
   markAllNotificationsAsRead,
@@ -219,7 +220,7 @@ function InstructorNotifications() {
               const senderPhoto = sender?.profile?.photoUrl || sender?.googlePhotoUrl;
               const isReviewNotif = ['approved', 'document_approved', 'resubmission', 'document_rejected'].includes(notif.type);
               const senderName = sender?.fullName || (isReviewNotif ? 'Administrator' : 'System Notice');
-              const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=474378&color=fff&bold=true`;
+              const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=f97316&color=fff&bold=true`;
               const avatarSrc = senderPhoto || fallbackAvatar;
 
               return (
@@ -251,7 +252,7 @@ function InstructorNotifications() {
                       />
                       <div
                         style={{ display: 'none' }}
-                        className="h-11 w-11 items-center justify-center rounded-full bg-brand-purple text-xs font-bold text-white shadow-2xs border border-gray-200"
+                        className="h-11 w-11 items-center justify-center rounded-full bg-brand-orange text-xs font-bold text-white shadow-2xs border border-gray-200"
                       >
                         {getInitials(senderName)}
                       </div>
@@ -267,7 +268,7 @@ function InstructorNotifications() {
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-2">
                         <span className={`text-sm ${meta.titleColor}`}>
-                          {notif.title || (notif.type === 'approved' ? 'Approved' : 'Notification')}
+                          {getNotificationTitle(notif)}
                         </span>
                         {displayTime && (
                           <span className="text-xs text-gray-400">

@@ -200,7 +200,7 @@ function AdminNotifications() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`rounded-full px-5 py-2 text-sm font-medium transition-colors cursor-pointer ${
                   isActive
-                    ? 'bg-brand-purple text-white shadow-xs'
+                    ? 'bg-brand-orange text-white shadow-xs'
                     : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >

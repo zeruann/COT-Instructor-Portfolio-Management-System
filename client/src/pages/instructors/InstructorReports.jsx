@@ -725,7 +725,7 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
           </button>
         )}
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-brand-purple">
+          <h1 className="text-2xl font-medium tracking-tight text-brand-purple">
             {effectiveInstructorId && data?.instructorName
               ? `${data.instructorName}'s Reports`
               : 'Reports'}

@@ -74,9 +74,8 @@ export const NAV = {
       { to: '/instructors/portfolio/faculty-portfolio/other-requirements/passed-licensure-examinations', label: 'Other Requirements', parentTo: '/instructors/faculty-portfolio' },
       { to: '/instructors/portfolio/faculty-portfolio/other-requirements/ipcr', label: 'Other Requirements', parentTo: '/instructors/faculty-portfolio' },
 
-      // Pages that belong to Class Portfolio
-
-      // Add class portfolio sub-pages here when their routes are available.
+      // Class Portfolio nested routes are resolved dynamically in findSubPage
+      // (paths include a class id): Home > Class Portfolio > Requirement
     ],
   },
 
@@ -213,10 +212,68 @@ export function findMenuItem(role, pathname) {
   return otherPage ? { heading: otherPage.heading, item: otherPage } : null;
 }
 
+// Class portfolio requirement path → breadcrumb label.
+// Kept here so Breadcrumb can resolve nested /class-portfolio/:id/:reqPath routes.
+export const CLASS_PORTFOLIO_REQ_LABELS = {
+  'instructional-load-report': 'A 1.0 Instructional Load Report',
+  'official-class-list': 'B 1.0 Official Class list',
+  'syllabus': 'C 1.0 Syllabus',
+  'instructional-materials': 'D 1.0 Instructional Materials',
+  'classroom-policies': 'E 1.0 Classroom Policies Acknowledgement Receipt',
+  'syllabus-acknowledgement': 'F 1.0 Syllabus Acknowledgement Receipt',
+  'seat-plan': 'G 1.0 Seat Plan',
+  'classroom-officers': 'H 1.0 Classroom Officers',
+  'attendance': 'I. 1.0 Attendance',
+  'preliminary-test': 'J. 1.0 Preliminary Test',
+  'signed-tos': 'K. 1.0 Signed TOS',
+  'test-questionnaire': 'L. 1.0 Test Questionnaire',
+  'sample-checked-activities': 'L 1.0 Sample Checked Activities',
+  'class-record-grades': 'M 1.0 Class record and official grade',
+  'student-consultation-forms': 'N 1.0 Student consultation forms',
+  'inc-completion': 'O 1.0 INC Completion requirement outputs',
+  'supervisory-observation': 'P 1.0 Supervisory class observation result',
+  'student-evaluation': 'Q 1.0 Summary of student evaluation',
+  'learning-contract': 'R 1.0 Learning Contract',
+};
+
+function findClassPortfolioSubPage(role, pathname) {
+  if (role === 'instructor') {
+    const reqMatch = pathname.match(/^\/instructors\/class-portfolio\/([^/]+)\/([^/]+)\/?$/);
+    if (reqMatch) {
+      const [, classId, reqPath] = reqMatch;
+      const label = CLASS_PORTFOLIO_REQ_LABELS[reqPath];
+      if (label) {
+        return {
+          to: pathname,
+          label,
+          parentTo: '/instructors/class-portfolio',
+          classId,
+          reqPath,
+        };
+      }
+    }
+
+    const classMatch = pathname.match(/^\/instructors\/class-portfolio\/([^/]+)\/?$/);
+    if (classMatch) {
+      return {
+        to: pathname,
+        label: 'Class Details',
+        parentTo: '/instructors/class-portfolio',
+        classId: classMatch[1],
+      };
+    }
+  }
+
+  return null;
+}
+
 // Finds the sub-page of the current address (for example "Research"), or null.
 
 export function findSubPage(role, pathname) {
   const menu = NAV[role];
+
+  const classPortfolioSubPage = findClassPortfolioSubPage(role, pathname);
+  if (classPortfolioSubPage) return classPortfolioSubPage;
 
   return (menu?.subPages || []).find((entry) => matches(entry, pathname)) || null;
 }

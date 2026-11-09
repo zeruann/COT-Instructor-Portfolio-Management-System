@@ -510,7 +510,8 @@ exports.reviewDocument = async (req, res) => {
 
       const legacyType = decision === 'approved' ? 'document_approved' : 'document_rejected';
       const uiType = decision === 'approved' ? 'approved' : 'resubmission';
-      const notifTitle = decision === 'approved' ? 'Approved' : 'Resubmission Requested';
+      const notifTitle =
+        decision === 'approved' ? 'Document Approved' : 'Resubmission Requested';
       let message = '';
 
       if (decision === 'approved') {
