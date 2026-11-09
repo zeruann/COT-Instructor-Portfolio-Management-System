@@ -23,6 +23,7 @@ const notificationSchema = new mongoose.Schema(
     documentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Document' },
     requirementKey: { type: String },
     actionLink: { type: String, default: null },
+    senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Instructor', default: null },
     category: {
       type: String,
       enum: ['all', 'pending_review', 'system'],

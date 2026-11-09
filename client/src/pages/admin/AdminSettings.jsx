@@ -5,6 +5,7 @@ import {
   ShieldCheck,
   HardDrive,
   KeyRound,
+  FileSpreadsheet,
   RefreshCw,
   CheckCircle2,
   AlertCircle,
@@ -22,6 +23,8 @@ import gmailIcon from "../../assets/Gmail_icon_(2020).svg";
 import recaptchaIcon from "../../assets/ReCAPTCHA_icon.svg";
 import driveIcon from "../../assets/Google_Drive_icon_(2026).svg";
 import googleIcon from "../../assets/Google_Favicon_2025.svg";
+import sheetsIcon from "../../assets/google-sheets.svg";
+import excelIcon from "../../assets/ExcelJS_icon.svg";
 
 const API_URL = "http://localhost:5000/api/settings";
 
@@ -128,6 +131,60 @@ const INTEGRATIONS = [
       },
     ],
   },
+  {
+    groupKey: "googleSheets",
+    toggleKey: "googleSheetsEnabled",
+    title: "Google Sheets API",
+    description: "Exports Faculty Compliance Checklist reports directly to Google Sheets.",
+    logo: sheetsIcon,
+    icon: FileSpreadsheet,
+    fields: [
+      {
+        key: "googleSheetsProjectId",
+        label: "Project ID",
+        sensitive: false,
+        placeholder: "cot-eportfolio-storage",
+        help: "Google Cloud Project ID from your Service Account JSON key.",
+      },
+      {
+        key: "googleSheetsClientEmail",
+        label: "Service Account Email",
+        sensitive: false,
+        isEmail: true,
+        placeholder: "service-account@project-id.iam.gserviceaccount.com",
+        help: "The client_email address of the Google Cloud Service Account.",
+      },
+      {
+        key: "googleSheetsClientId",
+        label: "Client ID",
+        sensitive: false,
+        placeholder: "100376114074626533998",
+      },
+      {
+        key: "googleSheetsPrivateKeyId",
+        label: "Private Key ID",
+        sensitive: true,
+        placeholder: "Service account private_key_id",
+      },
+      {
+        key: "googleSheetsPrivateKey",
+        label: "Private Key",
+        sensitive: true,
+        placeholder: "-----BEGIN PRIVATE KEY-----\\n…",
+        help: "PEM-encoded private_key from your Google Cloud Service Account JSON file.",
+      },
+    ],
+  },
+  {
+    groupKey: "excelJs",
+    toggleKey: "excelJsEnabled",
+    title: "ExcelJS (Spreadsheet Generator)",
+    description: "Generates and downloads Faculty Compliance Checklist workbooks in Microsoft Excel (.xlsx) format.",
+    logo: excelIcon,
+    icon: FileSpreadsheet,
+    toggleOnly: true,
+    fields: [],
+  },
 ];
 
 const MASK = "••••••••••••••••";
@@ -162,6 +219,8 @@ export default function AdminSettings() {
     recaptchaEnabled: true,
     googleDriveEnabled: true,
     googleAuthEnabled: true,
+    googleSheetsEnabled: true,
+    excelJsEnabled: true,
   });
 
   // Credentials state for Custom and Default APIs
@@ -541,7 +600,8 @@ export default function AdminSettings() {
           <div className="space-y-3.5">
             {INTEGRATIONS.map((group) => {
               const isEnabled = settings[group.toggleKey];
-              const isOpen = openGroup === group.groupKey;
+              const isToggleOnly = Boolean(group.toggleOnly || group.fields.length === 0);
+              const isOpen = !isToggleOnly && openGroup === group.groupKey;
               const hasCustom = isCustomConfigured(group);
               const hasDefault = isDefaultAvailable(group);
               const isSaving = groupSaving[group.groupKey];
@@ -566,8 +626,8 @@ export default function AdminSettings() {
                 >
                   {/* Card Header */}
                   <div
-                    onClick={() => toggleAccordion(group.groupKey)}
-                    className={`flex items-center justify-between p-4 sm:p-5 cursor-pointer hover:bg-gray-50/70 select-none transition-colors gap-3 ${isOpen ? "bg-gray-50/70 border-b border-gray-100" : ""
+                    onClick={() => !isToggleOnly && toggleAccordion(group.groupKey)}
+                    className={`flex items-center justify-between p-4 sm:p-5 select-none transition-colors gap-3 ${!isToggleOnly ? "cursor-pointer hover:bg-gray-50/70" : ""} ${isOpen ? "bg-gray-50/70 border-b border-gray-100" : ""
                       }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
@@ -602,7 +662,7 @@ export default function AdminSettings() {
                         role="switch"
                         aria-checked={isEnabled}
                         onClick={(e) => handleToggle(group.toggleKey, e)}
-                        title={isEnabled ? "Click to disable API" : "Click to enable API"}
+                        title={isEnabled ? "Click to disable service" : "Click to enable service"}
                         className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-orange/30 ${isEnabled ? "bg-brand-orange" : "bg-gray-300"
                           }`}
                       >
@@ -612,18 +672,23 @@ export default function AdminSettings() {
                         />
                       </button>
 
-                      {/* Dropdown Chevron */}
-                      <div
-                        className={`transform transition-transform duration-300 text-gray-400 p-1.5 rounded-lg hover:bg-gray-100 ${isOpen ? "rotate-180 text-brand-purple bg-purple-50" : ""
-                          }`}
-                        title={isOpen ? "Collapse" : "Expand"}
-                      >
-                        <ChevronDown size={18} />
-                      </div>
+                      {/* Dropdown Chevron (or alignment spacer for toggle-only services) */}
+                      {!isToggleOnly ? (
+                        <div
+                          className={`transform transition-transform duration-300 text-gray-400 p-1.5 rounded-lg hover:bg-gray-100 ${isOpen ? "rotate-180 text-brand-purple bg-purple-50" : ""
+                            }`}
+                          title={isOpen ? "Collapse" : "Expand"}
+                        >
+                          <ChevronDown size={18} />
+                        </div>
+                      ) : (
+                        <div className="w-[30px]" aria-hidden="true" />
+                      )}
                     </div>
                   </div>
 
                   {/* Smooth Dropdown Content */}
+                  {!isToggleOnly && (
                   <div
                     className={`grid transition-all duration-300 ease-in-out ${isOpen
                       ? "grid-rows-[1fr] opacity-100"
@@ -979,6 +1044,7 @@ export default function AdminSettings() {
                       </div>
                     </div>
                   </div>
+                  )}
                 </div>
               );
             })}

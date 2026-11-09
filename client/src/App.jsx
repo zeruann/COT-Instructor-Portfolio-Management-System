@@ -1,4 +1,9 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+
+function RedirectToFacultyReview() {
+  const { id } = useParams();
+  return <Navigate to={`/admin/review/faculty-portfolio?instructorId=${id}`} replace />;
+}
 
 // INSTRUCTORS
 
@@ -35,6 +40,7 @@ import AdminProfile from "./pages/admin/AdminProfile";
 import AdminSecurity from "./pages/admin/AdminSecurity";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminActivityLogs from "./pages/admin/AdminActivityLogs";
+import AdminReports from "./pages/admin/AdminReports";
 
 // SHARED LAYOUT (sidebar + top bar + breadcrumb) FOR EVERY SIGNED-IN PAGE
 
@@ -107,6 +113,7 @@ function App() {
 
             {/* Portfolio Review */}
 
+            <Route path="/admin/faculty-portfolio/:id" element={<RedirectToFacultyReview />} />
             <Route path="/admin/review/faculty-portfolio" element={<ReviewFacultyPortfolio />} />
             <Route path="/admin/review/class-portfolio" element={<ReviewClassPortfolio />} />
             <Route path="/admin/class-portfolio/:id" element={<AdminViewClassPortfolio />} />
@@ -133,6 +140,7 @@ function App() {
 
             {/* Archive and System Settings */}
 
+            <Route path="/admin/reports" element={<AdminReports />} />
             <Route path="/admin/archive" element={<AdminArchive />} />
             <Route path="/admin/academic-period" element={<AcademicPeriod />} />
             <Route path="/admin/activity-logs" element={<AdminActivityLogs />} />

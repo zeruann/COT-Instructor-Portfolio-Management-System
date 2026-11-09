@@ -19,6 +19,8 @@ const TOGGLE_DEFAULTS = {
     recaptchaEnabled: true,
     googleDriveEnabled: true,
     googleAuthEnabled: true,
+    googleSheetsEnabled: true,
+    excelJsEnabled: true,
 };
 
 // Map of credential keys, their default .env fallback, and optional custom .env override
@@ -39,6 +41,13 @@ const CREDENTIAL_CONFIG = {
     // Google reCAPTCHA
     recaptchaSiteKey: { env: 'VITE_RECAPTCHA_SITE_KEY', customEnv: 'CUSTOM_VITE_RECAPTCHA_SITE_KEY', sensitive: false },
     recaptchaSecret: { env: 'RECAPTCHA_SECRET', customEnv: 'CUSTOM_RECAPTCHA_SECRET', sensitive: true },
+
+    // Google Sheets API
+    googleSheetsProjectId: { env: 'GOOGLE_SHEETS_PROJECT_ID', customEnv: 'CUSTOM_GOOGLE_SHEETS_PROJECT_ID', sensitive: false },
+    googleSheetsClientEmail: { env: 'GOOGLE_SHEETS_CLIENT_EMAIL', customEnv: 'CUSTOM_GOOGLE_SHEETS_CLIENT_EMAIL', sensitive: false, isEmail: true },
+    googleSheetsClientId: { env: 'GOOGLE_SHEETS_CLIENT_ID', customEnv: 'CUSTOM_GOOGLE_SHEETS_CLIENT_ID', sensitive: false },
+    googleSheetsPrivateKeyId: { env: 'GOOGLE_SHEETS_PRIVATE_KEY_ID', customEnv: 'CUSTOM_GOOGLE_SHEETS_PRIVATE_KEY_ID', sensitive: true },
+    googleSheetsPrivateKey: { env: 'GOOGLE_SHEETS_PRIVATE_KEY', customEnv: 'CUSTOM_GOOGLE_SHEETS_PRIVATE_KEY', sensitive: true },
 };
 
 const MASK_PLACEHOLDER = '••••••••••••••••';

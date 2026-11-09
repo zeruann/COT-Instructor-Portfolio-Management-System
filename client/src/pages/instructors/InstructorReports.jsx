@@ -1,5 +1,6 @@
 // client/src/pages/instructors/InstructorReports.jsx
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   FileSpreadsheet,
   Download,
@@ -11,6 +12,7 @@ import {
   RotateCw,
   Printer,
   ChevronDown,
+  ArrowLeft,
   X,
 } from 'lucide-react';
 import {
@@ -21,6 +23,7 @@ import {
 // Logos extracted from Faculty-Checklist-v13.xlsx. Adjust the path to your assets folder.
 import bukSuLogo from '../../assets/buksu-logo.png';
 import collegeLogo from '../../assets/college-logo.png';
+import googleSheetsIcon from '../../assets/google-sheets.svg';
 
 /* -----------------------------------------------------------------------------
  * WHAT THIS PAGE DOES
@@ -216,13 +219,20 @@ function stateOf(x) {
 
 // Find the API row that corresponds to a row of the official form.
 function findApiRow(apiRows, tpl) {
-  const t = norm(tpl.title);
+  if (!Array.isArray(apiRows)) return undefined;
+  const t = norm(tpl.title).replace(/^[a-z]10/, '');
+  const bare = (r) => norm(r.label).replace(/^[a-z]10/, '');
   return (
+    apiRows.find((r) => bare(r) && bare(r) === t) ||
+    (tpl.code
+      ? apiRows.find(
+          (r) => r.code && norm(r.code).startsWith(norm(tpl.code)) && norm(r.code).length <= 4
+        )
+      : undefined) ||
     apiRows.find((r) => {
-      const l = norm(r.label);
-      return l && (l === t || l.includes(t) || t.includes(l));
-    }) ||
-    (tpl.code ? apiRows.find((r) => norm(r.code) === norm(tpl.code)) : undefined)
+      const l = bare(r);
+      return l && t && (l.includes(t) || t.includes(l));
+    })
   );
 }
 
@@ -389,7 +399,10 @@ function SelectField({ id, label, value, onChange, children, badge }) {
 /* MAIN COMPONENT                                                              */
 /* -------------------------------------------------------------------------- */
 
-export default function InstructorReports() {
+export default function InstructorReports({ instructorId: propInstructorId, onBack } = {}) {
+  const [searchParams] = useSearchParams();
+  const effectiveInstructorId = propInstructorId || searchParams.get('instructorId') || undefined;
+
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('checklist'); // 'checklist' | 'documents'
@@ -410,7 +423,9 @@ export default function InstructorReports() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetchComplianceReportData({ schoolYear: toApiYear(year), semester: sem });
+      const params = { schoolYear: toApiYear(year), semester: sem };
+      if (effectiveInstructorId) params.instructorId = effectiveInstructorId;
+      const res = await fetchComplianceReportData(params);
       if (id !== requestId.current) return;
       if (res?.success) {
         setData(res);
@@ -426,12 +441,12 @@ export default function InstructorReports() {
     } finally {
       if (id === requestId.current) setLoading(false);
     }
-  }, []);
+  }, [effectiveInstructorId]);
 
   useEffect(() => {
     loadReportData(schoolYear, semester);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [effectiveInstructorId]);
 
   const handleYearChange = (e) => {
     setSchoolYear(e.target.value);
@@ -474,12 +489,14 @@ export default function InstructorReports() {
     setIsGeneratingExcel(true);
     setError(null);
     try {
-      await downloadComplianceExcel({ schoolYear: toApiYear(schoolYear), semester });
+      const params = { schoolYear: toApiYear(schoolYear), semester };
+      if (effectiveInstructorId) params.instructorId = effectiveInstructorId;
+      await downloadComplianceExcel(params);
       setToast({ message: 'Checklist downloaded', tone: 'success' });
     } catch (err) {
       console.error('Download Excel error:', err);
       setError({
-        message: "We couldn't create the Excel file. Try again.",
+        message: err.message || "We couldn't create the Excel file. Try again.",
         retry: handleDownloadExcel,
       });
     } finally {
@@ -500,10 +517,12 @@ export default function InstructorReports() {
     }
 
     try {
-      const res = await exportComplianceGoogleSheet({
+      const payload = {
         schoolYear: toApiYear(schoolYear),
         semester,
-      });
+      };
+      if (effectiveInstructorId) payload.instructorId = effectiveInstructorId;
+      const res = await exportComplianceGoogleSheet(payload);
       if (!res?.spreadsheetUrl) throw new Error('No spreadsheet URL returned');
 
       if (newTab) {
@@ -520,8 +539,9 @@ export default function InstructorReports() {
     } catch (err) {
       console.error('Export Google Sheets error:', err);
       if (newTab) newTab.close();
+      const apiMsg = err.response?.data?.message;
       setToast({
-        message: "Couldn't export to Google Sheets. Check the API settings in the Admin panel.",
+        message: apiMsg || "Couldn't export to Google Sheets. Check the API settings in the Admin panel.",
         tone: 'error',
       });
     } finally {
@@ -552,7 +572,14 @@ export default function InstructorReports() {
     const fromFaculty = facultyByCode[item.code];
     if (fromFaculty) return stateOf(fromFaculty);
     const apiRow = findApiRow(classRows, { title: item.title, code: item.code });
-    return stateOf(apiRow?.values?.[0] ?? apiRow);
+    if (!apiRow) return stateOf(null);
+    if (apiRow.status) return stateOf(apiRow);
+    const vals = Array.isArray(apiRow.values) ? apiRow.values : [];
+    const approvedVal = vals.find((v) => isDone(v?.status));
+    if (approvedVal) return stateOf(approvedVal);
+    const pendingVal = vals.find((v) => isPending(v?.status));
+    if (pendingVal) return stateOf(pendingVal);
+    return stateOf(vals[0] ?? apiRow);
   };
 
   const hasNoDocs = !loading && data?.documents && docList.length === 0;
@@ -571,17 +598,69 @@ export default function InstructorReports() {
       <Toast toast={toast} onClose={() => setToast(null)} />
 
       {/* ================================ PAGE TITLE ================================ */}
-      <div className="print:hidden">
-        <h1 className="text-2xl font-bold tracking-tight text-brand-purple">Reports</h1>
-        <p className="mt-1 text-sm text-brand-gray">
-          Review your Faculty Compliance Checklist, then print it or download it as Excel.
-        </p>
+      <div className="print:hidden flex items-center gap-3">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple transition hover:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2 cursor-pointer"
+            title="Back to all instructors"
+            aria-label="Back to all instructors"
+          >
+            <ArrowLeft size={16} />
+          </button>
+        )}
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold tracking-tight text-brand-purple">
+            {effectiveInstructorId && data?.instructorName
+              ? `${data.instructorName}'s Reports`
+              : 'Reports'}
+          </h1>
+          <p className="mt-1 text-sm text-brand-gray">
+            Review the Faculty Compliance Checklist, then print it or download it as Excel.
+          </p>
+        </div>
       </div>
 
       {/* ============================ TWO-COLUMN LAYOUT ============================ */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_500px] lg:items-start print:block">
-        {/* ---------------------- LEFT: PREVIEW (paper + sheet tabs) ---------------------- */}
+        {/* ---------------------- LEFT: PREVIEW (sheet tabs + paper) ---------------------- */}
         <div className="order-2 min-w-0 lg:order-1">
+          {/* ============================ EXCEL-STYLE SHEET TABS ============================ */}
+          <div
+            role="tablist"
+            aria-label="Report sheets"
+            className="print:hidden flex items-end gap-1 px-3 sm:px-6"
+          >
+            {[
+              { id: 'checklist', label: 'Checklist', Icon: FileSpreadsheet },
+              { id: 'documents', label: 'Documents', Icon: FileText, count: docList.length },
+            ].map(({ id, label, Icon, count }) => {
+              const active = activeTab === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveTab(id)}
+                  className={`inline-flex items-center gap-2 rounded-t-lg border border-b-0 px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${focusRing} ${active
+                    ? 'border-gray-300 bg-white text-brand-purple shadow-sm'
+                    : 'border-transparent bg-gray-100 text-gray-500 hover:text-gray-800'
+                    }`}
+                >
+                  <Icon size={15} aria-hidden="true" />
+                  {label}
+                  {count !== undefined && (
+                    <span className="rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold text-gray-700">
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
           {/* ================================== PAPER =================================== */}
           <div className="overflow-x-auto rounded-xl bg-gray-200/70 p-3 sm:p-6 print:overflow-visible print:bg-transparent print:p-0">
             <div
@@ -834,41 +913,6 @@ export default function InstructorReports() {
               )}
             </div>
           </div>
-
-          {/* ============================ EXCEL-STYLE SHEET TABS ============================ */}
-          <div
-            role="tablist"
-            aria-label="Report sheets"
-            className="print:hidden flex items-end gap-1 px-3 sm:px-6"
-          >
-            {[
-              { id: 'checklist', label: 'Checklist', Icon: FileSpreadsheet },
-              { id: 'documents', label: 'Documents', Icon: FileText, count: docList.length },
-            ].map(({ id, label, Icon, count }) => {
-              const active = activeTab === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setActiveTab(id)}
-                  className={`inline-flex items-center gap-2 rounded-b-lg border border-t-0 px-4 py-2 text-sm font-medium transition-colors ${focusRing} ${active
-                    ? 'border-gray-300 bg-white text-brand-purple shadow-sm'
-                    : 'border-transparent bg-gray-100 text-gray-500 hover:text-gray-800'
-                    }`}
-                >
-                  <Icon size={15} aria-hidden="true" />
-                  {label}
-                  {count !== undefined && (
-                    <span className="rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold text-gray-700">
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
         </div>
 
 
@@ -968,25 +1012,28 @@ export default function InstructorReports() {
                 type="button"
                 onClick={handleExportGoogleSheet}
                 disabled={isExportingSheets || busy}
-                className={`flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
+                className={`group flex h-12 w-full cursor-pointer items-center justify-center gap-2.5 rounded-lg border border-gray-300 bg-white px-4 text-[13px] font-semibold text-gray-700 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-emerald-50/70 hover:text-emerald-800 hover:shadow-md active:translate-y-0 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
               >
                 {isExportingSheets ? (
                   <Loader2
-                    size={16}
-                    className="animate-spin"
+                    size={18}
+                    className="animate-spin text-emerald-600"
                     aria-hidden="true"
                   />
                 ) : (
-                  <FileSpreadsheet
-                    size={16}
-                    className="text-emerald-600"
+                  <img
+                    src={googleSheetsIcon}
+                    alt=""
                     aria-hidden="true"
+                    className="h-5 w-5 shrink-0 object-contain transition-transform duration-200 group-hover:scale-110"
                   />
                 )}
 
-                {isExportingSheets
-                  ? 'Exporting…'
-                  : 'Export to Google Sheets'}
+                <span>
+                  {isExportingSheets
+                    ? 'Exporting…'
+                    : 'Export to Google Sheets'}
+                </span>
               </button>
 
               {/* Row 2: Download Excel + Print */}

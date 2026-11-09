@@ -39,7 +39,14 @@ export async function downloadComplianceExcel(params = {}) {
   });
 
   if (!res.ok) {
-    throw new Error('Failed to generate Excel report file.');
+    let errMsg = 'Failed to generate Excel report file.';
+    try {
+      const errData = await res.json();
+      if (errData?.message) errMsg = errData.message;
+    } catch {
+      // ignore json parse error
+    }
+    throw new Error(errMsg);
   }
 
   const blob = await res.blob();

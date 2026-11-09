@@ -14,6 +14,16 @@ import {
   markNotificationAsRead,
 } from '../../api/notifications';
 
+function getInitials(name) {
+  return (name || '')
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'AD';
+}
+
 function formatTimestamp(dateStr) {
   if (!dateStr) return '';
   const date = new Date(dateStr);
@@ -205,6 +215,12 @@ function InstructorNotifications() {
               const meta = getStyleByType(notif.type);
               const isUnread = !notif.readAt;
               const displayTime = formatTimestamp(notif.createdAt || notif.timestamp);
+              const sender = notif.senderId;
+              const senderPhoto = sender?.profile?.photoUrl || sender?.googlePhotoUrl;
+              const isReviewNotif = ['approved', 'document_approved', 'resubmission', 'document_rejected'].includes(notif.type);
+              const senderName = sender?.fullName || (isReviewNotif ? 'Administrator' : 'System Notice');
+              const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=474378&color=fff&bold=true`;
+              const avatarSrc = senderPhoto || fallbackAvatar;
 
               return (
                 <div
@@ -219,12 +235,33 @@ function InstructorNotifications() {
                     isUnread ? 'bg-orange-50/20 -mx-4 px-4 sm:-mx-6 sm:px-6 rounded-xl' : ''
                   }`}
                 >
-                  {/* Left: Icon, Title, Timestamp, Message */}
+                  {/* Left: Avatar/Icon badge, Title, Timestamp, Message */}
                   <div className="flex items-start gap-4">
-                    <div
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${meta.iconBg}`}
-                    >
-                      {meta.icon}
+                    <div className="relative shrink-0">
+                      <img
+                        src={avatarSrc}
+                        alt={senderName}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                        className="h-11 w-11 rounded-full object-cover border border-gray-200 shadow-2xs"
+                      />
+                      <div
+                        style={{ display: 'none' }}
+                        className="h-11 w-11 items-center justify-center rounded-full bg-brand-purple text-xs font-bold text-white shadow-2xs border border-gray-200"
+                      >
+                        {getInitials(senderName)}
+                      </div>
+
+                      {/* Small type badge on bottom-right of avatar */}
+                      <div
+                        className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white shadow-xs ${meta.iconBg}`}
+                      >
+                        {meta.icon}
+                      </div>
                     </div>
 
                     <div className="space-y-0.5">

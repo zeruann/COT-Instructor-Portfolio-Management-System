@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Check,
   RefreshCw,
   Info,
   ChevronRight,
   Loader2,
+  UploadCloud,
+  UserPlus,
+  Mail,
 } from 'lucide-react';
 import PlaceholderPage from '../../components/layout/PlaceholderPage';
 import {
@@ -12,6 +16,25 @@ import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from '../../api/notifications';
+
+function getInitials(name) {
+  return (name || '')
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'IN';
+}
+
+function resolveAdminLink(link) {
+  if (!link) return null;
+  const match = link.match(/^\/admin\/faculty-portfolio\/([^/?#]+)/);
+  if (match) {
+    return `/admin/review/faculty-portfolio?instructorId=${match[1]}`;
+  }
+  return link;
+}
 
 function formatTimestamp(dateStr) {
   if (!dateStr) return '';
@@ -44,6 +67,12 @@ const getStyleByType = (type) => {
         iconBg: 'bg-orange-100',
         titleColor: 'text-orange-600 font-semibold',
       };
+    case 'document_submitted':
+      return {
+        icon: <UploadCloud size={18} className="text-blue-600 stroke-[2.3]" />,
+        iconBg: 'bg-blue-100',
+        titleColor: 'text-blue-700 font-semibold',
+      };
     case 'reminder':
       return {
         icon: <span className="text-base font-bold text-amber-700">!</span>,
@@ -61,6 +90,7 @@ const getStyleByType = (type) => {
 };
 
 function AdminNotifications() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -107,24 +137,50 @@ function AdminNotifications() {
         console.warn('Could not mark notification as read:', err);
       }
     }
-    // Admins have no actionLink navigation — notifications are informational only
+
+    if (followLink) {
+      const targetUrl = resolveAdminLink(notif.actionLink);
+      if (targetUrl) {
+        navigate(targetUrl);
+      }
+    }
   };
 
   const unreadCount = notifications.filter((n) => !n.readAt).length;
+  const submissionsCount = notifications.filter(
+    (n) =>
+      n.category === 'pending_review' ||
+      n.type === 'document_submitted' ||
+      n.type === 'resubmission'
+  ).length;
   const systemCount = notifications.filter(
-    (n) => n.category === 'system' || n.type === 'reminder' || n.type === 'notice'
+    (n) => n.category === 'system' || n.type === 'reminder' || n.type === 'notice' || n.type === 'approved'
   ).length;
 
   const tabs = [
     { id: 'all', label: `All (${notifications.length})` },
     { id: 'unread', label: `Unread (${unreadCount})` },
+    { id: 'pending', label: `Submissions (${submissionsCount})` },
     { id: 'system', label: `System (${systemCount})` },
   ];
 
   const filteredNotifications = notifications.filter((item) => {
     if (activeTab === 'unread') return !item.readAt;
-    if (activeTab === 'system')
-      return item.category === 'system' || item.type === 'reminder' || item.type === 'notice';
+    if (activeTab === 'pending') {
+      return (
+        item.category === 'pending_review' ||
+        item.type === 'document_submitted' ||
+        item.type === 'resubmission'
+      );
+    }
+    if (activeTab === 'system') {
+      return (
+        item.category === 'system' ||
+        item.type === 'reminder' ||
+        item.type === 'notice' ||
+        item.type === 'approved'
+      );
+    }
     return true;
   });
 
@@ -181,6 +237,11 @@ function AdminNotifications() {
               const meta = getStyleByType(notif.type);
               const isUnread = !notif.readAt;
               const displayTime = formatTimestamp(notif.createdAt || notif.timestamp);
+              const sender = notif.senderId;
+              const senderPhoto = sender?.profile?.photoUrl || sender?.googlePhotoUrl;
+              const senderName = sender?.fullName || 'Instructor';
+              const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(senderName)}&background=f97316&color=fff&bold=true`;
+              const avatarSrc = senderPhoto || fallbackAvatar;
 
               return (
                 <div
@@ -193,10 +254,33 @@ function AdminNotifications() {
                     isUnread ? 'bg-purple-50/20 -mx-4 px-4 sm:-mx-6 sm:px-6 rounded-xl' : ''
                   }`}
                 >
-                  {/* Left: Icon, Title, Timestamp, Message */}
+                  {/* Left: Avatar/Icon badge, Title, Timestamp, Message */}
                   <div className="flex items-start gap-4">
-                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${meta.iconBg}`}>
-                      {meta.icon}
+                    <div className="relative shrink-0">
+                      <img
+                        src={avatarSrc}
+                        alt={senderName}
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          const fallback = e.currentTarget.nextElementSibling;
+                          if (fallback) fallback.style.display = 'flex';
+                        }}
+                        className="h-11 w-11 rounded-full object-cover border border-gray-200 shadow-2xs"
+                      />
+                      <div
+                        style={{ display: 'none' }}
+                        className="h-11 w-11 items-center justify-center rounded-full bg-brand-orange text-xs font-bold text-white shadow-2xs border border-gray-200"
+                      >
+                        {getInitials(senderName)}
+                      </div>
+
+                      {/* Small type badge on bottom-right of avatar */}
+                      <div
+                        className={`absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white shadow-xs ${meta.iconBg}`}
+                      >
+                        {meta.icon}
+                      </div>
                     </div>
 
                     <div className="space-y-0.5">

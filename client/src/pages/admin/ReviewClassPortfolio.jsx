@@ -261,8 +261,20 @@ export default function ReviewClassPortfolio() {
         </p>
       </div>
 
-      {/* Department, View by, Search */}
+      {/* Search, Department, View by */}
       <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+        {/* Search */}
+        <div className="relative min-w-0 flex-1">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search instructor by name or email.."
+            className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+          />
+          <Search className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        </div>
+
         {/* Department Filter */}
         <div className="relative shrink-0 sm:w-52 lg:w-60">
           <select
@@ -292,18 +304,6 @@ export default function ReviewClassPortfolio() {
             ))}
           </select>
           <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        </div>
-
-        {/* Search */}
-        <div className="relative min-w-0 flex-1">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search instructor by name or email.."
-            className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-2xs transition focus:border-brand-orange focus:outline-none"
-          />
-          <Search className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
         </div>
       </div>
 

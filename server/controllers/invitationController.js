@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const Instructor = require('../models/Instructor');
 const { sendInvitationEmail } = require('../utils/sendEmail');
+const { notifyAdmins } = require('../utils/adminNotificationService');
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -319,6 +320,32 @@ const respondToInvitation = (newStatus) => async (req, res) => {
       return res.status(410).json({ message: 'This invitation is no longer valid.' });
     }
 
+    // Notify admins when an invitation is accepted or rejected
+    try {
+      const inviteeName = invitation.fullName || invitation.email;
+      if (newStatus === 'Accepted') {
+        await notifyAdmins({
+          type: 'notice',
+          title: 'Invitation Accepted',
+          message: `${inviteeName} accepted the invitation to join as an instructor.`,
+          actionLink: `/admin/instructors/${invitation._id}`,
+          senderId: invitation._id,
+          category: 'system',
+        });
+      } else {
+        await notifyAdmins({
+          type: 'reminder',
+          title: 'Invitation Declined',
+          message: `${inviteeName} declined the invitation to join.`,
+          actionLink: '/admin/invite-instructors',
+          senderId: invitation._id,
+          category: 'system',
+        });
+      }
+    } catch (notifErr) {
+      console.warn('Could not notify admins of invitation response:', notifErr.message);
+    }
+
     res.json({
       message: `Invitation ${newStatus.toLowerCase()}.`,
       needsSetup: newStatus === 'Accepted',
@@ -363,6 +390,21 @@ exports.completeSetup = async (req, res) => {
 
     if (!instructor) {
       return res.status(410).json({ message: 'This setup link is no longer valid.' });
+    }
+
+    // Notify administrators that account setup is finished and active
+    try {
+      const name = instructor.fullName || instructor.email;
+      await notifyAdmins({
+        type: 'approved',
+        title: 'Instructor Account Activated',
+        message: `${name} has completed account setup and is now an active instructor.`,
+        actionLink: `/admin/instructors/${instructor._id}`,
+        senderId: instructor._id,
+        category: 'system',
+      });
+    } catch (notifErr) {
+      console.warn('Could not notify admins of setup completion:', notifErr.message);
     }
 
     res.json({ message: 'Account created. You can now log in.' });

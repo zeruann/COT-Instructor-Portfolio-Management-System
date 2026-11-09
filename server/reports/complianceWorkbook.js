@@ -22,8 +22,12 @@ function resolveTemplatePath() {
 }
 
 const CHECKED = '☑';
-const EMPTY = '□';
+const EMPTY = '☐';
+const BOX_REGEX = /[□☐☑]/;
 const SUBJECT_COLS = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']; // 8 subject columns
+
+const SYMBOL_FONT = { name: 'Segoe UI Symbol', size: 10, color: { argb: 'FF000000' } };
+const TEXT_FONT = { name: 'Cambria', size: 10, color: { argb: 'FF000000' } };
 
 /* ------------------------------ TEMPLATE MAP ------------------------------- */
 const SINGLE_CELLS = {
@@ -94,26 +98,65 @@ function readBox(cell, sub) {
 }
 
 /* ------------------------------ CELL WRITERS ------------------------------- */
+function splitLeadingBoxRuns(text, mark) {
+  const cleaned = String(text || '').replace(BOX_REGEX, '').replace(/^\s+/, '');
+  return [
+    { font: SYMBOL_FONT, text: `${mark} ` },
+    { font: TEXT_FONT, text: cleaned },
+  ];
+}
+
 function tickLeadingBox(cell, ticked) {
   const mark = ticked ? CHECKED : EMPTY;
   const v = cell.value;
+
   if (v && typeof v === 'object' && Array.isArray(v.richText)) {
-    const runs = v.richText.map((r) => ({ ...r }));
-    if (runs[0]) runs[0].text = runs[0].text.replace(EMPTY, mark);
-    cell.value = { richText: runs };
+    const oldRuns = v.richText.map((r) => ({
+      ...r,
+      font: r.font
+        ? {
+            ...r.font,
+            color: r.font.color?.argb ? r.font.color : { argb: 'FF000000' },
+          }
+        : TEXT_FONT,
+    }));
+
+    if (oldRuns[0]) {
+      const leadRuns = splitLeadingBoxRuns(oldRuns[0].text, mark);
+      cell.value = { richText: [...leadRuns, ...oldRuns.slice(1)] };
+    } else {
+      cell.value = { richText: oldRuns };
+    }
+    cell.font = TEXT_FONT;
   } else if (typeof v === 'string') {
-    cell.value = v.replace(EMPTY, mark);
+    const trimmed = v.trim();
+    if (trimmed.length <= 2 && BOX_REGEX.test(trimmed)) {
+      cell.value = mark;
+      cell.font = SYMBOL_FONT;
+    } else if (BOX_REGEX.test(v)) {
+      cell.value = { richText: splitLeadingBoxRuns(v, mark) };
+      cell.font = TEXT_FONT;
+    } else {
+      cell.value = v;
+    }
   }
 }
 
 function tickSubBoxes(cell, subs, ticks) {
-  if (typeof cell.value !== 'string') return;
-  let text = cell.value;
+  const runs = [];
   subs.forEach((sub, i) => {
-    if (!ticks[i]) return;
-    text = text.replace(`${sub} ${EMPTY}`, `${sub} ${CHECKED}`);
+    const mark = ticks[i] ? CHECKED : EMPTY;
+    runs.push({
+      font: TEXT_FONT,
+      text: `${i > 0 ? '\n' : ''}${sub} `,
+    });
+    runs.push({
+      font: SYMBOL_FONT,
+      text: mark,
+    });
   });
-  cell.value = text;
+  cell.value = { richText: runs };
+  cell.font = TEXT_FONT;
 }
 
 /* -------------------------------- MAIN API --------------------------------- */
@@ -162,7 +205,7 @@ async function buildComplianceWorkbook(data, { schoolYear, semester } = {}) {
     let ticked = isChecked(byLetter[letter]);
     if (!ticked && !byLetter[letter]) {
       const apiRow = classRows.find((r) => norm(r.code).startsWith(letter.toLowerCase()) && norm(r.code).length <= 4);
-      ticked = isChecked(apiRow?.values?.[0] ?? apiRow);
+      ticked = isChecked(apiRow) || Boolean(apiRow?.values?.some((v) => isChecked(v)));
     }
     tickLeadingBox(ws.getCell(addr), ticked);
   }

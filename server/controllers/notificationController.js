@@ -1,5 +1,6 @@
 // server/controllers/notificationController.js
 const Notification = require('../models/Notification');
+const Instructor = require('../models/Instructor');
 
 /**
  * GET /api/notifications
@@ -22,11 +23,32 @@ exports.getNotifications = async (req, res) => {
     }
 
     const notifications = await Notification.find(filter)
+      .populate('senderId', 'fullName email profile.photoUrl googlePhotoUrl department accountType')
       .sort({ createdAt: -1 })
       .limit(100)
       .lean();
 
-    return res.json(notifications);
+    let defaultAdmin = null;
+    const hasUnsetSender = notifications.some(
+      (n) => !n.senderId && ['approved', 'document_approved', 'resubmission', 'document_rejected'].includes(n.type)
+    );
+    if (hasUnsetSender) {
+      defaultAdmin = await Instructor.findOne({ accountType: 'Administrator' })
+        .select('fullName email profile.photoUrl googlePhotoUrl department accountType')
+        .lean();
+    }
+
+    const enriched = notifications.map((n) => {
+      if (!n.senderId && ['approved', 'document_approved', 'resubmission', 'document_rejected'].includes(n.type)) {
+        return {
+          ...n,
+          senderId: defaultAdmin || { fullName: 'Administrator', accountType: 'Administrator' },
+        };
+      }
+      return n;
+    });
+
+    return res.json(enriched);
   } catch (err) {
     console.error('Error in getNotifications:', err);
     return res.status(500).json({ message: 'Failed to fetch notifications.' });

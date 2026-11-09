@@ -4,6 +4,7 @@ const Document = require('../models/Document');
 const Requirement = require('../models/Requirement');
 const Class = require('../models/Class');
 const AcademicPeriod = require('../models/AcademicPeriod');
+const { isFeatureEnabled } = require('./settingController');
 const { buildComplianceWorkbook, uploadAsGoogleSheet } = require('../reports/complianceWorkbook');
 const { getGoogleClients } = require('../utils/sheetsService');
 
@@ -62,15 +63,37 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
   // 4. Fetch classes for this instructor and period
   const classFilter = { ownerId, archivedAt: null };
   if (selectedPeriodId) classFilter.academicPeriodId = selectedPeriodId;
-  const classes = await Class.find(classFilter).lean();
+  let classes = await Class.find(classFilter).lean();
+
+  if (classes.length === 0) {
+    const allClasses = await Class.find({ ownerId, archivedAt: null })
+      .populate('academicPeriodId', 'schoolYear semester')
+      .lean();
+    const cleanSem = resolvedSemester.replace(' Semester', '').trim();
+    const matchingPeriodClasses = allClasses.filter((c) => {
+      const p = c.academicPeriodId;
+      if (!p || !p.schoolYear) return false;
+      return (
+        p.schoolYear === resolvedSchoolYear &&
+        (p.semester === cleanSem || `${p.semester} Semester` === resolvedSemester)
+      );
+    });
+    classes = matchingPeriodClasses.length > 0 ? matchingPeriodClasses : allClasses;
+  }
+
+  const classIdList = classes.map((c) => c._id);
 
   // 5. Fetch uploaded documents
-  const docFilter = { ownerId };
+  const docFilter = { ownerId, archivedAt: null };
   if (selectedPeriodId) {
-    docFilter.$or = [
+    const orClauses = [
       { academicPeriodId: selectedPeriodId },
       { academicPeriodId: null },
     ];
+    if (classIdList.length > 0) {
+      orClauses.push({ classIds: { $in: classIdList } });
+    }
+    docFilter.$or = orClauses;
   }
   const documents = await Document.find(docFilter).sort({ createdAt: -1 }).lean();
 
@@ -111,13 +134,14 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
       else if (doc.status === 'pending_review') status = '☐ Pending review';
       else status = '☐ View Document';
     } else {
-      const firstDriveId = matchingDocs[0].versions?.[matchingDocs[0].versions.length - 1]?.driveFileId;
-      link = firstDriveId ? `https://drive.google.com/file/d/${firstDriveId}/view` : `/api/documents/${matchingDocs[0]._id}/file`;
+      const preferredDoc = matchingDocs.find((d) => d.status === 'approved') || matchingDocs[0];
+      const firstDriveId = preferredDoc.versions?.[preferredDoc.versions.length - 1]?.driveFileId;
+      link = firstDriveId ? `https://drive.google.com/file/d/${firstDriveId}/view` : `/api/documents/${preferredDoc._id}/file`;
 
       if (approved === total) {
         status = `☑ ${total} entries`;
       } else if (approved > 0) {
-        status = `☐ ${approved} of ${total} approved`;
+        status = `☑ ${approved} of ${total} approved`;
       } else if (pending > 0) {
         status = '☐ Pending review';
       } else {
@@ -142,6 +166,21 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
     section: c.section?.code || c.section?.name || '',
   }));
 
+  const docToCellState = (doc) => {
+    if (!doc) return { status: '☐', link: '' };
+    const driveId = doc.versions?.[doc.versions.length - 1]?.driveFileId;
+    const link = driveId
+      ? `https://drive.google.com/file/d/${driveId}/view`
+      : `/api/documents/${doc._id}/file`;
+    const status =
+      doc.status === 'approved'
+        ? '☑ View'
+        : doc.status === 'pending_review'
+          ? '☐ Pending'
+          : '☐ View';
+    return { status, link };
+  };
+
   const standardClassRows = [
     { code: 'A 1.0', label: 'Instructional Load Report', key: 'CLASS_A_LOAD_REPORT' },
     { code: 'B 1.0', label: 'Official Class list', key: 'CLASS_B_CLASS_LIST' },
@@ -150,35 +189,154 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
     { code: 'E 1.0', label: 'Classroom Policies Acknowledgement Receipt', key: 'CLASS_E_POLICIES_RECEIPT' },
     { code: 'F 1.0', label: 'Syllabus Acknowledgement Receipt', key: 'CLASS_F_SYLLABUS_RECEIPT' },
     { code: 'G 1.0', label: 'Seat Plan', key: 'CLASS_G_SEAT_PLAN' },
-    { code: 'H 1.0', label: 'Classroom Officers (with Signatures)', key: 'CLASS_H_OFFICERS' },
+    { code: 'H 1.0', label: 'Classroom Officers', key: 'CLASS_H_OFFICERS' },
     { code: 'I 1.0', label: 'Attendance', key: 'CLASS_I_ATTENDANCE' },
-    { code: 'J 1.0', label: 'Preliminary Test (Test Checker and Item Analyzer)', key: 'CLASS_J_PRELIM_TEST' },
-    { code: 'K 1.0', label: 'Signed TOS (Midterm / Finalterm)', key: 'CLASS_K_SIGNED_TOS' },
-    { code: 'L 1.0', label: 'Test Questionnaire (Midterm / Finalterm)', key: 'CLASS_L_TEST_QUESTIONNAIRE' },
-    { code: 'I 1.0', label: 'Sample Checked Activities (CO1 - CO5)', key: 'CLASS_L_CHECKED_ACTIVITIES' },
-    { code: 'M 1.0', label: 'Class record and official grade', key: 'CLASS_M_CLASS_RECORD' },
-    { code: 'N 1.0', label: 'Student consultation forms', key: 'CLASS_N_STUDENT_CONSULTATION' },
-    { code: 'O 1.0', label: 'INC Completion requirement outputs', key: 'CLASS_O_INC_COMPLETION' },
-    { code: 'P 1.0', label: 'Supervisory class observation result', key: 'CLASS_P_SUPERVISORY_OBSERVATION' },
-    { code: 'Q 1.0', label: 'Summary of student evaluation', key: 'CLASS_Q_STUDENT_EVALUATION' },
-    { code: 'R 1.0', label: 'Learning Contract', key: 'CLASS_R_LEARNING_CONTRACT' },
+    { code: 'J 1.0', label: 'Preliminary Test', key: 'CLASS_J_PRELIM_TEST' },
+    { code: 'K 1.0', label: 'Signed TOS', key: 'CLASS_K_SIGNED_TOS', terms: ['Midterm', 'Finalterm'] },
+    { code: 'L 1.0', label: 'Test Questionaire', key: 'CLASS_L_TEST_QUESTIONNAIRE', terms: ['Midterm', 'Finalterm'] },
+    {
+      code: '',
+      label: 'Instruction of the Activities',
+      key: 'CLASS_L_CHECKED_ACTIVITIES',
+      slotType: 'instruction',
+      cos: ['CO 1', 'CO 2', 'CO 3', 'CO 4', 'CO 5'],
+    },
+    {
+      code: '',
+      label: 'Sample of Checked Student Output',
+      key: 'CLASS_L_CHECKED_ACTIVITIES',
+      slotType: 'output',
+      cos: ['CO 1', 'CO 2', 'CO 3', 'CO 4', 'CO 5'],
+    },
+    {
+      code: '',
+      label: 'Answer Key or Rated Rubrics',
+      key: 'CLASS_L_CHECKED_ACTIVITIES',
+      slotType: 'rubrics',
+      cos: ['CO 1', 'CO 2', 'CO 3', 'CO 4', 'CO 5'],
+    },
+    {
+      code: '',
+      label: 'Raw score (class record) attached some (samples from LMS)',
+      key: 'CLASS_M_CLASS_RECORD',
+      slotType: 'raw_score',
+    },
+    {
+      code: '',
+      label: 'Grade sheet (class record) signed.',
+      key: 'CLASS_M_CLASS_RECORD',
+      slotType: 'gradesheet_signed',
+    },
+    {
+      code: '',
+      label: 'Official Grade sheet (Registrar)',
+      key: 'CLASS_M_CLASS_RECORD',
+      slotType: 'official_gradesheet',
+    },
+    {
+      code: '',
+      label: 'Google Classroom Classwork Score',
+      key: 'CLASS_M_CLASS_RECORD',
+      slotType: 'gclassroom_score',
+    },
+    {
+      code: '',
+      label: 'Student Consultation Forms',
+      key: 'CLASS_N_STUDENT_CONSULTATION',
+      slotType: 'consultation_forms',
+    },
+    {
+      code: '',
+      label: 'Samples Screen shots of online consultation platforms (with section code)',
+      key: 'CLASS_N_STUDENT_CONSULTATION',
+      slotType: 'online_consultation_screenshots',
+    },
+    {
+      code: '',
+      label: 'Evidence of addressing the student concerns (with section code)',
+      key: 'CLASS_N_STUDENT_CONSULTATION',
+      slotType: 'addressing_concerns_evidence',
+    },
+    { code: 'O 1.0', label: 'INC Completion requirement outputs', key: 'CLASS_O_INC_COMPLETION', singleFooter: true },
+    { code: 'P 1.0', label: 'Supervisory class observation result', key: 'CLASS_P_SUPERVISORY_OBSERVATION', singleFooter: true },
+    { code: 'Q 1.0', label: 'Summary of student evaluation', key: 'CLASS_Q_STUDENT_EVALUATION', singleFooter: true },
+    { code: 'R 1.0', label: 'Learning Contract', key: 'CLASS_R_LEARNING_CONTRACT', singleFooter: true },
   ];
 
   const classRows = standardClassRows.map((rDef) => {
+    if (rDef.singleFooter) {
+      // Footer rows (O–R) apply across the instructor's classes for the period
+      const matchingDocs = documents.filter((d) => d.requirementKey === rDef.key);
+      const bestDoc =
+        matchingDocs.find((d) => d.status === 'approved') ||
+        matchingDocs.find((d) => d.status === 'pending_review') ||
+        matchingDocs[0];
+      const cellState = docToCellState(bestDoc);
+      return {
+        code: rDef.code,
+        label: rDef.label,
+        status: cellState.status,
+        link: cellState.link,
+        values: subjects.length > 0 ? subjects.map(() => cellState) : [cellState],
+      };
+    }
+
     const values = subjects.map((subj) => {
-      const match = documents.find(
+      const classDocs = documents.filter(
         (d) =>
+          d.requirementKey === rDef.key &&
           d.classIds &&
-          d.classIds.some((cid) => String(cid) === String(subj.id)) &&
-          d.requirementKey === rDef.key
+          d.classIds.some((cid) => String(cid) === String(subj.id))
       );
 
-      if (!match) return { status: '☐', link: '' };
+      if (rDef.terms) {
+        const subs = {};
+        rDef.terms.forEach((term) => {
+          const termDoc = classDocs.find(
+            (d) =>
+              String(d.slot?.term || '').toLowerCase() === term.toLowerCase()
+          );
+          subs[term] = docToCellState(termDoc);
+        });
+        const anyApproved = Object.values(subs).some((s) => s.status.startsWith('☑'));
+        const anyPending = Object.values(subs).some((s) => s.status.includes('Pending'));
+        return {
+          status: anyApproved ? '☑ View' : anyPending ? '☐ Pending' : '☐',
+          link: '',
+          subs,
+        };
+      }
 
-      const driveId = match.versions?.[match.versions.length - 1]?.driveFileId;
-      const link = driveId ? `https://drive.google.com/file/d/${driveId}/view` : `/api/documents/${match._id}/file`;
-      const status = match.status === 'approved' ? '☑ View' : match.status === 'pending_review' ? '☐ Pending' : '☐ View';
-      return { status, link };
+      if (rDef.cos) {
+        const subs = {};
+        rDef.cos.forEach((coLabel) => {
+          const coKey = coLabel.replace(/\s+/g, ''); // "CO 1" -> "CO1"
+          const coDoc = classDocs.find(
+            (d) =>
+              d.slot?.type === rDef.slotType &&
+              (String(d.slot?.co || '').replace(/\s+/g, '').toUpperCase() === coKey.toUpperCase())
+          );
+          subs[coLabel] = docToCellState(coDoc);
+        });
+        const anyApproved = Object.values(subs).some((s) => s.status.startsWith('☑'));
+        const anyPending = Object.values(subs).some((s) => s.status.includes('Pending'));
+        return {
+          status: anyApproved ? '☑ View' : anyPending ? '☐ Pending' : '☐',
+          link: '',
+          subs,
+        };
+      }
+
+      if (rDef.slotType) {
+        const slotDoc = classDocs.find((d) => d.slot?.type === rDef.slotType);
+        return docToCellState(slotDoc);
+      }
+
+      const bestDoc =
+        classDocs.find((d) => d.status === 'approved') ||
+        classDocs.find((d) => d.status === 'pending_review') ||
+        classDocs[0];
+      return docToCellState(bestDoc);
     });
 
     return {
@@ -253,6 +411,13 @@ exports.getComplianceData = async (req, res) => {
  */
 exports.downloadComplianceExcel = async (req, res) => {
   try {
+    const excelEnabled = await isFeatureEnabled('excelJsEnabled', true);
+    if (!excelEnabled) {
+      return res.status(503).json({
+        message: 'Excel report generation (ExcelJS) is currently disabled by the administrator.',
+      });
+    }
+
     const isAdmin = req.user.accountType === 'Administrator';
     const ownerId = isAdmin && req.query.instructorId ? req.query.instructorId : req.user.id;
     const { periodId, schoolYear, semester } = req.query;
@@ -286,6 +451,13 @@ exports.downloadComplianceExcel = async (req, res) => {
  */
 exports.exportComplianceGoogleSheet = async (req, res) => {
   try {
+    const sheetsEnabled = await isFeatureEnabled('googleSheetsEnabled', true);
+    if (!sheetsEnabled) {
+      return res.status(503).json({
+        message: 'Google Sheets export is currently disabled by the administrator.',
+      });
+    }
+
     const isAdmin = req.user.accountType === 'Administrator';
     const ownerId = isAdmin && req.body.instructorId ? req.body.instructorId : req.user.id;
     const { periodId, schoolYear, semester } = req.body;

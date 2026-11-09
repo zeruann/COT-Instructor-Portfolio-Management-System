@@ -219,6 +219,8 @@ function Login() {
         </button>
       </form>
 
+
+      {/*Disable Google Auth API*/}
       {apiConfig.googleAuthEnabled && (
         <>
           <div className="flex items-center my-5">

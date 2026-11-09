@@ -5,24 +5,55 @@ const { getSettingOrEnv } = require('../controllers/settingController');
 
 /**
  * Returns authenticated Google Drive and Google Sheets API clients
- * using the system's verified OAuth2 credentials.
+ * using the configured Google Sheets Service Account credentials (from Settings or .env)
+ * and the system's Drive OAuth2 storage client.
  */
 async function getGoogleClients() {
-  const clientId = await getSettingOrEnv('googleDriveClientId', 'GOOGLE_DRIVE_CLIENT_ID');
-  const clientSecret = await getSettingOrEnv('googleDriveClientSecret', 'GOOGLE_DRIVE_CLIENT_SECRET');
-  const refreshToken = await getSettingOrEnv('googleDriveRefreshToken', 'GOOGLE_DRIVE_REFRESH_TOKEN');
-  const rootFolderId = await getSettingOrEnv('googleDriveRootFolderId', 'GOOGLE_DRIVE_ROOT_FOLDER_ID');
+  const projectId = await getSettingOrEnv('googleSheetsProjectId', 'GOOGLE_SHEETS_PROJECT_ID');
+  const clientEmail = await getSettingOrEnv('googleSheetsClientEmail', 'GOOGLE_SHEETS_CLIENT_EMAIL');
+  const sheetsClientId = await getSettingOrEnv('googleSheetsClientId', 'GOOGLE_SHEETS_CLIENT_ID');
+  const privateKeyId = await getSettingOrEnv('googleSheetsPrivateKeyId', 'GOOGLE_SHEETS_PRIVATE_KEY_ID');
+  const rawPrivateKey = await getSettingOrEnv('googleSheetsPrivateKey', 'GOOGLE_SHEETS_PRIVATE_KEY');
 
-  if (!clientId || !clientSecret || !refreshToken) {
-    throw new Error('Google Drive / Sheets OAuth credentials missing in configuration.');
+  if (!clientEmail || !rawPrivateKey) {
+    throw new Error('Google Sheets API Service Account credentials are missing in Settings or .env.');
   }
 
-  const auth = new google.auth.OAuth2(clientId, clientSecret);
-  auth.setCredentials({ refresh_token: refreshToken });
+  const privateKey = rawPrivateKey.replace(/\\n/g, '\n');
+
+  const sheetsAuth = new google.auth.JWT({
+    email: clientEmail,
+    key: privateKey,
+    keyId: privateKeyId || undefined,
+    scopes: [
+      'https://www.googleapis.com/auth/spreadsheets',
+      'https://www.googleapis.com/auth/drive',
+    ],
+  });
+
+  // Verify the Google Sheets service account credentials
+  await sheetsAuth.authorize();
+
+  // Use Drive OAuth2 for file creation inside rootFolderId (avoids 0-byte service account Drive quota limits)
+  const driveClientId = await getSettingOrEnv('googleDriveClientId', 'GOOGLE_DRIVE_CLIENT_ID');
+  const driveClientSecret = await getSettingOrEnv('googleDriveClientSecret', 'GOOGLE_DRIVE_CLIENT_SECRET');
+  const driveRefreshToken = await getSettingOrEnv('googleDriveRefreshToken', 'GOOGLE_DRIVE_REFRESH_TOKEN');
+  const rootFolderId = await getSettingOrEnv('googleDriveRootFolderId', 'GOOGLE_DRIVE_ROOT_FOLDER_ID');
+
+  let driveAuth = sheetsAuth;
+  if (driveClientId && driveClientSecret && driveRefreshToken) {
+    const oauth2 = new google.auth.OAuth2(driveClientId, driveClientSecret);
+    oauth2.setCredentials({ refresh_token: driveRefreshToken });
+    driveAuth = oauth2;
+  }
 
   return {
-    drive: google.drive({ version: 'v3', auth }),
-    sheets: google.sheets({ version: 'v4', auth }),
+    drive: google.drive({ version: 'v3', auth: driveAuth }),
+    sheets: google.sheets({ version: 'v4', auth: sheetsAuth }),
+    sheetsAuth,
+    driveAuth,
+    projectId,
+    sheetsClientId,
     rootFolderId,
   };
 }

@@ -12,6 +12,7 @@ const storageService = require('../utils/storageService');
 const driveNaming = require('../utils/driveNaming');
 const { logAudit } = require('../utils/auditLog');
 const { ACTION } = require('../constants/auditActions');
+const { notifyAdmins } = require('../utils/adminNotificationService');
 
 /**
  * Helper to safely parse stringified JSON (from multipart/form-data)
@@ -229,6 +230,7 @@ exports.uploadDocument = async (req, res) => {
 
     const docName = requirement.label || requirement.card || requirement.name || requirementKey;
     const isReupload = Boolean(existingDoc);
+    const wasRejected = existingDoc && existingDoc.status === STATUS.REJECTED;
 
     await logAudit({
       actor: instructor,
@@ -249,6 +251,60 @@ exports.uploadDocument = async (req, res) => {
       },
       req,
     });
+
+    // Notify administrators of new submission or re-upload
+    try {
+      const instructorName = instructor.fullName || 'An instructor';
+      let adminActionLink = `/admin/instructors/${ownerId}`;
+      let classSuffix = '';
+
+      if (requirement.scope === 'class' && classIds.length > 0) {
+        adminActionLink = `/admin/class-portfolio/${classIds[0]}/${requirement.key.replace(/^CLASS_/, '').toLowerCase().replace(/_/g, '-')}`;
+        const classObj = await Class.findById(classIds[0]).lean();
+        if (classObj) {
+          classSuffix = ` (${classObj.subject?.code || ''} · ${classObj.section?.code || ''})`;
+        }
+      } else {
+        adminActionLink = `/admin/review/faculty-portfolio?instructorId=${ownerId}`;
+      }
+
+      if (wasRejected) {
+        await notifyAdmins({
+          type: 'resubmission',
+          title: 'File Resubmitted',
+          message: `${instructorName} re-uploaded a rejected document for ${docName}${classSuffix}.`,
+          documentId: savedDoc._id,
+          requirementKey,
+          actionLink: adminActionLink,
+          senderId: ownerId,
+          category: 'pending_review',
+        });
+      } else if (isReupload) {
+        await notifyAdmins({
+          type: 'document_submitted',
+          title: 'Document Updated',
+          message: `${instructorName} uploaded a new version of ${docName}${classSuffix}.`,
+          documentId: savedDoc._id,
+          requirementKey,
+          actionLink: adminActionLink,
+          senderId: ownerId,
+          category: 'pending_review',
+        });
+      } else {
+        await notifyAdmins({
+          type: 'document_submitted',
+          title: 'New Document Uploaded',
+          message: `${instructorName} submitted a file for ${docName}${classSuffix}.`,
+          documentId: savedDoc._id,
+          requirementKey,
+          actionLink: adminActionLink,
+          senderId: ownerId,
+          category: 'pending_review',
+        });
+      }
+    } catch (notifAdminErr) {
+      console.warn('Could not notify admins of document upload:', notifAdminErr.message);
+    }
 
     //9. Send success response back to the client
     return res.status(201).json({
@@ -475,6 +531,7 @@ exports.reviewDocument = async (req, res) => {
           documentId: doc._id,
           requirementKey: doc.requirementKey,
           actionLink,
+          senderId: req.user.id,
           category: decision === 'approved' ? 'all' : 'pending_review',
         });
       } catch (insertErr) {
@@ -489,6 +546,7 @@ exports.reviewDocument = async (req, res) => {
           documentId: doc._id,
           requirementKey: doc.requirementKey,
           actionLink,
+          senderId: req.user.id,
           category: decision === 'approved' ? 'all' : 'pending_review',
         });
       }

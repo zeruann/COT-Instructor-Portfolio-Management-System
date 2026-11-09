@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Mail,
   Ban,
@@ -10,6 +11,9 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Search,
   UserPlus,
 } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate';
@@ -29,6 +33,18 @@ const DEPARTMENTS = [
   'Automotive Technology',
   'Food Technology',
   'IT Department',
+];
+
+const VIEW_BY_OPTIONS = [
+  { value: 'newest', label: 'Newest First' },
+  { value: 'oldest', label: 'Oldest First' },
+  { value: 'name_asc', label: 'Name (A to Z)' },
+  { value: 'name_desc', label: 'Name (Z to A)' },
+  { value: 'status_accepted', label: 'Status: Accepted' },
+  { value: 'status_pending', label: 'Status: Pending' },
+  { value: 'status_expired', label: 'Status: Expired' },
+  { value: 'status_rejected', label: 'Status: Rejected' },
+  { value: 'status_cancelled', label: 'Status: Cancelled' },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -170,7 +186,6 @@ function useAppModal() {
 
 /* ------------------------------------------------------------------ */
 
-
 const EMPTY_FORM = { firstName: '', middleName: '', lastName: '', email: '', department: '' };
 
 const inputClass =
@@ -185,31 +200,154 @@ const getDisplayName = (inv) => {
   return inv.fullName || inv.email;
 };
 
+/**
+ * Derive academic school year (e.g. "2026-2027") for an invitation
+ */
+function getInvitationSchoolYear(inv, periods = []) {
+  if (inv.schoolYear) return inv.schoolYear;
+  const rawDate = inv.dateSent || inv.createdAt;
+  if (!rawDate) return '';
+  const d = new Date(rawDate);
+  if (isNaN(d.getTime())) return '';
+
+  // Check if date falls within a configured AcademicPeriod
+  for (const p of periods) {
+    if (p.startDate && p.endDate) {
+      const start = new Date(p.startDate);
+      const end = new Date(p.endDate);
+      if (d >= start && d <= end && p.schoolYear) {
+        return p.schoolYear;
+      }
+    }
+  }
+
+  // Fallback to standard academic year calculation (June–May / Aug–Jul)
+  const year = d.getFullYear();
+  const month = d.getMonth(); // 0 = Jan, 5 = Jun
+  return month < 5 ? `${year - 1}-${year}` : `${year}-${year + 1}`;
+}
 
 function InviteInstructor() {
+  const navigate = useNavigate();
   const [form, setForm] = useState(EMPTY_FORM);
   const [invitations, setInvitations] = useState([]);
+  const [academicPeriods, setAcademicPeriods] = useState([]);
   // Ids currently mid-request (blocks rapid double-clicks while waiting on the server)
   const [resendingIds, setResendingIds] = useState(() => new Set());
   const { modal, close, notify, confirm } = useAppModal();
   const [invitePage, setInvitePage] = useState(1);
   const [tableVisible, setTableVisible] = useState(true);
 
+  // Smooth collapse/expand state for Invite Card
+  const [showInviteCard, setShowInviteCard] = useState(true);
+
+  // Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [schoolYearFilter, setSchoolYearFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [viewBy, setViewBy] = useState('newest');
+
   useEffect(() => {
     fetch('/api/invitations')
       .then((res) => res.json())
-      .then((data) => setInvitations(data))
+      .then((data) => setInvitations(Array.isArray(data) ? data : []))
       .catch((err) => console.error('Failed to load invitations:', err));
+
+    const token = localStorage.getItem('token');
+    fetch('/api/academic-periods?includeArchived=true', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.periods && Array.isArray(data.periods)) {
+          setAcademicPeriods(data.periods);
+        }
+      })
+      .catch(() => {});
   }, []);
 
-  // Fade table on page change
+  // Build available School Year options from academic periods + invitations
+  const schoolYearOptions = useMemo(() => {
+    const years = new Set();
+    academicPeriods.forEach((p) => {
+      if (p.schoolYear) years.add(p.schoolYear);
+    });
+    invitations.forEach((inv) => {
+      const sy = getInvitationSchoolYear(inv, academicPeriods);
+      if (sy) years.add(sy);
+    });
+    if (years.size === 0) {
+      years.add('2026-2027');
+      years.add('2025-2026');
+    }
+    return Array.from(years).sort((a, b) => b.localeCompare(a));
+  }, [academicPeriods, invitations]);
+
+  // Build available Department options
+  const departmentOptions = useMemo(() => {
+    const depts = new Set(DEPARTMENTS);
+    invitations.forEach((inv) => {
+      if (inv.department) depts.add(inv.department);
+    });
+    return Array.from(depts).sort();
+  }, [invitations]);
+
+  // Filter and sort invitations
+  const filteredInvitations = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+
+    const list = invitations.filter((inv) => {
+      const name = getDisplayName(inv).toLowerCase();
+      const email = (inv.email || '').toLowerCase();
+      const matchSearch = !q || name.includes(q) || email.includes(q);
+
+      const matchDept =
+        departmentFilter === 'all' || inv.department === departmentFilter;
+
+      const invSy = getInvitationSchoolYear(inv, academicPeriods);
+      const matchSy = schoolYearFilter === 'all' || invSy === schoolYearFilter;
+
+      if (viewBy.startsWith('status_')) {
+        const targetStatus = viewBy.replace('status_', '');
+        if ((inv.status || '').toLowerCase() !== targetStatus) return false;
+      }
+
+      return matchSearch && matchDept && matchSy;
+    });
+
+    return list.sort((a, b) => {
+      if (viewBy === 'name_asc') {
+        return getDisplayName(a).localeCompare(getDisplayName(b));
+      }
+      if (viewBy === 'name_desc') {
+        return getDisplayName(b).localeCompare(getDisplayName(a));
+      }
+      const dateA = new Date(a.dateSent || a.createdAt || 0).getTime();
+      const dateB = new Date(b.dateSent || b.createdAt || 0).getTime();
+      if (viewBy === 'oldest') {
+        return dateA - dateB;
+      }
+      // default 'newest' or status filter
+      return dateB - dateA;
+    });
+  }, [invitations, searchQuery, departmentFilter, schoolYearFilter, viewBy, academicPeriods]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setInvitePage(1);
+  }, [searchQuery, departmentFilter, schoolYearFilter, viewBy]);
+
+  // Fade table on page or filter change
   const isFirstPageRender = useRef(true);
   useEffect(() => {
-    if (isFirstPageRender.current) { isFirstPageRender.current = false; return; }
+    if (isFirstPageRender.current) {
+      isFirstPageRender.current = false;
+      return;
+    }
     setTableVisible(false);
-    const t = setTimeout(() => setTableVisible(true), 200);
+    const t = setTimeout(() => setTableVisible(true), 180);
     return () => clearTimeout(t);
-  }, [invitePage]);
+  }, [invitePage, searchQuery, departmentFilter, schoolYearFilter, viewBy]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -217,7 +355,11 @@ function InviteInstructor() {
 
   const handleSend = async () => {
     if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.department) {
-      notify('error', 'Missing information', 'Fill in the instructor’s first name, last name, email, and department before sending the invitation.');
+      notify(
+        'error',
+        'Missing information',
+        'Fill in the instructor’s first name, last name, email, and department before sending the invitation.'
+      );
       return;
     }
     try {
@@ -230,23 +372,34 @@ function InviteInstructor() {
       const data = await res.json();
 
       if (!res.ok) {
-        notify('error', 'Invitation not sent', data.message || 'The server couldn’t process this invitation. Try again.');
+        notify(
+          'error',
+          'Invitation not sent',
+          data.message || 'The server couldn’t process this invitation. Try again.'
+        );
         return;
       }
 
       setInvitations([data, ...invitations]);
       setForm(EMPTY_FORM);
-      notify('success', 'Invitation sent', `${getDisplayName(data)} will receive an email to join as an instructor.`);
+      notify(
+        'success',
+        'Invitation sent',
+        `${getDisplayName(data)} will receive an email to join as an instructor.`
+      );
     } catch (err) {
       console.error('Failed to send invitation:', err);
-      notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
+      notify(
+        'error',
+        'Something went wrong',
+        'We couldn’t reach the server. Check your connection and try again.'
+      );
     }
   };
 
   const handleCancel = () => setForm(EMPTY_FORM);
 
   const handleResend = async (id) => {
-    // A request for this id is already in flight - ignore rapid repeat clicks.
     if (resendingIds.has(id)) return;
 
     setResendingIds((prev) => new Set(prev).add(id));
@@ -255,7 +408,11 @@ function InviteInstructor() {
       const res = await fetch(`/api/invitations/${id}/resend`, { method: 'PATCH' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        notify('error', 'Resend failed', data.message || 'This invitation couldn’t be resent. Try again.');
+        notify(
+          'error',
+          'Resend failed',
+          data.message || 'This invitation couldn’t be resent. Try again.'
+        );
         return;
       }
       const updated = await res.json();
@@ -263,7 +420,11 @@ function InviteInstructor() {
       notify('success', 'Invitation resent', 'A fresh invitation email is on its way.');
     } catch (err) {
       console.error('Failed to resend invitation:', err);
-      notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
+      notify(
+        'error',
+        'Something went wrong',
+        'We couldn’t reach the server. Check your connection and try again.'
+      );
     } finally {
       setResendingIds((prev) => {
         const next = new Set(prev);
@@ -278,15 +439,27 @@ function InviteInstructor() {
       const res = await fetch(`/api/invitations/${id}/cancel`, { method: 'PATCH' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        notify('error', 'Cancel failed', data.message || 'This invitation couldn’t be cancelled. Try again.');
+        notify(
+          'error',
+          'Cancel failed',
+          data.message || 'This invitation couldn’t be cancelled. Try again.'
+        );
         return;
       }
       const updated = await res.json();
       setInvitations((prev) => prev.map((inv) => (inv._id === id ? updated : inv)));
-      notify('success', 'Invitation cancelled', 'The invitation link no longer works. You can send a new one to the correct email.');
+      notify(
+        'success',
+        'Invitation cancelled',
+        'The invitation link no longer works. You can send a new one to the correct email.'
+      );
     } catch (err) {
       console.error('Failed to cancel invitation:', err);
-      notify('error', 'Something went wrong', 'We couldn’t reach the server. Check your connection and try again.');
+      notify(
+        'error',
+        'Something went wrong',
+        'We couldn’t reach the server. Check your connection and try again.'
+      );
     }
   };
 
@@ -302,71 +475,244 @@ function InviteInstructor() {
     });
   };
 
+  const hasActiveFilters =
+    searchQuery.trim() !== '' ||
+    schoolYearFilter !== 'all' ||
+    departmentFilter !== 'all' ||
+    viewBy !== 'newest';
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setSchoolYearFilter('all');
+    setDepartmentFilter('all');
+    setViewBy('newest');
+  };
+
+  const totalPages = Math.ceil(filteredInvitations.length / INVITE_PAGE_SIZE);
+
   return (
     <>
-      {/* PAGE HEADER */}
-
-
-      {/* Invite Form */}
-      <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-6 mb-6 hover:shadow-[0_4px_24px_rgba(0,0,0,0.08)] transition-shadow">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="bg-orange-50 p-2.5 rounded-xl">
-            <Mail className="text-orange-500" size={20} />
-          </div>
-          <h2 className="font-semibold text-lg text-gray-800">Invite New Instructor</h2>
+      {/* PAGE HEADER + TOGGLE INVITE CARD BUTTON */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+        <div>
+          <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
+            Invite Instructors
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Send email invitations to new faculty members and track their onboarding status.
+          </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div>
-            <label className="text-sm text-gray-500 block mb-1.5">First Name</label>
-            <input name="firstName" value={form.firstName} onChange={handleChange}
-              placeholder="First name" className={inputClass} />
-          </div>
-          <div>
-            <label className="text-sm text-gray-500 block mb-1.5">
-              Middle Name <span className="text-gray-300">(optional)</span>
-            </label>
-            <input name="middleName" value={form.middleName} onChange={handleChange}
-              placeholder="Middle name" className={inputClass} />
-          </div>
-          <div>
-            <label className="text-sm text-gray-500 block mb-1.5">Last Name</label>
-            <input name="lastName" value={form.lastName} onChange={handleChange}
-              placeholder="Last name" className={inputClass} />
+        <button
+          type="button"
+          onClick={() => setShowInviteCard((prev) => !prev)}
+          aria-expanded={showInviteCard}
+          className={`inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${
+            showInviteCard
+              ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+              : 'bg-brand-orange text-white hover:bg-orange-600 shadow-sm'
+          }`}
+        >
+          {showInviteCard ? (
+            <>
+              <ChevronUp size={16} className="text-gray-500 transition-transform duration-300" />
+              <span>Hide Invite Card</span>
+            </>
+          ) : (
+            <>
+              <UserPlus size={16} />
+              <span>Show Invite Card</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Smooth Animated Collapsible Invite Card */}
+      <div
+        className={`grid transition-all duration-300 ease-in-out ${
+          showInviteCard
+            ? 'grid-rows-[1fr] opacity-100 mb-6'
+            : 'grid-rows-[0fr] opacity-0 mb-0 pointer-events-none'
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-6 border border-gray-100">
+            <div className="flex items-center justify-between gap-3 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="bg-orange-50 p-2.5 rounded-xl">
+                  <Mail className="text-orange-500" size={20} />
+                </div>
+                <h2 className="font-semibold text-lg text-gray-800">Invite New Instructor</h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowInviteCard(false)}
+                title="Hide invite form"
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <ChevronUp size={18} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="text-sm text-gray-500 block mb-1.5">First Name</label>
+                <input
+                  name="firstName"
+                  value={form.firstName}
+                  onChange={handleChange}
+                  placeholder="First name"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 block mb-1.5">
+                  Middle Name <span className="text-gray-300">(optional)</span>
+                </label>
+                <input
+                  name="middleName"
+                  value={form.middleName}
+                  onChange={handleChange}
+                  placeholder="Middle name"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 block mb-1.5">Last Name</label>
+                <input
+                  name="lastName"
+                  value={form.lastName}
+                  onChange={handleChange}
+                  placeholder="Last name"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+              <div>
+                <label className="text-sm text-gray-500 block mb-1.5">Email Address</label>
+                <input
+                  name="email"
+                  type="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  placeholder="instructor@university.edu"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="text-sm text-gray-500 block mb-1.5">Department</label>
+                <select
+                  name="department"
+                  value={form.department}
+                  onChange={handleChange}
+                  className={`${inputClass} text-gray-500`}
+                >
+                  <option value="">Select Department</option>
+                  {DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={handleCancel}
+                className="border border-gray-200 rounded-full px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSend}
+                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-orange-200 transition-all cursor-pointer"
+              >
+                Send Invitation
+              </button>
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div>
-            <label className="text-sm text-gray-500 block mb-1.5">Email Address</label>
-            <input name="email" type="email" value={form.email} onChange={handleChange}
-              placeholder="instructor@university.edu" className={inputClass} />
-          </div>
-          <div>
-            <label className="text-sm text-gray-500 block mb-1.5">Department</label>
-            <select name="department" value={form.department} onChange={handleChange}
-              className={`${inputClass} text-gray-500`}>
-              <option value="">Select Department</option>
-              {DEPARTMENTS.map((dept) => (
-                <option key={dept} value={dept}>{dept}</option>
-              ))}
-            </select>
-          </div>
+      {/* FILTER BAR: Search | School Year | Department | View By */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-5">
+        {/* Search */}
+        <div className="relative min-w-0 flex-1">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search instructor by name or email.."
+            className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+          />
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          ) : (
+            <Search className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+          )}
         </div>
 
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={handleCancel}
-            className="border border-gray-200 rounded-full px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+        {/* School Year Filter */}
+        <div className="relative shrink-0 sm:w-44 lg:w-48">
+          <select
+            value={schoolYearFilter}
+            onChange={(e) => setSchoolYearFilter(e.target.value)}
+            aria-label="Filter by School Year"
+            className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
           >
-            Cancel
-          </button>
-          <button
-            onClick={handleSend}
-            className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-orange-200 transition-all"
+            <option value="all">All School Years</option>
+            {schoolYearOptions.map((sy) => (
+              <option key={sy} value={sy}>
+                S.Y. {sy}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        </div>
+
+        {/* Department Filter */}
+        <div className="relative shrink-0 sm:w-48 lg:w-56">
+          <select
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            aria-label="Filter by Department"
+            className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
           >
-            Send Invitation
-          </button>
+            <option value="all">All Departments</option>
+            {departmentOptions.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        </div>
+
+        {/* View By / Order By */}
+        <div className="relative shrink-0 sm:w-44 lg:w-48">
+          <select
+            value={viewBy}
+            onChange={(e) => setViewBy(e.target.value)}
+            aria-label="View by / Order by"
+            className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+          >
+            {VIEW_BY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
       </div>
 
@@ -375,104 +721,175 @@ function InviteInstructor() {
         <div className="flex justify-between items-center mb-4">
           <div>
             <h2 className="font-semibold text-lg text-gray-800">Recent Invitations</h2>
-            <p className="text-xs text-gray-400 mt-0.5">{invitations.length} total invitation{invitations.length !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {filteredInvitations.length}{' '}
+              {hasActiveFilters ? 'matching' : 'total'} invitation
+              {filteredInvitations.length !== 1 ? 's' : ''}
+            </p>
           </div>
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="text-xs font-semibold text-brand-orange hover:underline cursor-pointer"
+            >
+              Reset filters
+            </button>
+          )}
         </div>
 
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-400 text-xs uppercase border-b border-gray-100">
-              <th className="py-3 font-medium">Instructor</th>
-              <th className="py-3 font-medium">Department</th>
-              <th className="py-3 font-medium">Date Sent</th>
-              <th className="py-3 font-medium">Status</th>
-              <th className="py-3 font-medium">Action</th>
-            </tr>
-          </thead>
-          <tbody className={`transition-opacity duration-300 ${tableVisible ? 'opacity-100' : 'opacity-0'}`}>
-            {invitations.length === 0 ? (
-              <tr>
-                <td colSpan="5" className="text-center py-16">
-                  <Mail className="mx-auto text-gray-300 mb-3" size={32} />
-                  <p className="text-gray-400 text-sm">No invitations sent yet.</p>
-                  <p className="text-gray-300 text-xs mt-1">
-                    Invite your first instructor to get started.
-                  </p>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-400 text-xs uppercase border-b border-gray-100">
+                <th className="py-3 font-medium">Instructor</th>
+                <th className="py-3 font-medium">Department</th>
+                <th className="py-3 font-medium">Date Sent</th>
+                <th className="py-3 font-medium">Status</th>
+                <th className="py-3 font-medium">Action</th>
               </tr>
-            ) : (
-              invitations
-                .slice((invitePage - 1) * INVITE_PAGE_SIZE, invitePage * INVITE_PAGE_SIZE)
-                .map((inv) => {
-                  const isResending = resendingIds.has(inv._id);
+            </thead>
+            <tbody
+              className={`transition-opacity duration-300 ${
+                tableVisible ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              {filteredInvitations.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="text-center py-16">
+                    <Mail className="mx-auto text-gray-300 mb-3" size={32} />
+                    <p className="text-gray-400 text-sm">
+                      {hasActiveFilters
+                        ? 'No invitations match your filters.'
+                        : 'No invitations sent yet.'}
+                    </p>
+                    <p className="text-gray-300 text-xs mt-1">
+                      {hasActiveFilters
+                        ? 'Try adjusting your search or filter selections.'
+                        : 'Invite your first instructor to get started.'}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredInvitations
+                  .slice((invitePage - 1) * INVITE_PAGE_SIZE, invitePage * INVITE_PAGE_SIZE)
+                  .map((inv) => {
+                    const isResending = resendingIds.has(inv._id);
+                    const name = getDisplayName(inv);
+                    const photo = inv.profile?.photoUrl || inv.googlePhotoUrl;
+                    const canViewProfile =
+                      inv.status === 'Accepted' && inv.accountStatus === 'Active';
 
-                  return (
-                    <tr key={inv._id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors duration-150">
-                      <td className="py-3.5 flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-orange-50 flex items-center justify-center">
-                          <User className="text-orange-400" size={18} />
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-800">{getDisplayName(inv)}</p>
-                          <p className="text-gray-400 text-xs">{inv.email}</p>
-                        </div>
-                      </td>
-                      <td className="text-gray-600">{inv.department}</td>
-                      <td className="text-gray-600">{formatDate(inv.dateSent)}</td>
-                      <td>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${statusStyles[inv.status]}`}
-                        >
-                          {inv.status?.toUpperCase()}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          {inv.status === 'Accepted' && (
-                            inv.accountStatus === 'Active' ? (
-                              <a href="#" className="text-blue-500 text-xs font-medium hover:underline">
-                                View Profile
-                              </a>
-                            ) : (
-                              <span className="text-xs font-medium text-gray-400">Setting up…</span>
-                            )
-                          )}
+                    return (
+                      <tr
+                        key={inv._id}
+                        onClick={() => {
+                          if (canViewProfile) navigate(`/admin/instructors/${inv._id}`);
+                        }}
+                        className={`border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors duration-150 ${
+                          canViewProfile ? 'cursor-pointer' : ''
+                        }`}
+                      >
+                        <td className="py-3.5 pr-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0 overflow-hidden border border-orange-100">
+                              {photo ? (
+                                <img
+                                  src={photo}
+                                  alt={name}
+                                  referrerPolicy="no-referrer"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    const fallback =
+                                      e.currentTarget.parentElement?.querySelector('svg');
+                                    if (fallback) fallback.style.display = 'block';
+                                  }}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : null}
+                              <User
+                                style={{ display: photo ? 'none' : 'block' }}
+                                className="text-orange-400"
+                                size={18}
+                              />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-800 truncate">{name}</p>
+                              <p className="text-gray-400 text-xs truncate">{inv.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="text-gray-600 pr-4">{inv.department}</td>
+                        <td className="text-gray-600 pr-4">{formatDate(inv.dateSent)}</td>
+                        <td className="pr-4">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              statusStyles[inv.status] || 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {inv.status?.toUpperCase()}
+                          </span>
+                        </td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-3">
+                            {inv.status === 'Accepted' &&
+                              (inv.accountStatus === 'Active' ? (
+                                <Link
+                                  to={`/admin/instructors/${inv._id}`}
+                                  className="text-blue-500 text-xs font-medium hover:underline"
+                                >
+                                  View Profile
+                                </Link>
+                              ) : (
+                                <span className="text-xs font-medium text-gray-400">
+                                  Setting up…
+                                </span>
+                              ))}
 
-                          {(inv.status === 'Rejected' || inv.status === 'Expired') && (
-                            <button
-                              onClick={() => handleResend(inv._id)}
-                              disabled={isResending}
-                              className={`flex items-center gap-1 text-xs font-medium transition-colors ${isResending ? 'text-orange-300 cursor-wait' : 'text-orange-500 hover:underline'
+                            {(inv.status === 'Rejected' || inv.status === 'Expired') && (
+                              <button
+                                onClick={() => handleResend(inv._id)}
+                                disabled={isResending}
+                                className={`flex items-center gap-1 text-xs font-medium transition-colors cursor-pointer ${
+                                  isResending
+                                    ? 'text-orange-300 cursor-wait'
+                                    : 'text-orange-500 hover:underline'
                                 }`}
-                            >
-                              <RotateCcw size={13} className={isResending ? 'animate-spin' : ''} />
-                              {isResending ? 'Sending…' : 'Resend'}
-                            </button>
-                          )}
+                              >
+                                <RotateCcw
+                                  size={13}
+                                  className={isResending ? 'animate-spin' : ''}
+                                />
+                                {isResending ? 'Sending…' : 'Resend'}
+                              </button>
+                            )}
 
-                          {inv.status === 'Pending' && (
-                            <button
-                              onClick={() => handleCancelInvitation(inv)}
-                              className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors"
-                            >
-                              <Ban size={13} />
-                              Cancel
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-            )}
-          </tbody>
-        </table>
+                            {inv.status === 'Pending' && (
+                              <button
+                                onClick={() => handleCancelInvitation(inv)}
+                                className="flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                              >
+                                <Ban size={13} />
+                                Cancel
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* PAGINATION */}
-        {invitations.length > INVITE_PAGE_SIZE && (
+        {filteredInvitations.length > INVITE_PAGE_SIZE && (
           <div className="flex items-center justify-between pt-4 mt-4 border-t border-gray-100 text-[13px] text-gray-500">
             <span>
-              Showing {(invitePage - 1) * INVITE_PAGE_SIZE + 1}–{Math.min(invitePage * INVITE_PAGE_SIZE, invitations.length)} of {invitations.length}
+              Showing {(invitePage - 1) * INVITE_PAGE_SIZE + 1}–
+              {Math.min(invitePage * INVITE_PAGE_SIZE, filteredInvitations.length)} of{' '}
+              {filteredInvitations.length}
             </span>
             <div className="flex items-center gap-1.5">
               <button
@@ -483,22 +900,23 @@ function InviteInstructor() {
               >
                 <ChevronLeft className="w-4 h-4 inline" />
               </button>
-              {Array.from({ length: Math.ceil(invitations.length / INVITE_PAGE_SIZE) }, (_, i) => i + 1).map((p) => (
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                 <button
                   key={p}
                   type="button"
                   onClick={() => setInvitePage(p)}
-                  className={`w-8 h-8 rounded-lg text-xs font-medium border transition ${p === invitePage
-                    ? 'bg-orange-500 text-white border-orange-500'
-                    : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-                    }`}
+                  className={`w-8 h-8 rounded-lg text-xs font-medium border transition ${
+                    p === invitePage
+                      ? 'bg-orange-500 text-white border-orange-500'
+                      : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                  }`}
                 >
                   {p}
                 </button>
               ))}
               <button
                 type="button"
-                disabled={invitePage >= Math.ceil(invitations.length / INVITE_PAGE_SIZE)}
+                disabled={invitePage >= totalPages}
                 onClick={() => setInvitePage((p) => p + 1)}
                 className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition"
               >
