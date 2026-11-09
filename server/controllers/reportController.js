@@ -379,6 +379,16 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
   });
 
   return {
+    instructor: {
+      id: instructor?._id,
+      name: instName,
+      department,
+      rank: instructor?.profile?.rank || instructor?.profile?.position || 'Assistant Professor IV',
+      photoUrl: instructor?.profile?.photoUrl || instructor?.googlePhotoUrl || null,
+      completionPercentage: typeof instructor?.completionPercentage === 'number'
+        ? instructor.completionPercentage
+        : instructor?.completionRate ?? null,
+    },
     instructorName: instName,
     department,
     schoolYear: resolvedSchoolYear,

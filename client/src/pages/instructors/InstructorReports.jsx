@@ -20,10 +20,55 @@ import {
   downloadComplianceExcel,
   exportComplianceGoogleSheet,
 } from '../../api/reports';
+import { fetchFacultySummary } from '../../api/documents';
 // Logos extracted from Faculty-Checklist-v13.xlsx. Adjust the path to your assets folder.
 import bukSuLogo from '../../assets/buksu-logo.png';
 import collegeLogo from '../../assets/college-logo.png';
 import googleSheetsIcon from '../../assets/google-sheets.svg';
+
+const CATEGORY_PATHS = [
+  'educational-attainment',
+  'service-records',
+  'seminars-and-workshops',
+  'achievements',
+  'research',
+  'extension-involvement',
+  'production',
+  'other-requirements',
+];
+
+const computeCompletion = (summaries) => {
+  const categoryCount = CATEGORY_PATHS.length;
+  let approvedShare = 0;
+  let pendingShare = 0;
+  let rejectedShare = 0;
+  const counts = { approved: 0, pending: 0, rejected: 0 };
+
+  CATEGORY_PATHS.forEach((path) => {
+    const s = summaries?.[path] || {};
+    const approved = s.approved || 0;
+    const pending = s.pendingReview || 0;
+    const rejected = s.rejected || 0;
+    const total = Math.max(s.totalFiles || 0, approved + pending + rejected);
+    if (total === 0) return;
+
+    approvedShare += approved / total;
+    pendingShare += pending / total;
+    rejectedShare += rejected / total;
+    counts.approved += approved;
+    counts.pending += pending;
+    counts.rejected += rejected;
+  });
+
+  const toPct = (share) => (share / categoryCount) * 100;
+  return {
+    percent: Math.round(toPct(approvedShare)),
+    approvedPct: toPct(approvedShare),
+    pendingPct: toPct(pendingShare),
+    rejectedPct: toPct(rejectedShare),
+    counts,
+  };
+};
 
 /* -----------------------------------------------------------------------------
  * WHAT THIS PAGE DOES
@@ -226,8 +271,8 @@ function findApiRow(apiRows, tpl) {
     apiRows.find((r) => bare(r) && bare(r) === t) ||
     (tpl.code
       ? apiRows.find(
-          (r) => r.code && norm(r.code).startsWith(norm(tpl.code)) && norm(r.code).length <= 4
-        )
+        (r) => r.code && norm(r.code).startsWith(norm(tpl.code)) && norm(r.code).length <= 4
+      )
       : undefined) ||
     apiRows.find((r) => {
       const l = bare(r);
@@ -415,6 +460,47 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
   const [isExportingSheets, setIsExportingSheets] = useState(false);
   const [error, setError] = useState(null); // { message, retry }
   const [toast, setToast] = useState(null); // { message, tone }
+  const [facultySummary, setFacultySummary] = useState(null);
+
+  useEffect(() => {
+    let isCurrent = true;
+    fetchFacultySummary(effectiveInstructorId)
+      .then((sum) => {
+        if (isCurrent) setFacultySummary(sum || {});
+      })
+      .catch((err) => console.warn('Could not load faculty summary for reports:', err));
+    return () => {
+      isCurrent = false;
+    };
+  }, [effectiveInstructorId]);
+
+  const completion = useMemo(() => {
+    if (facultySummary && Object.keys(facultySummary).length > 0) {
+      return computeCompletion(facultySummary);
+    }
+    const apiPct = data?.instructor?.completionPercentage;
+    if (typeof apiPct === 'number') {
+      return {
+        percent: apiPct,
+        approvedPct: apiPct,
+        pendingPct: 0,
+        rejectedPct: 0,
+        counts: null,
+      };
+    }
+    return {
+      percent: 0,
+      approvedPct: 0,
+      pendingPct: 0,
+      rejectedPct: 0,
+      counts: null,
+    };
+  }, [facultySummary, data?.instructor?.completionPercentage]);
+
+  const instructorName = data?.instructor?.name || data?.instructorName || 'Instructor';
+  const instructorRank = data?.instructor?.rank || 'Assistant Professor IV';
+  const instructorDept = data?.instructor?.department || data?.department || 'IT Department';
+  const instructorPhoto = data?.instructor?.photoUrl || null;
 
   const requestId = useRef(0); // ignore outdated responses
   const initializedPeriod = useRef(false);
@@ -946,6 +1032,92 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
               <p className="mt-1 text-sm leading-relaxed text-gray-600">
                 Choose the period, then download the official form or print it.
               </p>
+            </div>
+
+            {/* Instructor Status Progress Card (without button) */}
+            <div className="flex min-w-0 items-center gap-4 rounded-2xl border border-gray-200/90 bg-white p-4 shadow-2xs">
+              {/* Left: Avatar */}
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 border border-orange-100 sm:h-20 sm:w-20">
+                {instructorPhoto ? (
+                  <img
+                    src={instructorPhoto}
+                    alt={instructorName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="#fb923c"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-9 w-9 sm:h-10 sm:w-10"
+                    aria-hidden="true"
+                  >
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                )}
+              </div>
+
+              {/* Right: Info + Progress */}
+              <div className="min-w-0 flex-1">
+                <h3
+                  title={instructorName}
+                  className="truncate text-base font-bold leading-snug text-brand-orange"
+                >
+                  {instructorName}
+                </h3>
+                <p className="mt-0.5 truncate text-xs font-normal text-gray-400">
+                  {instructorRank}
+                </p>
+                <p className="truncate text-xs font-normal text-gray-400">
+                  {instructorDept}
+                </p>
+
+                <div className="mt-2.5">
+                  <div className="mb-1.5 flex items-center justify-between gap-2 text-xs">
+                    <span className="truncate font-semibold text-[#2e2a72]">
+                      Completion Status
+                    </span>
+                    <span className="shrink-0 font-bold text-[#10b981]">
+                      {completion?.percent != null ? `${completion.percent}%` : '0%'}
+                    </span>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div className="flex h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                    {completion?.approvedPct > 0 && (
+                      <div
+                        style={{ width: `${completion.approvedPct}%` }}
+                        className="bg-[#10b981] transition-all duration-300"
+                        title={`Approved: ${Math.round(completion.approvedPct)}%`}
+                      />
+                    )}
+                    {completion?.pendingPct > 0 && (
+                      <div
+                        style={{ width: `${completion.pendingPct}%` }}
+                        className="bg-amber-400 transition-all duration-300"
+                        title={`Pending: ${Math.round(completion.pendingPct)}%`}
+                      />
+                    )}
+                    {completion?.rejectedPct > 0 && (
+                      <div
+                        style={{ width: `${completion.rejectedPct}%` }}
+                        className="bg-red-400 transition-all duration-300"
+                        title={`Rejected: ${Math.round(completion.rejectedPct)}%`}
+                      />
+                    )}
+                    {(!completion?.percent || completion?.percent === 0) &&
+                      !completion?.pendingPct &&
+                      !completion?.rejectedPct && (
+                        <div className="w-full bg-gray-200" />
+                      )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Period Selection */}
