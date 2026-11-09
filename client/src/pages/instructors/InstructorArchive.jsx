@@ -12,6 +12,7 @@ function ArchivedClassCard({ classItem, onOpen, onUnarchive }) {
     academicPeriod,
     approvedCount = 0,
     pendingCount = 0,
+    rejectedCount = 0,
     totalRequired = 31,
   } = classItem;
 
@@ -26,6 +27,7 @@ function ArchivedClassCard({ classItem, onOpen, onUnarchive }) {
 
   const approvedPct = totalRequired > 0 ? (approvedCount / totalRequired) * 100 : 0;
   const pendingPct = totalRequired > 0 ? (pendingCount / totalRequired) * 100 : 0;
+  const rejectedPct = totalRequired > 0 ? (rejectedCount / totalRequired) * 100 : 0;
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-xs transition hover:shadow-md">
@@ -85,6 +87,13 @@ function ArchivedClassCard({ classItem, onOpen, onUnarchive }) {
             title={`Pending: ${pendingCount}`}
           />
         )}
+        {rejectedPct > 0 && (
+          <div
+            style={{ width: `${rejectedPct}%` }}
+            className="h-full bg-[#ef4444] transition-all duration-300"
+            title={`Rejected: ${rejectedCount}`}
+          />
+        )}
       </div>
 
       {/* Progress Breakdown Legend & Summary */}
@@ -97,6 +106,10 @@ function ArchivedClassCard({ classItem, onOpen, onUnarchive }) {
           <span className="flex items-center gap-1.5 font-medium">
             <span className="h-2.5 w-2.5 rounded-full bg-[#f5a30f]" />
             ({pendingCount}) Pending Review
+          </span>
+          <span className="flex items-center gap-1.5 font-medium">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#ef4444]" />
+            ({rejectedCount}) Rejected
           </span>
           <span className="flex items-center gap-1.5 font-medium text-gray-400">
             <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />

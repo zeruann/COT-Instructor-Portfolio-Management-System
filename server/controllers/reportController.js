@@ -43,6 +43,11 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
     );
   }
 
+  // No selection means the report should use the current active academic period.
+  if (!targetPeriod && !periodId && !schoolYear && !semester) {
+    targetPeriod = periods.find((p) => p.status === 'Active') || periods.find((p) => p.isCurrent);
+  }
+
   // Fallback to active current period, or latest period
   if (!targetPeriod) {
     targetPeriod = periods.find((p) => p.isCurrent) || periods[0];

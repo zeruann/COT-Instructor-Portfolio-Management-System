@@ -362,6 +362,7 @@ function SeminarsAndWorkshops() {
       </section>
 
       {/* Upload popup: Add / Edit / Replace. Uses REQUIREMENT from CHANGE 1 */}
+
       <UploadModal
         isOpen={uploadOpen}
         onClose={() => setUploadOpen(false)}

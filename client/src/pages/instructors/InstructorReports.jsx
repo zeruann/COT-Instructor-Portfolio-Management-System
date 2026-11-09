@@ -407,8 +407,8 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('checklist'); // 'checklist' | 'documents'
 
-  const [schoolYear, setSchoolYear] = useState('2026–2027');
-  const [semester, setSemester] = useState('1st Semester');
+  const [schoolYear, setSchoolYear] = useState('');
+  const [semester, setSemester] = useState('');
   const [availablePeriods, setAvailablePeriods] = useState([]);
 
   const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
@@ -417,6 +417,7 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
   const [toast, setToast] = useState(null); // { message, tone }
 
   const requestId = useRef(0); // ignore outdated responses
+  const initializedPeriod = useRef(false);
 
   const loadReportData = useCallback(async (year, sem) => {
     const id = ++requestId.current;
@@ -430,6 +431,18 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
       if (res?.success) {
         setData(res);
         if (Array.isArray(res.academicPeriods)) setAvailablePeriods(res.academicPeriods);
+        // Initialize the selectors from the active period returned by the report API.
+        // Keep later user selections intact when their report requests complete.
+        if (!initializedPeriod.current && res.currentPeriod) {
+          initializedPeriod.current = true;
+          setSchoolYear(String(res.currentPeriod.schoolYear || '').replace('-', '–'));
+          const currentSemester = String(res.currentPeriod.semester || '');
+          setSemester(
+            currentSemester === 'Summer' || currentSemester.endsWith('Semester')
+              ? currentSemester
+              : `${currentSemester} Semester`
+          );
+        }
       }
     } catch (err) {
       if (id !== requestId.current) return;
@@ -444,7 +457,8 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
   }, [effectiveInstructorId]);
 
   useEffect(() => {
-    loadReportData(schoolYear, semester);
+    loadReportData('', '');
+    // The report endpoint resolves an empty selection to the active period.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveInstructorId]);
 
@@ -458,7 +472,7 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
   };
 
   const isCurrent = useMemo(() => {
-    if (!data?.currentPeriod) return schoolYear.includes('2026') && semester.startsWith('1st');
+    if (!data?.currentPeriod) return false;
     return (
       data.currentPeriod.schoolYear === toApiYear(schoolYear) &&
       (`${data.currentPeriod.semester} Semester` === semester ||
@@ -945,7 +959,7 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
                 {availablePeriods.length > 0 ? (
                   Array.from(
                     new Set(availablePeriods.map((p) => p.schoolYear))
-                  ).map((year) => (
+                  ).sort((a, b) => b.localeCompare(a, undefined, { numeric: true })).map((year) => (
                     <option key={year} value={year.replace('-', '–')}>
                       {year.replace('-', '–')}
                     </option>

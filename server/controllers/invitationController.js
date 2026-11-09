@@ -129,9 +129,12 @@ exports.sendInvitation = async (req, res) => {
       } else {
         await Instructor.findByIdAndDelete(invitation._id);
       }
-      return res
-        .status(502)
-        .json({ message: 'The invitation email could not be sent. Check the email address and try again.' });
+      const mailDisabled = emailErr.code === 'GOOGLE_MAIL_DISABLED';
+      return res.status(mailDisabled ? 503 : 502).json({
+        message: mailDisabled
+          ? 'Google Mail is disabled. Enable it in Administrator Settings before sending invitations.'
+          : 'The invitation email could not be sent. Verify the Google Mail credentials in Administrator Settings and try again.',
+      });
     }
 
     res.status(201).json(withoutPrivate(invitation));
@@ -222,7 +225,12 @@ exports.resendInvitation = async (req, res) => {
           },
         }
       );
-      return res.status(502).json({ message: 'The invitation email could not be sent. Try again.' });
+      const mailDisabled = emailErr.code === 'GOOGLE_MAIL_DISABLED';
+      return res.status(mailDisabled ? 503 : 502).json({
+        message: mailDisabled
+          ? 'Google Mail is disabled. Enable it in Administrator Settings before resending invitations.'
+          : 'The invitation email could not be sent. Verify the Google Mail credentials in Administrator Settings and try again.',
+      });
     }
 
     const updated = await Instructor.findById(id);

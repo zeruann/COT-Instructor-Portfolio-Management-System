@@ -258,6 +258,7 @@ export default function EducationalAttainment() {
         </div>
       </section>
 
+
       <UploadModal
         isOpen={uploadOpen}
         onClose={() => setUploadOpen(false)}
