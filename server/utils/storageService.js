@@ -327,6 +327,18 @@ async function moveFolder(folderId, newParentId) {
   }
 }
 
+// Returns the parent folder ID of a file in Google Drive.
+async function getFileParentFolderId(fileId) {
+  if (!fileId || typeof fileId !== 'string') return null;
+  try {
+    const drive = await getDrive();
+    const meta = await drive.files.get({ fileId, fields: 'parents' });
+    return meta.data?.parents?.[0] || null;
+  } catch {
+    return null;
+  }
+}
+
 // For tests only: lets a test replace the Drive client with a fake.
 function __setDriveClientForTests(client) {
   driveClient = client;
@@ -340,6 +352,7 @@ module.exports = {
   checkConnection,
   ensureInstructorFolder,
   ensureFolderPath,
+  getFileParentFolderId,
   uploadFile,
   getFile,
   deleteFile,

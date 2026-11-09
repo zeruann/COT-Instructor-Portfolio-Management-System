@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useOutletContext } from 'react-router-dom';
+import { useOutletContext, useLocation, useSearchParams } from 'react-router-dom';
+import { CheckSquare } from 'lucide-react';
 
 import UploadModal from '../../../../components/documentActions/UploadModal';
 import PreviewModal from '../../../../components/documentActions/PreviewModal';
@@ -151,6 +152,11 @@ function IconButton({ variant, label, title, disabled, onClick, children }) {
 
 // ► CHANGE 3: rename the function (must match the export at the bottom)
 function ProfessionalOrgs() {
+  const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
+  const isAdmin = pathname.startsWith('/admin');
+  const instructorId = searchParams.get('instructorId');
+
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -180,7 +186,11 @@ function ProfessionalOrgs() {
   const loadRecords = async () => {
     try {
       setLoading(true);
-      const data = await fetchDocuments({ requirementKey: REQUIREMENT.key });
+      const params = { requirementKey: REQUIREMENT.key };
+      if (isAdmin && instructorId) {
+        params.instructorId = instructorId;
+      }
+      const data = await fetchDocuments(params);
       setRecords(data || []);
     } catch (err) {
       console.error(`Failed to load ${WORDS.plural}:`, err);
@@ -191,7 +201,7 @@ function ProfessionalOrgs() {
 
   useEffect(() => {
     loadRecords();
-  }, []);
+  }, [isAdmin, instructorId]);
 
   const { counts, total, percent } = summarize(records);
 
@@ -326,42 +336,55 @@ function ProfessionalOrgs() {
                       </td>
 
                       <td className="whitespace-nowrap">
-                        <div className="doc-icon-actions">
-                          <IconButton
-                            variant="view"
-                            label={`View ${title}`}
-                            title="View"
-                            disabled={actions.view.disabled}
+                        {isAdmin ? (
+                          <button
+                            type="button"
+                            className="doc-btn doc-btn--review"
+                            disabled={!doc}
+                            title="Review document"
                             onClick={() => handleView(doc)}
                           >
-                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-                            <circle cx="12" cy="12" r="3" />
-                          </IconButton>
+                            <CheckSquare className="w-4 h-4" />
+                            Review
+                          </button>
+                        ) : (
+                          <div className="doc-icon-actions">
+                            <IconButton
+                              variant="view"
+                              label={`View ${title}`}
+                              title="View"
+                              disabled={actions.view.disabled}
+                              onClick={() => handleView(doc)}
+                            >
+                              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </IconButton>
 
-                          <IconButton
-                            variant="replace"
-                            label={`Reupload ${title}`}
-                            title="Reupload"
-                            disabled={actions.replace.disabled}
-                            onClick={() => openModal(doc)}
-                          >
-                            <path d="M21 12a9 9 0 1 1-3-6.7" />
-                            <path d="M21 4v5h-5" />
-                          </IconButton>
+                            <IconButton
+                              variant="replace"
+                              label={`Reupload ${title}`}
+                              title="Reupload"
+                              disabled={actions.replace.disabled}
+                              onClick={() => openModal(doc)}
+                            >
+                              <path d="M21 12a9 9 0 1 1-3-6.7" />
+                              <path d="M21 4v5h-5" />
+                            </IconButton>
 
-                          <IconButton
-                            variant="delete"
-                            label={`Delete ${title}`}
-                            title={actions.remove.disabled ? actions.remove.tip : 'Delete'}
-                            disabled={actions.remove.disabled}
-                            onClick={() => handleDelete(doc)}
-                          >
-                            <path d="M3 6h18" />
-                            <path d="M8 6V4h8v2" />
-                            <path d="M19 6l-1 14H6L5 6" />
-                            <path d="M10 11v6M14 11v6" />
-                          </IconButton>
-                        </div>
+                            <IconButton
+                              variant="delete"
+                              label={`Delete ${title}`}
+                              title={actions.remove.disabled ? actions.remove.tip : 'Delete'}
+                              disabled={actions.remove.disabled}
+                              onClick={() => handleDelete(doc)}
+                            >
+                              <path d="M3 6h18" />
+                              <path d="M8 6V4h8v2" />
+                              <path d="M19 6l-1 14H6L5 6" />
+                              <path d="M10 11v6M14 11v6" />
+                            </IconButton>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -385,8 +408,16 @@ function ProfessionalOrgs() {
       {/* Preview popup */}
       <PreviewModal
         isOpen={previewOpen}
-        onClose={() => setPreviewOpen(false)}
+        onClose={() => {
+          setPreviewOpen(false);
+          setPreviewDoc(null);
+        }}
         document={previewDoc}
+        isAdmin={isAdmin}
+        onReviewSuccess={() => {
+          setPreviewOpen(false);
+          loadRecords();
+        }}
         onEdit={(doc) => openModal(doc)}
       />
     </div>

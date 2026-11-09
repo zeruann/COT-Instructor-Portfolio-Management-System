@@ -14,7 +14,7 @@ const tabs = [
 
 function OtherRequirements() {
   const location = useLocation();
-  const { isAdmin } = usePortfolio();
+  const isAdmin = location.pathname.startsWith('/admin');
 
   // HOW THE "Add Document" BUTTON KNOWS WHICH TAB IS OPEN
   // The button does not know the tab. It only adds 1 to this counter.

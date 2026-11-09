@@ -313,6 +313,7 @@ function Box({ state }) {
 // Wraps a checkbox (and optional label) in a link when a file exists.
 function Check({ state, label, labelFirst = false }) {
   const sr = state.checked ? 'Submitted' : state.pending ? 'Pending review' : 'Not submitted';
+  const isFolder = state.link?.includes('/drive/folders/');
   const inner = (
     <span className="inline-flex items-center gap-1 whitespace-nowrap">
       {labelFirst && label}
@@ -322,7 +323,13 @@ function Check({ state, label, labelFirst = false }) {
     </span>
   );
   return state.link ? (
-    <a href={state.link} target="_blank" rel="noreferrer" className="text-blue-700 hover:underline">
+    <a
+      href={state.link}
+      target="_blank"
+      rel="noreferrer"
+      className="text-blue-700 hover:underline cursor-pointer"
+      title={isFolder ? 'Open folder in Google Drive' : 'View file in Google Drive'}
+    >
       {inner}
     </a>
   ) : (
@@ -337,6 +344,7 @@ function RedNote({ children }) {
 // A boxed requirement (Faculty Portfolio, and the O–R block)
 function RequirementCell({ item, state, minH }) {
   if (item.blank) return <td colSpan={item.span} className="border border-black" />;
+  const isFolder = state.link?.includes('/drive/folders/');
   const wrapped = (
     <span className="flex items-start gap-1.5">
       <span className="mt-[2px]">
@@ -351,7 +359,13 @@ function RequirementCell({ item, state, minH }) {
   return (
     <td colSpan={item.span} className={`border border-black p-1.5 align-top ${minH}`}>
       {state.link ? (
-        <a href={state.link} target="_blank" rel="noreferrer" className="hover:underline">
+        <a
+          href={state.link}
+          target="_blank"
+          rel="noreferrer"
+          className="hover:underline cursor-pointer block h-full"
+          title={isFolder ? 'Open folder in Google Drive' : 'View file in Google Drive'}
+        >
           {wrapped}
         </a>
       ) : (
@@ -426,7 +440,7 @@ function SelectField({ id, label, value, onChange, children, badge }) {
           id={id}
           value={value}
           onChange={onChange}
-          className={`w-full h-13 appearance-none rounded-lg border border-gray-300 bg-white px-3 text-[16px] text-gray-800 ${focusRing}`}
+          className={`w-full h-10 appearance-none rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 ${focusRing}`}
         >
           {children}
         </select>
@@ -762,7 +776,7 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
           </div>
 
           {/* ================================== PAPER =================================== */}
-          <div className="overflow-x-auto rounded-xl bg-gray-200/70 p-3 sm:p-6 print:overflow-visible print:bg-transparent print:p-0">
+          <div className="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-13.5rem)] rounded-xl bg-gray-200/70 p-3 sm:p-6 print:overflow-visible print:bg-transparent print:p-0 print:max-h-none shadow-inner">
             <div
               id="report-print-root"
               className="report-sheet mx-auto w-full min-w-[750px] max-w-[9000px] bg-white text-black shadow-md print:min-w-0 print:max-w-none print:shadow-none"
@@ -1021,23 +1035,23 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
 
         {/* ------------------- RIGHT: PERIOD + DOWNLOAD (sticky panel) ------------------- */}
 
-        <aside className="order-1 lg:sticky lg:top-4 lg:order-2 print:hidden">
-          <div className="space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <aside className="order-1 lg:order-2 lg:sticky lg:top-0 print:hidden shrink-0 self-start overscroll-contain">
+          <div className="space-y-3.5 rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-sm">
 
             {/* Header */}
             <div>
               <h2 className="text-base font-bold text-gray-900">
                 Faculty Compliance Checklist
               </h2>
-              <p className="mt-1 text-sm leading-relaxed text-gray-600">
+              <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
                 Choose the period, then download the official form or print it.
               </p>
             </div>
 
             {/* Instructor Status Progress Card (without button) */}
-            <div className="flex min-w-0 items-center gap-4 rounded-2xl border border-gray-200/90 bg-white p-4 shadow-2xs">
+            <div className="flex min-w-0 items-center gap-3.5 rounded-xl border border-gray-200/90 bg-white p-3 shadow-2xs">
               {/* Left: Avatar */}
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 border border-orange-100 sm:h-20 sm:w-20">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 border border-orange-100 sm:h-16 sm:w-16">
                 {instructorPhoto ? (
                   <img
                     src={instructorPhoto}
@@ -1053,7 +1067,7 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
                     strokeWidth="1.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    className="h-9 w-9 sm:h-10 sm:w-10"
+                    className="h-8 w-8 sm:h-9 sm:w-9"
                     aria-hidden="true"
                   >
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -1066,19 +1080,19 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
               <div className="min-w-0 flex-1">
                 <h3
                   title={instructorName}
-                  className="truncate text-base font-bold leading-snug text-brand-orange"
+                  className="truncate text-sm sm:text-base font-bold leading-tight text-brand-orange"
                 >
                   {instructorName}
                 </h3>
-                <p className="mt-0.5 truncate text-xs font-normal text-gray-400">
+                <p className="mt-0.5 truncate text-xs font-normal text-gray-500">
                   {instructorRank}
                 </p>
                 <p className="truncate text-xs font-normal text-gray-400">
                   {instructorDept}
                 </p>
 
-                <div className="mt-2.5">
-                  <div className="mb-1.5 flex items-center justify-between gap-2 text-xs">
+                <div className="mt-2">
+                  <div className="mb-1 flex items-center justify-between gap-2 text-xs">
                     <span className="truncate font-semibold text-[#2e2a72]">
                       Completion Status
                     </span>
@@ -1121,7 +1135,7 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
             </div>
 
             {/* Period Selection */}
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               <SelectField
                 id="school-year-select"
                 label="School year"
@@ -1198,11 +1212,11 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
                 type="button"
                 onClick={handleExportGoogleSheet}
                 disabled={isExportingSheets || busy}
-                className={`group flex h-12 w-full cursor-pointer items-center justify-center gap-2.5 rounded-lg border border-gray-300 bg-white px-4 text-[13px] font-semibold text-gray-700 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-emerald-50/70 hover:text-emerald-800 hover:shadow-md active:translate-y-0 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
+                className={`group flex h-10.5 w-full cursor-pointer items-center justify-center gap-2.5 rounded-lg border border-gray-300 bg-white px-4 text-xs font-semibold text-gray-700 shadow-2xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-emerald-50/70 hover:text-emerald-800 hover:shadow-md active:translate-y-0 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
               >
                 {isExportingSheets ? (
                   <Loader2
-                    size={18}
+                    size={16}
                     className="animate-spin text-emerald-600"
                     aria-hidden="true"
                   />
@@ -1211,7 +1225,7 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
                     src={googleSheetsIcon}
                     alt=""
                     aria-hidden="true"
-                    className="h-5 w-5 shrink-0 object-contain transition-transform duration-200 group-hover:scale-110"
+                    className="h-4.5 w-4.5 shrink-0 object-contain transition-transform duration-200 group-hover:scale-110"
                   />
                 )}
 
@@ -1230,17 +1244,17 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
                   type="button"
                   onClick={handleDownloadExcel}
                   disabled={isGeneratingExcel || busy}
-                  className={`flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-brand-orange px-3 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
+                  className={`flex h-10.5 w-full items-center justify-center gap-2 rounded-lg bg-brand-orange px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
                 >
                   {isGeneratingExcel ? (
                     <Loader2
-                      size={16}
+                      size={15}
                       className="animate-spin shrink-0"
                       aria-hidden="true"
                     />
                   ) : (
                     <Download
-                      size={16}
+                      size={15}
                       className="shrink-0"
                       aria-hidden="true"
                     />
@@ -1256,9 +1270,9 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
                   type="button"
                   onClick={() => window.print()}
                   disabled={busy}
-                  className={`flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
+                  className={`flex h-10.5 w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-3 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
                 >
-                  <Printer size={16} className="shrink-0" aria-hidden="true" />
+                  <Printer size={15} className="shrink-0" aria-hidden="true" />
                   Print
                 </button>
 
@@ -1266,14 +1280,14 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
             </div>
 
             {/* Print Information */}
-            <p className="text-center text-xs leading-relaxed text-gray-500">
+            <p className="text-center text-[11px] leading-tight text-gray-400">
               {hasNoDocs
                 ? 'You have no uploaded documents yet, so every box is empty.'
                 : 'Print gives you the official one-page form, then the document list.'}
             </p>
 
             {/* Box Guide */}
-            <div className="space-y-1.5 rounded-xl border border-gray-200 bg-gray-50/70 p-3 text-xs text-gray-600">
+            <div className="space-y-1 rounded-xl border border-gray-200 bg-gray-50/70 p-2.5 text-xs text-gray-600">
               <p className="font-semibold text-gray-800">
                 Box guide
               </p>

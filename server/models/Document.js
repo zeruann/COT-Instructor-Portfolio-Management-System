@@ -22,7 +22,7 @@ const versionSchema = new mongoose.Schema(
   {
     n: { type: Number, required: true },
     driveFileId: { type: String, required: true }, // Drive file ID, never a link
-    
+    driveFolderId: { type: String }, // Drive parent folder ID
     originalName: { type: String, required: true },
     mimeType: { type: String, required: true },
     size: { type: Number, required: true },

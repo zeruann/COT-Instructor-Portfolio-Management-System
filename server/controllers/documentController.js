@@ -176,6 +176,7 @@ exports.uploadDocument = async (req, res) => {
     const newVersion = {
       n: 1,
       driveFileId: driveUpload.fileId,
+      driveFolderId: driveUpload.folderId || null,
       originalName: req.file.originalname,
       mimeType: req.file.mimetype,
       size: driveUpload.size,

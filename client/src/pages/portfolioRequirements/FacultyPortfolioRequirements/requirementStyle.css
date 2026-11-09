@@ -197,9 +197,40 @@ button.doc-btn:disabled {
 }
 
 .doc-btn--review {
-  background: #f07a2b;
-  color: #fff;
+  border: none !important;
+  outline: none !important;
+  background: #f97316;
+  color: #ffffff !important;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
 }
+
 .doc-btn--review:hover:not(:disabled) {
-  background: #e06a1c;
+  background: #ea580c;
+  color: #ffffff !important;
+  box-shadow: 0 3px 6px -1px rgba(234, 88, 12, 0.35), 0 2px 4px -2px rgba(234, 88, 12, 0.2);
+  transform: translateY(-1px);
+}
+
+.doc-btn--review:active:not(:disabled) {
+  transform: translateY(0);
+  background: #c2410c;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+button.doc-btn--review:disabled {
+  background: #e5e7eb !important;
+  border: none !important;
+  color: #9ca3af !important;
+  box-shadow: none !important;
+  transform: none !important;
+  cursor: not-allowed;
 }

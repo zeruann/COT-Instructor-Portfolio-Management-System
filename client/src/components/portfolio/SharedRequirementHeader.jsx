@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Plus, ShieldCheck } from 'lucide-react';
 import { usePortfolio } from '../../context/usePortfolio';
@@ -20,6 +21,21 @@ export default function SharedRequirementHeader({
     searchParams.get('instructorId') ||
     selectedInstructor?._id ||
     selectedInstructor?.id;
+
+  const [instructorInfo, setInstructorInfo] = useState(selectedInstructor || null);
+
+  useEffect(() => {
+    if (selectedInstructor) {
+      setInstructorInfo(selectedInstructor);
+    } else if (isAdmin && instructorId) {
+      fetch(`http://localhost:5000/api/instructors/${instructorId}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data) setInstructorInfo(data);
+        })
+        .catch(() => {});
+    }
+  }, [selectedInstructor, isAdmin, instructorId]);
 
   const backDestination = backTo || (isAdmin
     ? instructorId
@@ -55,11 +71,11 @@ export default function SharedRequirementHeader({
               <span>
                 Review Mode:{' '}
                 <strong className="font-semibold text-brand-purple">
-                  {selectedInstructor?.fullName || 'Select Instructor'}
+                  {instructorInfo?.fullName || 'Instructor Portfolio'}
                 </strong>
-                {selectedInstructor?.department && (
+                {instructorInfo?.department && (
                   <span className="text-gray-500 ml-1">
-                    ({selectedInstructor.department})
+                    ({instructorInfo.department})
                   </span>
                 )}
               </span>

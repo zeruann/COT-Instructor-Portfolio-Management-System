@@ -7,6 +7,8 @@ const AcademicPeriod = require('../models/AcademicPeriod');
 const { isFeatureEnabled } = require('./settingController');
 const { buildComplianceWorkbook, uploadAsGoogleSheet } = require('../reports/complianceWorkbook');
 const { getGoogleClients } = require('../utils/sheetsService');
+const storageService = require('../utils/storageService');
+const driveNaming = require('../utils/driveNaming');
 
 /**
  * Assembles live compliance checklist data for an instructor and selected academic period
@@ -104,65 +106,119 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
 
   // 6. Build Faculty Checklist (11 standard boxes: A 1.0 to L 1.0)
   const facultyDefinitions = [
-    { code: 'A 1.0', label: 'Faculty Profile (Updated PDS)', keyPrefix: 'FAC_A' },
-    { code: 'B 1.0', label: 'Educational Attainment', keyPrefix: 'FAC_B' },
-    { code: 'C 1.0', label: 'Service Records', keyPrefix: 'FAC_C' },
-    { code: 'D 1.0', label: 'Seminars and Workshops', keyPrefix: 'FAC_D' },
-    { code: 'E 1.0', label: 'Grants and Awards', keyPrefix: 'FAC_E' },
-    { code: 'F 1.0', label: 'Research', keyPrefix: 'FAC_F' },
-    { code: 'G 1.0', label: 'Extension Involvement', keyPrefix: 'FAC_G' },
-    { code: 'H 1.0', label: 'Production', keyPrefix: 'FAC_H' },
-    { code: 'I 1.0', label: 'Professional Membership', keyPrefix: 'FAC_I' },
-    { code: 'J 1.0', label: 'Passed Licensure Examinations', keyPrefix: 'FAC_J' },
-    { code: 'L 1.0', label: 'IPCR (Photocopy from 1st and 2nd sem)', keyPrefix: 'FAC_L' },
+    { code: 'A 1.0', label: 'Faculty Profile (Updated PDS)', keyPrefix: 'FAC_A', multiple: false, card: 'Faculty Profile (Updated PDS)' },
+    { code: 'B 1.0', label: 'Educational Attainment', keyPrefix: 'FAC_B', multiple: true, card: 'Educational Attainment' },
+    { code: 'C 1.0', label: 'Service Records', keyPrefix: 'FAC_C', multiple: true, card: 'Service Records' },
+    { code: 'D 1.0', label: 'Seminars and Workshops', keyPrefix: 'FAC_D', multiple: true, card: 'List of Seminars and Workshops' },
+    { code: 'E 1.0', label: 'Grants and Awards', keyPrefix: 'FAC_E', multiple: true, card: 'Grants, Awards and Certifications of Commendation' },
+    { code: 'F 1.0', label: 'Research', keyPrefix: 'FAC_F', multiple: true, card: 'Research' },
+    { code: 'G 1.0', label: 'Extension Involvement', keyPrefix: 'FAC_G', multiple: true, card: 'Extension Involvement' },
+    { code: 'H 1.0', label: 'Production', keyPrefix: 'FAC_H', multiple: true, card: 'Production' },
+    { code: 'I 1.0', label: 'Professional Membership', keyPrefix: 'FAC_I', multiple: true, card: 'Membership to Professional Organization' },
+    { code: 'J 1.0', label: 'Passed Licensure Examinations', keyPrefix: 'FAC_J', multiple: false, card: 'Passed Licensure Examinations' },
+    { code: 'L 1.0', label: 'IPCR (Photocopy from 1st and 2nd sem)', keyPrefix: 'FAC_L', multiple: false, card: 'IPCR' },
   ];
 
-  const facultyChecklist = facultyDefinitions.map((def) => {
-    const matchingDocs = documents.filter(
-      (d) => d.requirementKey && (d.requirementKey.startsWith(def.keyPrefix) || d.requirementKey === def.keyPrefix)
-    );
+  const facultyChecklist = await Promise.all(
+    facultyDefinitions.map(async (def) => {
+      const matchingDocs = documents.filter(
+        (d) => d.requirementKey && (d.requirementKey.startsWith(def.keyPrefix) || d.requirementKey === def.keyPrefix)
+      );
 
-    let status = '☐';
-    let link = '';
-    const total = matchingDocs.length;
-    const approved = matchingDocs.filter((d) => d.status === 'approved').length;
-    const pending = matchingDocs.filter((d) => d.status === 'pending_review').length;
+      let status = '☐';
+      let link = '';
+      const total = matchingDocs.length;
+      const approved = matchingDocs.filter((d) => d.status === 'approved').length;
+      const pending = matchingDocs.filter((d) => d.status === 'pending_review').length;
 
-    if (total === 0) {
-      status = '☐';
-    } else if (total === 1) {
-      const doc = matchingDocs[0];
-      const driveId = doc.versions?.[doc.versions.length - 1]?.driveFileId;
-      link = driveId ? `https://drive.google.com/file/d/${driveId}/view` : `/api/documents/${doc._id}/file`;
+      const isMultiple = Boolean(def.multiple || total > 1);
 
-      if (doc.status === 'approved') status = '☑ View Document';
-      else if (doc.status === 'pending_review') status = '☐ Pending review';
-      else status = '☐ View Document';
-    } else {
-      const preferredDoc = matchingDocs.find((d) => d.status === 'approved') || matchingDocs[0];
-      const firstDriveId = preferredDoc.versions?.[preferredDoc.versions.length - 1]?.driveFileId;
-      link = firstDriveId ? `https://drive.google.com/file/d/${firstDriveId}/view` : `/api/documents/${preferredDoc._id}/file`;
+      if (total === 0) {
+        status = '☐';
+        link = '';
+      } else if (!isMultiple) {
+        // Single document requirement (e.g. Faculty Profile / PDS, Licensure, IPCR)
+        const doc = matchingDocs[0];
+        const driveId = doc.versions?.[doc.versions.length - 1]?.driveFileId;
+        link = driveId ? `https://drive.google.com/file/d/${driveId}/view` : `/api/documents/${doc._id}/file`;
 
-      if (approved === total) {
-        status = `☑ ${total} entries`;
-      } else if (approved > 0) {
-        status = `☑ ${approved} of ${total} approved`;
-      } else if (pending > 0) {
-        status = '☐ Pending review';
+        if (doc.status === 'approved') status = '☑ View Document';
+        else if (doc.status === 'pending_review') status = '☐ Pending review';
+        else status = '☐ View Document';
       } else {
-        status = `☐ ${total} entries`;
-      }
-    }
+        // Multiple documents requirement: link to the Google Drive folder containing these files
+        const preferredDoc = matchingDocs.find((d) => d.status === 'approved') || matchingDocs[0];
+        const firstDriveId = preferredDoc?.versions?.[preferredDoc.versions.length - 1]?.driveFileId;
 
-    return {
-      code: def.code,
-      label: def.label,
-      status,
-      link,
-      count: total,
-      approvedCount: approved,
-    };
-  });
+        // 1. Check if folderId is already saved on any document version
+        let folderId = matchingDocs
+          .map((d) => d.versions?.[d.versions.length - 1]?.driveFolderId)
+          .find(Boolean);
+
+        // 2. Query Drive for parent folder of the uploaded file
+        if (!folderId && firstDriveId) {
+          try {
+            folderId = await storageService.getFileParentFolderId(firstDriveId);
+          } catch {
+            folderId = null;
+          }
+        }
+
+        // 3. Fallback: resolve/ensure the canonical folder path
+        if (!folderId) {
+          try {
+            const folderPath = driveNaming.facultyFolderPath({
+              department: instructor?.department || 'General',
+              fullName: instName,
+              instructorId: ownerId,
+              requirement: { checklistRef: def.code, card: def.card },
+            });
+            folderId = await storageService.ensureFolderPath(folderPath);
+          } catch {
+            folderId = null;
+          }
+        }
+
+        if (folderId) {
+          link = `https://drive.google.com/drive/folders/${folderId}`;
+
+          // Backfill stored driveFolderId asynchronously for faster future requests
+          if (preferredDoc?._id && preferredDoc.versions?.length > 0) {
+            const curVerNum = preferredDoc.versions[preferredDoc.versions.length - 1].n;
+            Document.updateOne(
+              { _id: preferredDoc._id, 'versions.n': curVerNum, 'versions.driveFolderId': { $exists: false } },
+              { $set: { 'versions.$.driveFolderId': folderId } }
+            ).exec().catch(() => {});
+          }
+        } else if (firstDriveId) {
+          // Graceful fallback to file if Drive folder is unreachable
+          link = `https://drive.google.com/file/d/${firstDriveId}/view`;
+        } else if (preferredDoc) {
+          link = `/api/documents/${preferredDoc._id}/file`;
+        }
+
+        if (approved === total) {
+          status = `☑ ${total} entries`;
+        } else if (approved > 0) {
+          status = `☑ ${approved} of ${total} approved`;
+        } else if (pending > 0) {
+          status = '☐ Pending review';
+        } else {
+          status = `☐ ${total} entries`;
+        }
+      }
+
+      return {
+        code: def.code,
+        label: def.label,
+        status,
+        link,
+        count: total,
+        approvedCount: approved,
+        isMultiple,
+      };
+    })
+  );
 
   // 7. Build Class Portfolio Matrix
   const subjects = classes.map((c) => ({
