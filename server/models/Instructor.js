@@ -76,6 +76,8 @@ const instructorSchema = new mongoose.Schema({
 
   resetPasswordToken: String,
   resetPasswordExpires: Date,
+  apiSettingsOtp: String,
+  apiSettingsOtpExpires: Date,
   createdAt: { type: Date, default: Date.now },
 });
 

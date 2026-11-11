@@ -17,7 +17,12 @@ router.get('/public', settingController.getPublicSettings);
 // Protected routes for Administrator
 router.get('/', auth, requireAdmin, settingController.getSettings);
 router.put('/', auth, requireAdmin, settingController.updateSettings);
+router.put('/modes', auth, requireAdmin, settingController.updateApiModes);
+router.post('/restore-defaults', auth, requireAdmin, settingController.restoreDefaults);
+router.post('/test-connection', auth, requireAdmin, settingController.testConnection);
 router.post('/verify-password', auth, requireAdmin, settingController.verifyAdminPassword);
+router.post('/send-otp', auth, requireAdmin, settingController.sendSettingsOtp);
+router.post('/verify-otp', auth, requireAdmin, settingController.verifySettingsOtp);
 router.get('/audit-logs', auth, auditLogController.getAuditLogs);
 
 module.exports = router;

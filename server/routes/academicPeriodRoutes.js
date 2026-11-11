@@ -21,6 +21,7 @@ router.put('/:id', auth, requireAdmin, academicPeriodController.updateAcademicPe
 router.patch('/:id/activate', auth, requireAdmin, academicPeriodController.setActiveAcademicPeriod);
 router.patch('/:id/close', auth, requireAdmin, academicPeriodController.closeAcademicPeriod);
 router.patch('/:id/archive', auth, requireAdmin, academicPeriodController.archiveAcademicPeriod);
+router.patch('/:id/unarchive', auth, requireAdmin, academicPeriodController.unarchiveAcademicPeriod);
 router.delete('/:id', auth, requireAdmin, academicPeriodController.deleteAcademicPeriod);
 
 module.exports = router;

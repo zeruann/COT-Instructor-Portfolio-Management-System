@@ -9,6 +9,7 @@ import {
   FileText,
   Loader2,
   ArrowLeft,
+  Lock,
 } from 'lucide-react';
 import { fetchClassById } from '../../api/classes';
 import { CLASS_REQUIREMENT_CARDS } from '../instructors/ViewClassPortfolio';
@@ -140,8 +141,12 @@ export default function AdminViewClassPortfolio() {
     loadData();
   }, [id]);
 
-  const instructorId = classData?.ownerId?._id || classData?.ownerId;
-  const backToReviewUrl = instructorId
+  const isFromArchive =
+    window.location.search.includes('from=archive') || Boolean(classData?.archivedAt);
+
+  const backToReviewUrl = isFromArchive
+    ? '/admin/archive'
+    : instructorId
     ? `/admin/review/class-portfolio?instructorId=${instructorId}`
     : '/admin/review/class-portfolio';
 
@@ -184,6 +189,16 @@ export default function AdminViewClassPortfolio() {
           </div>
         </div>
       </div>
+
+      {/* ARCHIVE READ-ONLY BANNER */}
+      {Boolean(classData?.archivedAt) && (
+        <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-purple-50 border border-purple-200 text-xs sm:text-sm text-brand-purple font-medium">
+          <Lock size={15} className="shrink-0 text-brand-purple" />
+          <span>
+            This class is archived. All course documents and reviews are preserved in read-only mode for institutional compliance and audits.
+          </span>
+        </div>
+      )}
 
       {/* TOP ROW: COMPLIANCE & COMPLETION STATUS */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">

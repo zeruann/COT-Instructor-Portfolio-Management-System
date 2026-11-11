@@ -17,6 +17,8 @@ import {
   Edit3,
   X,
   Check,
+  Clock,
+  RotateCcw,
 } from "lucide-react";
 
 import gmailIcon from "../../assets/Gmail_icon_(2020).svg";
@@ -213,6 +215,16 @@ function censorEmail(email) {
   return `${visibleStart}${maskedPart}${visibleEnd}${domain}`;
 }
 
+function getInitials(name) {
+  return (name || "")
+    .split(" ")
+    .filter(Boolean)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "AD";
+}
+
 export default function AdminSettings() {
   const [settings, setSettings] = useState({
     googleMailEnabled: true,
@@ -242,17 +254,95 @@ export default function AdminSettings() {
   const [groupSaving, setGroupSaving] = useState({}); // { [groupKey]: boolean }
   const [groupFeedback, setGroupFeedback] = useState({}); // { [groupKey]: { type, message } }
 
-  // Security Verification State
-  const [isPasswordVerified, setIsPasswordVerified] = useState(false);
-  const [showVerifyModal, setShowVerifyModal] = useState(false);
-  const [verifyPassword, setVerifyPassword] = useState("");
-  const [showModalPassword, setShowModalPassword] = useState(false);
-  const [verifyError, setVerifyError] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [pendingAction, setPendingAction] = useState(null); // action object to execute once verified
+  // API Modes ('custom' | 'default') per group
+  const [apiModes, setApiModes] = useState({});
+  const [modeSaving, setModeSaving] = useState({});
+
+  // Restore to Default Modal State
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [restoringDefaults, setRestoringDefaults] = useState(false);
+
+  // Custom API Save, Test Connection & OTP Modal State
+  const [showCustomSaveModal, setShowCustomSaveModal] = useState(false);
+  const [pendingCustomSave, setPendingCustomSave] = useState(null); // { group, target, payload }
+  const [customSaveStage, setCustomSaveStage] = useState("testing"); // "testing" | "failed" | "otp"
+  const [connectionTestError, setConnectionTestError] = useState("");
+  const [connectionTestSuccess, setConnectionTestSuccess] = useState("");
+  const [customSaveOtpCode, setCustomSaveOtpCode] = useState("");
+  const [customSaveOtpSending, setCustomSaveOtpSending] = useState(false);
+  const [customSaveOtpVerifying, setCustomSaveOtpVerifying] = useState(false);
+  const [customSaveOtpError, setCustomSaveOtpError] = useState("");
+  const [customSaveOtpSuccess, setCustomSaveOtpSuccess] = useState("");
+  const [customSaveResendTimer, setCustomSaveResendTimer] = useState(0);
+
+  // OTP Security Verification State
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isFadingOut, setIsFadingOut] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [maskedAdminEmail, setMaskedAdminEmail] = useState("");
+  const [adminProfile, setAdminProfile] = useState(() => {
+    try {
+      const stored =
+        localStorage.getItem("admin") ||
+        localStorage.getItem("user") ||
+        localStorage.getItem("instructor");
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [adminImgError, setAdminImgError] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [otpSuccess, setOtpSuccess] = useState("");
   const [revealedFields, setRevealedFields] = useState({}); // { [compositeKey]: boolean }
 
   const token = localStorage.getItem("token");
+
+  // Load admin email preview on mount
+  useEffect(() => {
+    try {
+      const adminData = JSON.parse(
+        localStorage.getItem("admin") || localStorage.getItem("instructor") || "{}"
+      );
+      if (adminData && Object.keys(adminData).length > 0) {
+        setAdminProfile((prev) => ({ ...(prev || {}), ...adminData }));
+      }
+      if (adminData?.email) {
+        const [u, d] = adminData.email.split("@");
+        const censored =
+          u.length <= 3
+            ? `${u[0]}•••@${d}`
+            : `${u.slice(0, 2)}•••••${u.slice(-1)}@${d}`;
+        setMaskedAdminEmail(censored);
+      }
+    } catch {}
+  }, []);
+
+  // 30-Second Countdown timer for OTP resend
+  useEffect(() => {
+    let interval = null;
+    if (resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [resendTimer]);
+
+  // 30-Second Countdown timer for Custom API Save OTP resend
+  useEffect(() => {
+    let interval = null;
+    if (customSaveResendTimer > 0) {
+      interval = setInterval(() => {
+        setCustomSaveResendTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [customSaveResendTimer]);
 
   useEffect(() => {
     fetchSettings();
@@ -275,8 +365,15 @@ export default function AdminSettings() {
         setInitialDefaultCredentials(res.data.defaultCredentials);
       }
       if (res.data?.credentialStatus) setCredentialStatus(res.data.credentialStatus);
+      if (res.data?.apiModes) setApiModes(res.data.apiModes);
       if (res.data?.allowDefaultEdit !== undefined) {
         setAllowDefaultEdit(res.data.allowDefaultEdit);
+      }
+      if (res.data?.adminProfile) {
+        setAdminProfile((prev) => ({ ...(prev || {}), ...res.data.adminProfile }));
+        if (res.data.adminProfile.email) {
+          setMaskedAdminEmail(res.data.adminProfile.email);
+        }
       }
     } catch (err) {
       setGlobalFeedback({
@@ -319,58 +416,78 @@ export default function AdminSettings() {
     setOpenGroup((prev) => (prev === groupKey ? null : groupKey));
   };
 
-  /* ─── Password Verification Modal Trigger ────────────────────── */
-  const requestSecurityVerification = (actionPayload) => {
-    if (isPasswordVerified) {
-      executeAction(actionPayload);
-    } else {
-      setPendingAction(actionPayload);
-      setVerifyPassword("");
-      setVerifyError("");
-      setShowVerifyModal(true);
+  /* ─── Send OTP Code to Admin's Email ─────────────────────────── */
+  const handleSendOtp = async () => {
+    if (resendTimer > 0 || otpSending) return;
+    setOtpSending(true);
+    setOtpError("");
+    setOtpSuccess("");
+
+    try {
+      const res = await axios.post(
+        `${API_URL}/send-otp`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data?.success) {
+        setOtpSent(true);
+        if (res.data.email) setMaskedAdminEmail(res.data.email);
+        if (res.data.adminProfile) {
+          setAdminProfile((prev) => ({ ...(prev || {}), ...res.data.adminProfile }));
+        }
+        setOtpSuccess("A 6-digit verification code has been sent to your email.");
+        setResendTimer(30);
+      }
+    } catch (err) {
+      setOtpError(
+        err.response?.data?.message || "Failed to send verification code. Please try again."
+      );
+    } finally {
+      setOtpSending(false);
     }
   };
 
-  const handleVerifySubmit = async (e) => {
+  /* ─── Verify OTP Code & Unlock API Settings ──────────────────── */
+  const handleVerifyOtp = async (e) => {
     e?.preventDefault();
-    if (!verifyPassword.trim()) {
-      setVerifyError("Please enter your administrator password.");
+    if (!otpCode || otpCode.trim().length !== 6) {
+      setOtpError("Please enter the complete 6-digit verification code.");
       return;
     }
 
-    setVerifying(true);
-    setVerifyError("");
+    setOtpVerifying(true);
+    setOtpError("");
+    setOtpSuccess("");
+
     try {
       const res = await axios.post(
-        `${API_URL}/verify-password`,
-        { password: verifyPassword },
+        `${API_URL}/verify-otp`,
+        { otp: otpCode.trim() },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (res.data?.success) {
-        setIsPasswordVerified(true);
         if (res.data.unmaskedCustomCredentials) {
           setUnmaskedCustomCredentials(res.data.unmaskedCustomCredentials);
         }
         if (res.data.unmaskedDefaultCredentials) {
           setUnmaskedDefaultCredentials(res.data.unmaskedDefaultCredentials);
         }
-        setShowVerifyModal(false);
+        setOtpSuccess("Verification successful! Unlocking settings...");
+        setIsFadingOut(true);
 
-        if (pendingAction) {
-          executeAction(pendingAction, {
-            custom: res.data.unmaskedCustomCredentials || {},
-            default: res.data.unmaskedDefaultCredentials || {},
-          });
-          setPendingAction(null);
-        }
+        setTimeout(() => {
+          setIsUnlocked(true);
+          setIsFadingOut(false);
+          setOtpError("");
+        }, 500);
       }
     } catch (err) {
-      setVerifyError(
-        err.response?.data?.message || "Incorrect password. Please try again."
+      setOtpError(
+        err.response?.data?.message || "Invalid or expired verification code. Please try again."
       );
     } finally {
-      setVerifying(false);
+      setOtpVerifying(false);
     }
   };
 
@@ -450,16 +567,187 @@ export default function AdminSettings() {
     setGroupFeedback((prev) => ({ ...prev, [groupKey]: null }));
   };
 
-  /* ─── Save Credentials Handler (Custom or Default) ───────────── */
-  const handleSaveGroup = async (group, target) => {
-    const groupKey = group.groupKey;
-    setGroupSaving((prev) => ({ ...prev, [groupKey]: true }));
-    setGroupFeedback((prev) => ({ ...prev, [groupKey]: null }));
+  /* ─── Mode Change Handler (Custom vs Default Radio) ────────── */
+  const handleModeChange = async (groupKey, mode) => {
+    const prevMode = apiModes[groupKey] || "default";
+    if (prevMode === mode) return;
 
-    const payload = {};
+    setApiModes((prev) => ({ ...prev, [groupKey]: mode }));
+    setModeSaving((prev) => ({ ...prev, [groupKey]: true }));
+
+    try {
+      const res = await axios.put(
+        `${API_URL}/modes`,
+        { group: groupKey, mode },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data?.apiModes) {
+        setApiModes(res.data.apiModes);
+      }
+      setGlobalFeedback({
+        type: "success",
+        message: `Active API set to ${mode === "custom" ? "Custom API" : "Default API"}.`,
+      });
+    } catch (err) {
+      setApiModes((prev) => ({ ...prev, [groupKey]: prevMode }));
+      setGlobalFeedback({
+        type: "error",
+        message: err.response?.data?.message || "Failed to update active API mode.",
+      });
+    } finally {
+      setModeSaving((prev) => ({ ...prev, [groupKey]: false }));
+    }
+  };
+
+  /* ─── Restore to Default Handler ────────────────────────────── */
+  const handleRestoreDefaults = async () => {
+    setRestoringDefaults(true);
+    try {
+      const res = await axios.post(
+        `${API_URL}/restore-defaults`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data?.apiModes) {
+        setApiModes(res.data.apiModes);
+      }
+      setShowRestoreModal(false);
+      setGlobalFeedback({
+        type: "success",
+        message: "All connected APIs have been restored to Default APIs. Custom configurations remain preserved.",
+      });
+    } catch (err) {
+      setGlobalFeedback({
+        type: "error",
+        message: err.response?.data?.message || "Failed to restore default APIs.",
+      });
+    } finally {
+      setRestoringDefaults(false);
+    }
+  };
+
+  /* ─── Test Connection Handler (Inside Save Modal) ────────────── */
+  const runCustomConnectionTest = async (group, payload) => {
+    setCustomSaveStage("testing");
+    setConnectionTestError("");
+    setConnectionTestSuccess("");
+
+    try {
+      const res = await axios.post(
+        `${API_URL}/test-connection`,
+        { service: group.groupKey, credentials: payload },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data?.success === false) {
+        setCustomSaveStage("failed");
+        setConnectionTestError(
+          res.data?.message || "Connection test failed. Please verify credentials."
+        );
+      } else {
+        setCustomSaveStage("otp");
+        setConnectionTestSuccess(
+          res.data?.message || "Connection verified successfully!"
+        );
+        // Automatically dispatch OTP
+        sendCustomSaveOtp();
+      }
+    } catch (err) {
+      setCustomSaveStage("failed");
+      setConnectionTestError(
+        err.response?.data?.message || "Connection check failed. Please verify credentials."
+      );
+    }
+  };
+
+  /* ─── Send OTP for Custom API Save ───────────────────────────── */
+  const sendCustomSaveOtp = async () => {
+    if (customSaveResendTimer > 0 || customSaveOtpSending) return;
+    setCustomSaveOtpSending(true);
+    setCustomSaveOtpError("");
+    setCustomSaveOtpSuccess("");
+
+    try {
+      const res = await axios.post(
+        `${API_URL}/send-otp`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data?.success) {
+        setCustomSaveOtpSuccess("A 6-digit verification code has been sent to your email.");
+        setCustomSaveResendTimer(30);
+      }
+    } catch (err) {
+      setCustomSaveOtpError(
+        err.response?.data?.message || "Failed to send verification code. Please try again."
+      );
+    } finally {
+      setCustomSaveOtpSending(false);
+    }
+  };
+
+  /* ─── Close Custom API Save Modal ────────────────────────────── */
+  const handleCloseCustomSaveModal = () => {
+    setShowCustomSaveModal(false);
+    setPendingCustomSave(null);
+    setConnectionTestError("");
+    setConnectionTestSuccess("");
+    setCustomSaveOtpCode("");
+    setCustomSaveOtpError("");
+    setCustomSaveOtpSuccess("");
+  };
+
+  /* ─── Confirm Custom API Save via OTP ────────────────────────── */
+  const handleConfirmCustomSaveOtp = async (e) => {
+    e?.preventDefault();
+    if (!customSaveOtpCode || customSaveOtpCode.trim().length !== 6) {
+      setCustomSaveOtpError("Please enter the complete 6-digit verification code.");
+      return;
+    }
+    if (!pendingCustomSave) return;
+
+    setCustomSaveOtpVerifying(true);
+    setCustomSaveOtpError("");
+
+    const { group, payload } = pendingCustomSave;
+    const body = { customCredentials: payload, otp: customSaveOtpCode.trim() };
+
+    try {
+      await axios.put(API_URL, body, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setGroupFeedback((prev) => ({
+        ...prev,
+        [group.groupKey]: {
+          type: "success",
+          message: `Custom ${group.title} credentials verified and saved successfully!`,
+        },
+      }));
+
+      // Automatically set active mode to custom once configured
+      setApiModes((prev) => ({ ...prev, [group.groupKey]: "custom" }));
+
+      // Refresh settings
+      await fetchSettings();
+      setEditingGroup(null);
+      handleCloseCustomSaveModal();
+    } catch (err) {
+      setCustomSaveOtpError(
+        err.response?.data?.message || "Invalid or expired verification code. Please try again."
+      );
+    } finally {
+      setCustomSaveOtpVerifying(false);
+    }
+  };
+
+  /* ─── Save Credentials Handler (Custom or Default) ───────────── */
+  const handleSaveGroup = (group, target) => {
+    const groupKey = group.groupKey;
     const sourceCredentials =
       target === "custom" ? customCredentials : defaultCredentials;
 
+    const payload = {};
     group.fields.forEach((f) => {
       const val = sourceCredentials[f.key];
       if (f.sensitive && val === MASK) {
@@ -468,6 +756,30 @@ export default function AdminSettings() {
         payload[f.key] = val !== undefined ? val : "";
       }
     });
+
+    if (target === "custom") {
+      // Trigger modal: automatically test connection, then on success send OTP & show OTP form
+      setPendingCustomSave({ group, target, payload });
+      setCustomSaveStage("testing");
+      setConnectionTestError("");
+      setConnectionTestSuccess("");
+      setCustomSaveOtpCode("");
+      setCustomSaveOtpError("");
+      setCustomSaveOtpSuccess("");
+      setShowCustomSaveModal(true);
+      runCustomConnectionTest(group, payload);
+      return;
+    }
+
+    commitSaveGroup(group, target, payload);
+
+    commitSaveGroup(group, target, payload);
+  };
+
+  const commitSaveGroup = async (group, target, payload) => {
+    const groupKey = group.groupKey;
+    setGroupSaving((prev) => ({ ...prev, [groupKey]: true }));
+    setGroupFeedback((prev) => ({ ...prev, [groupKey]: null }));
 
     const body =
       target === "custom"
@@ -487,24 +799,7 @@ export default function AdminSettings() {
         },
       }));
 
-      // Refresh settings from server
-      const refreshRes = await axios.get(API_URL, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (refreshRes.data) {
-        if (refreshRes.data.customCredentials) {
-          setCustomCredentials(refreshRes.data.customCredentials);
-          setInitialCustomCredentials(refreshRes.data.customCredentials);
-        }
-        if (refreshRes.data.defaultCredentials) {
-          setDefaultCredentials(refreshRes.data.defaultCredentials);
-          setInitialDefaultCredentials(refreshRes.data.defaultCredentials);
-        }
-        if (refreshRes.data.credentialStatus) {
-          setCredentialStatus(refreshRes.data.credentialStatus);
-        }
-      }
-
+      await fetchSettings();
       setEditingGroup(null);
     } catch (err) {
       setGroupFeedback((prev) => ({
@@ -544,17 +839,43 @@ export default function AdminSettings() {
     );
   }
 
+  const adminName = adminProfile?.fullName || adminProfile?.name || "Gil Nicholas Cagande";
+  const adminRole = adminProfile?.accountType || adminProfile?.role || "Administrator";
+  const adminDept = adminProfile?.department || "College of Technologies";
+  const displayEmail =
+    maskedAdminEmail ||
+    (adminProfile?.email ? censorEmail(adminProfile.email) : "24•••••2@student.buksu.edu.ph");
+  const adminPhoto =
+    adminProfile?.photoUrl ||
+    adminProfile?.googlePhotoUrl ||
+    adminProfile?.profile?.photoUrl;
+
   return (
-    <div className="bg-white rounded-3xl pt-8 pr-8 pl-8">
-      <div className="max-w-7xl mx-auto space-y-6 pb-12">
+    <div className="relative bg-white rounded-3xl pt-8 pr-8 pl-8 min-h-[calc(100vh-140px)] overflow-hidden">
+      <div
+        className={`max-w-7xl mx-auto space-y-6 pb-12 transition-opacity duration-300 ${
+          !isUnlocked ? "pointer-events-none select-none opacity-40" : "opacity-100"
+        }`}
+        aria-hidden={!isUnlocked}
+      >
         {/* Page Header */}
-        <div className="border-b border-gray-200 pb-4">
-          <h1 className="text-2xl font-bold text-brand-purple tracking-tight">
-            API &amp; Integration Settings
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Configure institutional API credentials or use the built-in system defaults.
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-200 pb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-brand-purple tracking-tight">
+              API &amp; Integration Settings
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Configure institutional API credentials or use the built-in system defaults.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowRestoreModal(true)}
+            className="inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl border border-orange-200/90 bg-orange-50/90 hover:bg-orange-100 active:scale-[0.99] text-brand-orange font-semibold text-xs sm:text-sm shadow-2xs transition-all cursor-pointer"
+          >
+            <RotateCcw size={15} className="text-brand-orange" />
+            <span>Restore to Default</span>
+          </button>
         </div>
 
         {/* Global Popup Message with smooth expand/collapse and close button */}
@@ -728,22 +1049,32 @@ export default function AdminSettings() {
                         {/* Two Columns: Custom API (Left) vs Default API (Right) */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           {/* ── LEFT COLUMN: Custom API ───────────── */}
-                          <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3.5 shadow-2xs">
-                            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                          <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 space-y-4 shadow-2xs">
+                            <div className="flex items-center justify-between pb-3 border-b border-gray-100 flex-wrap gap-2">
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                                  <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
                                     Custom API
                                   </h4>
-                                  <span
-                                    className={`w-2 h-2 rounded-full ${hasCustom ? "bg-emerald-500" : "bg-gray-300"
-                                      }`}
-                                    title={hasCustom ? "Custom API is active" : "Not configured"}
-                                  />
+                                  <label
+                                    className="flex items-center cursor-pointer select-none"
+                                    title="Select to use Custom API for this service"
+                                  >
+                                    <input
+                                      type="radio"
+                                      name={`apiMode_${group.groupKey}`}
+                                      value="custom"
+                                      checked={apiModes[group.groupKey] === "custom"}
+                                      onChange={() => handleModeChange(group.groupKey, "custom")}
+                                      className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600 cursor-pointer"
+                                    />
+                                  </label>
                                 </div>
-                                <p className="text-[11px] text-gray-500 mt-0.5">
+                                <p className="text-xs text-gray-500 mt-0.5">
                                   {hasCustom
-                                    ? "Active and in use by the system"
+                                    ? apiModes[group.groupKey] === "custom"
+                                      ? "Active and in use by the system"
+                                      : "Configured (using Default API)"
                                     : "Not configured (using Default API)"}
                                 </p>
                               </div>
@@ -752,22 +1083,22 @@ export default function AdminSettings() {
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    requestSecurityVerification({
+                                    executeAction({
                                       groupKey: group.groupKey,
                                       target: "custom",
                                       action: "edit",
                                     })
                                   }
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-700 text-xs font-medium hover:bg-gray-50 transition-all cursor-pointer shadow-2xs"
+                                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 active:scale-[0.99] text-gray-700 font-semibold text-xs sm:text-sm shadow-2xs transition-all cursor-pointer"
                                 >
-                                  <Edit3 size={12} className="text-gray-500" />
+                                  <Edit3 size={14} className="text-gray-500" />
                                   <span>{hasCustom ? "Edit Custom API" : "Set Custom API"}</span>
                                 </button>
                               )}
                             </div>
 
                             {/* Custom Fields */}
-                            <div className="space-y-3">
+                            <div className="space-y-3.5">
                               {group.fields.map((field) => {
                                 const val = customCredentials[field.key] || "";
                                 const isRevealed = revealedFields[`custom_${field.key}`];
@@ -786,14 +1117,14 @@ export default function AdminSettings() {
                                 }
 
                                 return (
-                                  <div key={field.key} className="space-y-1">
-                                    <label className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                                  <div key={field.key} className="space-y-1.5">
+                                    <label className="text-xs sm:text-sm font-semibold text-gray-700 flex items-center gap-1.5">
                                       <span>{field.label}</span>
-                                      {field.sensitive && <Lock size={10} className="text-gray-400" />}
+                                      {field.sensitive && <Lock size={12} className="text-gray-400" />}
                                     </label>
 
                                     {isEditingCustom ? (
-                                      <div className="flex items-center gap-1.5">
+                                      <div className="flex items-center gap-2">
                                         <div className="relative flex-1">
                                           <input
                                             type={field.sensitive && !isRevealed ? "password" : "text"}
@@ -802,7 +1133,7 @@ export default function AdminSettings() {
                                               handleCustomChange(field.key, e.target.value)
                                             }
                                             placeholder={field.placeholder}
-                                            className="w-full text-xs font-mono px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all pr-8"
+                                            className="w-full text-sm font-mono px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all pr-10"
                                           />
                                           {field.sensitive && (
                                             <button
@@ -813,9 +1144,9 @@ export default function AdminSettings() {
                                                   [`custom_${field.key}`]: !prev[`custom_${field.key}`],
                                                 }))
                                               }
-                                              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
                                             >
-                                              {isRevealed ? <EyeOff size={13} /> : <Eye size={13} />}
+                                              {isRevealed ? <EyeOff size={15} /> : <Eye size={15} />}
                                             </button>
                                           )}
                                         </div>
@@ -824,16 +1155,16 @@ export default function AdminSettings() {
                                             type="button"
                                             title="Clear field to fallback to default"
                                             onClick={() => handleCustomChange(field.key, "")}
-                                            className="p-2 rounded-lg border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors shrink-0"
+                                            className="p-2.5 rounded-xl border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors shrink-0 cursor-pointer"
                                           >
-                                            <Trash2 size={13} />
+                                            <Trash2 size={15} />
                                           </button>
                                         )}
                                       </div>
                                     ) : (
-                                      <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-gray-50 border border-gray-100">
+                                      <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200/80">
                                         <span
-                                          className={`text-xs font-mono truncate select-all ${!isSet && !unmasked
+                                          className={`text-sm font-mono truncate select-all ${!isSet && !unmasked
                                             ? "text-gray-400 italic"
                                             : "text-gray-800"
                                             }`}
@@ -845,23 +1176,23 @@ export default function AdminSettings() {
                                           <button
                                             type="button"
                                             onClick={() =>
-                                              requestSecurityVerification({
+                                              executeAction({
                                                 groupKey: group.groupKey,
                                                 target: "custom",
                                                 action: "reveal",
                                                 fieldKey: `custom_${field.key}`,
                                               })
                                             }
-                                            className="flex items-center gap-1 text-[11px] font-medium text-gray-600 hover:text-brand-purple bg-white px-2 py-1 rounded border border-gray-200 hover:border-gray-300 transition-all shrink-0 cursor-pointer shadow-2xs"
+                                            className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-brand-purple bg-white px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-all shrink-0 cursor-pointer shadow-2xs"
                                           >
                                             {isRevealed ? (
                                               <>
-                                                <EyeOff size={11} />
+                                                <EyeOff size={13} />
                                                 <span>Hide</span>
                                               </>
                                             ) : (
                                               <>
-                                                <Eye size={11} />
+                                                <Eye size={13} />
                                                 <span>Reveal</span>
                                               </>
                                             )}
@@ -876,25 +1207,26 @@ export default function AdminSettings() {
 
                             {/* Custom Actions if Editing */}
                             {isEditingCustom && (
-                              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                              <div className="flex items-center justify-end pt-3 border-t border-gray-100 gap-2.5">
                                 <button
                                   type="button"
                                   onClick={() => handleCancelEdit(group.groupKey, "custom")}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+                                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-xs sm:text-sm shadow-2xs transition-colors cursor-pointer"
                                 >
-                                  <X size={12} />
+                                  <X size={14} />
                                   <span>Cancel</span>
                                 </button>
+
                                 <button
                                   type="button"
                                   onClick={() => handleSaveGroup(group, "custom")}
                                   disabled={isSaving}
-                                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-brand-orange text-white text-xs font-medium hover:bg-orange-600 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+                                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-orange hover:bg-orange-600 active:scale-[0.99] text-white font-semibold text-xs sm:text-sm shadow-xs transition-all cursor-pointer disabled:opacity-50"
                                 >
                                   {isSaving ? (
-                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                                   ) : (
-                                    <Check size={12} />
+                                    <Check size={14} />
                                   )}
                                   <span>{isSaving ? "Saving…" : "Save Custom API"}</span>
                                 </button>
@@ -903,29 +1235,31 @@ export default function AdminSettings() {
                           </div>
 
                           {/* ── RIGHT COLUMN: Default API ──────────── */}
-                          <div className="bg-gray-50/80 rounded-xl border border-gray-200/90 p-4 space-y-3.5 shadow-2xs">
-                            <div className="flex items-center justify-between pb-2 border-b border-gray-200/60">
+                          <div className="bg-gray-50/80 rounded-2xl border border-gray-200/90 p-4 sm:p-5 space-y-4 shadow-2xs">
+                            <div className="flex items-center justify-between pb-3 border-b border-gray-200/60">
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider">
+                                  <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider">
                                     Default API
                                   </h4>
-                                  <span
-                                    className={`w-2 h-2 rounded-full ${!hasCustom && hasDefault ? "bg-blue-500" : "bg-gray-300"
-                                      }`}
-                                    title={
-                                      !hasCustom && hasDefault
-                                        ? "Active system fallback"
-                                        : "Standby fallback"
-                                    }
-                                  />
+                                  <label
+                                    className="flex items-center cursor-pointer select-none"
+                                    title="Select to use Default API for this service"
+                                  >
+                                    <input
+                                      type="radio"
+                                      name={`apiMode_${group.groupKey}`}
+                                      value="default"
+                                      checked={(apiModes[group.groupKey] || "default") === "default"}
+                                      onChange={() => handleModeChange(group.groupKey, "default")}
+                                      className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600 cursor-pointer"
+                                    />
+                                  </label>
                                 </div>
-                                <p className="text-[11px] text-gray-500 mt-0.5">
-                                  {hasCustom
-                                    ? "Standby (overridden by Custom API)"
-                                    : hasDefault
-                                      ? "Active system fallback"
-                                      : "No default configured"}
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                  {(apiModes[group.groupKey] || "default") === "default"
+                                    ? "Active and in use by the system"
+                                    : "Standby fallback"}
                                 </p>
                               </div>
 
@@ -934,28 +1268,28 @@ export default function AdminSettings() {
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      requestSecurityVerification({
+                                      executeAction({
                                         groupKey: group.groupKey,
                                         target: "default",
                                         action: "edit",
                                       })
                                     }
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 text-xs font-medium hover:bg-gray-50 transition-all cursor-pointer shadow-2xs"
+                                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-300 bg-white text-gray-700 font-semibold text-xs sm:text-sm hover:bg-gray-50 transition-all cursor-pointer shadow-2xs"
                                   >
-                                    <Edit3 size={12} className="text-gray-500" />
+                                    <Edit3 size={13} className="text-gray-500" />
                                     <span>Edit Default API</span>
                                   </button>
                                 )
                               ) : (
-                                <div className="flex items-center gap-1 text-[11px] text-gray-400 bg-gray-200/60 px-2 py-0.5 rounded-md">
-                                  <Lock size={10} />
+                                <div className="flex items-center gap-1.5 text-xs text-gray-400 bg-gray-200/60 px-2.5 py-1 rounded-lg">
+                                  <Lock size={12} />
                                   <span>System Locked</span>
                                 </div>
                               )}
                             </div>
 
                             {/* Default Fields */}
-                            <div className="space-y-3">
+                            <div className="space-y-3.5">
                               {group.fields.map((field) => {
                                 const val = defaultCredentials[field.key] || "";
                                 const isRevealed = revealedFields[`default_${field.key}`];
@@ -977,14 +1311,14 @@ export default function AdminSettings() {
                                 }
 
                                 return (
-                                  <div key={field.key} className="space-y-1">
-                                    <label className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                                  <div key={field.key} className="space-y-1.5">
+                                    <label className="text-xs sm:text-sm font-semibold text-gray-600 flex items-center gap-1.5">
                                       <span>{field.label}</span>
-                                      {field.sensitive && <Lock size={10} className="text-gray-400" />}
+                                      {field.sensitive && <Lock size={12} className="text-gray-400" />}
                                     </label>
 
                                     {isEditingDefault && allowDefaultEdit ? (
-                                      <div className="flex items-center gap-1.5">
+                                      <div className="flex items-center gap-2">
                                         <input
                                           type={
                                             field.sensitive && !isRevealed ? "password" : "text"
@@ -994,12 +1328,12 @@ export default function AdminSettings() {
                                             handleDefaultChange(field.key, e.target.value)
                                           }
                                           placeholder={field.placeholder}
-                                          className="w-full text-xs font-mono px-3 py-2 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all"
+                                          className="w-full text-sm font-mono px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all"
                                         />
                                       </div>
                                     ) : (
-                                      <div className="p-2 rounded-lg bg-white/70 border border-gray-200/70">
-                                        <span className="text-xs font-mono text-gray-700 truncate block select-all">
+                                      <div className="p-2.5 rounded-xl bg-white/90 border border-gray-200">
+                                        <span className="text-sm font-mono text-gray-700 truncate block select-all">
                                           {displayVal}
                                         </span>
                                       </div>
@@ -1011,25 +1345,25 @@ export default function AdminSettings() {
 
                             {/* Default Actions if Editing */}
                             {isEditingDefault && allowDefaultEdit && (
-                              <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                              <div className="flex items-center justify-between pt-3 border-t border-gray-200">
                                 <button
                                   type="button"
                                   onClick={() => handleCancelEdit(group.groupKey, "default")}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 text-xs font-medium hover:bg-gray-50 transition-colors cursor-pointer"
+                                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-xs sm:text-sm shadow-2xs transition-colors cursor-pointer"
                                 >
-                                  <X size={12} />
+                                  <X size={14} />
                                   <span>Cancel</span>
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleSaveGroup(group, "default")}
                                   disabled={isSaving}
-                                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-brand-purple text-white text-xs font-medium hover:bg-purple-900 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+                                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-purple hover:bg-purple-900 active:scale-[0.99] text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
                                 >
                                   {isSaving ? (
-                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                                   ) : (
-                                    <Check size={12} />
+                                    <Check size={14} />
                                   )}
                                   <span>{isSaving ? "Saving…" : "Save Default API"}</span>
                                 </button>
@@ -1052,95 +1386,520 @@ export default function AdminSettings() {
         </section>
       </div>
 
-      {/* ── Security Password Verification Modal ──────────────── */}
-      {showVerifyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-md w-full overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-violet-50 text-violet-700 border border-violet-100">
-                  <Lock size={18} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900">
-                    Administrator Verification
-                  </h3>
-                  <p className="text-xs text-gray-500">Security confirmation required</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowVerifyModal(false);
-                  setPendingAction(null);
-                }}
-                className="text-gray-400 hover:text-gray-600 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <X size={16} />
-              </button>
+      {/* ── SECURITY VERIFICATION OVERLAY COVER (Only covers settings page; pure white, smooth fadeout) ── */}
+      {!isUnlocked && (
+        <div
+          className={`absolute inset-0 z-30 flex items-start justify-center pt-8 sm:pt-12 md:pt-14 p-4 sm:p-8 bg-white transition-all duration-500 ease-out ${
+            isFadingOut
+              ? "opacity-0 scale-[0.98] pointer-events-none"
+              : "opacity-100 scale-100"
+          }`}
+        >
+          <div className="relative w-full max-w-[540px] rounded-3xl bg-white p-6 sm:p-8 md:p-9 shadow-2xl border border-gray-100/90 text-center">
+            {/* Header Icon */}
+            <div className="mx-auto mb-3 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-orange-50 text-brand-orange border border-orange-100 shadow-2xs">
+              <ShieldCheck size={32} />
             </div>
 
-            <form onSubmit={handleVerifySubmit} className="p-6 space-y-4">
-              <p className="text-xs text-gray-600 leading-relaxed">
-                To view or edit sensitive institutional API credentials, please enter your administrator password.
-              </p>
+            {/* Title & Subtitle */}
+            <h3 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+              API Settings Security Verification
+            </h3>
+            <p className="mt-2 text-xs sm:text-sm text-gray-500 leading-relaxed max-w-md mx-auto">
+              In order to access and configure institutional API credentials, you must verify your identity with a One-Time PIN (OTP) sent to your administrator email.
+            </p>
 
-              {verifyError && (
-                <div className="flex items-center gap-2 p-3 rounded-lg text-xs font-medium bg-red-50 text-red-700 border border-red-200">
-                  <AlertCircle size={14} className="shrink-0 text-red-600" />
-                  <span>{verifyError}</span>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-gray-700">
-                  Administrator Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showModalPassword ? "text" : "password"}
-                    value={verifyPassword}
-                    onChange={(e) => setVerifyPassword(e.target.value)}
-                    placeholder="Enter your login password"
-                    autoFocus
-                    className="w-full text-xs px-3.5 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all pr-9"
+            {/* ── Admin Profile & Prominent Email Card ── */}
+            <div className="mt-5 p-4 rounded-2xl bg-gray-50/90 border border-gray-200/80 text-left shadow-2xs">
+              {/* Profile Row: Avatar, Name, Role Badge, Department */}
+              <div className="flex items-center gap-3.5">
+                <div className="relative shrink-0">
+                  {adminPhoto && !adminImgError ? (
+                    <img
+                      src={adminPhoto}
+                      alt={adminName}
+                      onError={() => setAdminImgError(true)}
+                      className="w-12 h-12 rounded-full object-cover border-2 border-brand-orange/40 shadow-xs"
+                    />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-brand-orange text-white font-bold text-base flex items-center justify-center shadow-xs">
+                      {getInitials(adminName)}
+                    </div>
+                  )}
+                  <span
+                    className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-400"
+                    title="Active Administrator"
                   />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-sm sm:text-base font-bold text-gray-900 truncate">
+                      {adminName}
+                    </h4>
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-brand-purple border border-purple-200">
+                      {adminRole}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 truncate mt-0.5">
+                    {adminDept}
+                  </p>
+                </div>
+              </div>
+
+              {/* Email Address Box */}
+              <div className="mt-3.5 pt-3 border-t border-gray-200/70">
+                <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white border border-gray-200 shadow-2xs">
+                  <Mail size={15} className="text-gray-400 shrink-0" />
+                  <span className="text-xs sm:text-sm text-gray-700 truncate select-all">
+                    {displayEmail}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 1: Send Code */}
+            {!otpSent ? (
+              <div className="mt-4 space-y-3 max-w-md mx-auto">
+                {otpError && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium text-left">
+                    <AlertCircle size={14} className="text-red-600 shrink-0" />
+                    <span>{otpError}</span>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  disabled={otpSending}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-brand-orange hover:bg-orange-600 active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition-all cursor-pointer disabled:opacity-60"
+                >
+                  {otpSending ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      <span>Sending Verification Code…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mail size={16} />
+                      <span>Send Verification Code</span>
+                    </>
+                  )}
+                </button>
+                <p className="text-[11px] text-gray-400">
+                  A 6-digit PIN (valid for 5 minutes) will be sent to the administrator email address above.
+                </p>
+              </div>
+            ) : (
+              /* Step 2: Enter OTP Code */
+              <form onSubmit={handleVerifyOtp} className="mt-4 space-y-3.5 max-w-md mx-auto text-left">
+                {otpSuccess && (
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl bg-green-50 border border-green-200 text-xs text-green-800">
+                    <CheckCircle2 size={14} className="text-green-600 shrink-0" />
+                    <span>{otpSuccess}</span>
+                  </div>
+                )}
+
+                {otpError && (
+                  <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium">
+                    <AlertCircle size={14} className="text-red-600 shrink-0" />
+                    <span>{otpError}</span>
+                  </div>
+                )}
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-semibold text-gray-700">
+                      Enter 6-Digit PIN
+                    </label>
+                    <span className="text-[11px] font-medium text-orange-600 flex items-center gap-1">
+                      <Clock size={12} />
+                      Expires in 5 minutes
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    autoFocus
+                    value={otpCode}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setOtpCode(val);
+                      setOtpError("");
+                    }}
+                    placeholder="••••••"
+                    className="w-full text-center font-mono text-2xl sm:text-3xl tracking-[0.4em] sm:tracking-[0.5em] py-3.5 px-4 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange bg-white shadow-2xs transition-all"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={otpVerifying || otpCode.length !== 6 || isFadingOut}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-brand-orange hover:bg-orange-600 active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                >
+                  {otpVerifying ? (
+                    <>
+                      <RefreshCw size={16} className="animate-spin" />
+                      <span>Verifying &amp; Unlocking…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={15} />
+                      <span>Verify &amp; Unlock Settings</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Resend Option with 30s Cooldown */}
+                <div className="pt-1.5 text-center text-xs text-gray-500">
+                  {resendTimer > 0 ? (
+                    <div className="flex items-center justify-center gap-1.5 text-gray-400">
+                      <Clock size={13} />
+                      <span>
+                        Resend code in <strong className="text-gray-600 font-mono">{resendTimer}s</strong>
+                      </span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSendOtp}
+                      disabled={otpSending || isFadingOut}
+                      className="text-brand-orange hover:text-orange-700 font-medium hover:underline cursor-pointer"
+                    >
+                      Didn't receive the code? Resend Code
+                    </button>
+                  )}
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── RESTORE TO DEFAULT CONFIRMATION MODAL ── */}
+      {showRestoreModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs transition-all">
+          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-100 text-center space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-brand-orange border border-orange-100">
+              <RotateCcw size={28} />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold text-gray-900">
+                Restore Default APIs?
+              </h3>
+              <p className="mt-1.5 text-xs text-gray-500 leading-relaxed">
+                This will switch all connected services to use institutional system defaults. Your saved Custom API credentials will <strong>not</strong> be deleted and remain safely preserved.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowRestoreModal(false)}
+                disabled={restoringDefaults}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleRestoreDefaults}
+                disabled={restoringDefaults}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-brand-orange hover:bg-orange-600 text-white text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+              >
+                {restoringDefaults ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Restoring…</span>
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw size={14} />
+                    <span>Confirm Restore</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── CUSTOM API SAVE: CONNECTION TEST & OTP MODAL ── */}
+      {showCustomSaveModal && pendingCustomSave && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs transition-all">
+          <div className="relative w-full max-w-[500px] rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border border-gray-100 text-center animate-in fade-in zoom-in-95 duration-200">
+            {/* Top Close 'X' Button */}
+            <button
+              type="button"
+              onClick={handleCloseCustomSaveModal}
+              className="absolute top-4 right-4 p-1.5 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+              title="Close"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Header: API Icon + API Name */}
+            <div className="flex items-center gap-3.5 text-left pb-4 border-b border-gray-100 pr-8">
+              <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-200/80 p-2.5 flex items-center justify-center shrink-0 shadow-2xs">
+                {pendingCustomSave.group.logo ? (
+                  <img
+                    src={pendingCustomSave.group.logo}
+                    alt={pendingCustomSave.group.title}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <pendingCustomSave.group.icon size={22} className="text-gray-600" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-base sm:text-lg font-bold text-gray-900 truncate leading-tight">
+                  {pendingCustomSave.group.title}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Custom API Connection &amp; Security Verification
+                </p>
+              </div>
+            </div>
+
+            {/* STAGE 1: Testing Connection (Circular spinner with arrowheads) */}
+            {customSaveStage === "testing" && (
+              <div className="py-10 px-4 flex flex-col items-center justify-center gap-3.5 text-center">
+                <div className="w-16 h-16 rounded-full bg-orange-50 border border-orange-200/90 flex items-center justify-center text-brand-orange shadow-inner">
+                  <RefreshCw size={28} className="animate-spin text-brand-orange" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-base font-bold text-gray-900">Testing connection…</h4>
+                  <p className="text-xs text-gray-500 max-w-xs">
+                    Checking connection with {pendingCustomSave.group.title} servers
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* STAGE 2: Connection Failed */}
+            {customSaveStage === "failed" && (
+              <div className="py-5 space-y-4">
+                {connectionTestError && (
+                  <div className="flex items-start justify-between p-3.5 rounded-xl text-xs sm:text-sm font-medium border bg-red-50 text-red-800 border-red-200 shadow-2xs">
+                    <div className="flex items-start gap-2.5 min-w-0 text-left">
+                      <AlertCircle size={16} className="text-red-600 shrink-0 mt-0.5" />
+                      <div className="space-y-0.5 min-w-0">
+                        <span className="font-semibold block text-red-900">Connection Failed</span>
+                        <span className="text-red-700 leading-relaxed block text-xs">
+                          {connectionTestError}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setConnectionTestError("")}
+                      className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-black/5 transition-colors cursor-pointer shrink-0 ml-2"
+                      title="Dismiss"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex items-center gap-2.5 pt-2">
                   <button
                     type="button"
-                    onClick={() => setShowModalPassword((v) => !v)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                    onClick={handleCloseCustomSaveModal}
+                    className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs sm:text-sm font-semibold transition-all cursor-pointer shadow-2xs"
                   >
-                    {showModalPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    Close &amp; Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      runCustomConnectionTest(
+                        pendingCustomSave.group,
+                        pendingCustomSave.payload
+                      )
+                    }
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-brand-orange hover:bg-orange-600 text-white text-xs sm:text-sm font-semibold shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <RefreshCw size={14} />
+                    <span>Retry Connection</span>
                   </button>
                 </div>
               </div>
+            )}
 
-              <div className="flex items-center justify-end gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowVerifyModal(false);
-                    setPendingAction(null);
-                  }}
-                  disabled={verifying}
-                  className="px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 text-xs font-medium hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={verifying}
-                  className="flex items-center gap-1.5 px-5 py-2 rounded-lg bg-brand-purple text-white text-xs font-medium hover:bg-purple-900 transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
-                >
-                  {verifying ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Check size={14} />
+            {/* STAGE 3: Connection Succeeded -> OTP Section Displayed Below */}
+            {customSaveStage === "otp" && (
+              <div className="space-y-4 pt-3">
+                {/* Success Banner with dismiss X button (same design as popup message) */}
+                {connectionTestSuccess && (
+                  <div className="flex items-center justify-between p-3.5 rounded-xl text-xs sm:text-sm font-medium border bg-green-50 text-green-800 border-green-200 shadow-2xs">
+                    <div className="flex items-center gap-2.5 min-w-0 text-left">
+                      <CheckCircle2 size={16} className="text-green-600 shrink-0" />
+                      <span className="text-xs sm:text-sm">{connectionTestSuccess}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setConnectionTestSuccess("")}
+                      className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-black/5 transition-colors cursor-pointer shrink-0 ml-2"
+                      title="Dismiss"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Admin Profile Box */}
+                <div className="p-3.5 rounded-2xl bg-gray-50/90 border border-gray-200/80 text-left">
+                  <div className="flex items-center gap-3">
+                    <div className="relative shrink-0">
+                      {adminPhoto && !adminImgError ? (
+                        <img
+                          src={adminPhoto}
+                          alt={adminName}
+                          onError={() => setAdminImgError(true)}
+                          className="w-10 h-10 rounded-full object-cover border border-brand-orange/40"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-brand-orange text-white font-bold text-sm flex items-center justify-center">
+                          {getInitials(adminName)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm font-bold text-gray-900 truncate">{adminName}</h4>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-purple-100 text-brand-purple border border-purple-200">
+                          {adminRole}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 truncate mt-0.5">{adminDept}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-2.5 pt-2.5 border-t border-gray-200/70">
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-gray-200 shadow-2xs">
+                      <Mail size={14} className="text-gray-400 shrink-0" />
+                      <span className="text-xs text-gray-700 truncate select-all">{displayEmail}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* OTP Form */}
+                <form onSubmit={handleConfirmCustomSaveOtp} className="space-y-3.5 text-left">
+                  {customSaveOtpSuccess && (
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-orange-50 border border-orange-200 text-xs text-orange-800">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <CheckCircle2 size={14} className="text-brand-orange shrink-0" />
+                        <span className="truncate">{customSaveOtpSuccess}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCustomSaveOtpSuccess("")}
+                        className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-black/5 transition-colors cursor-pointer shrink-0 ml-1"
+                        title="Dismiss"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
                   )}
-                  <span>{verifying ? "Verifying…" : "Confirm & Unlock"}</span>
-                </button>
+
+                  {customSaveOtpError && (
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-medium">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <AlertCircle size={14} className="text-red-600 shrink-0" />
+                        <span>{customSaveOtpError}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCustomSaveOtpError("")}
+                        className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-black/5 transition-colors cursor-pointer shrink-0 ml-1"
+                        title="Dismiss"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-semibold text-gray-700">
+                        Enter 6-Digit PIN
+                      </label>
+                      <span className="text-[11px] font-medium text-orange-600 flex items-center gap-1">
+                        <Clock size={12} />
+                        Expires in 5 minutes
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      maxLength={6}
+                      autoFocus
+                      value={customSaveOtpCode}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                        setCustomSaveOtpCode(val);
+                        setCustomSaveOtpError("");
+                      }}
+                      placeholder="••••••"
+                      className="w-full text-center font-mono text-2xl tracking-[0.4em] py-3 px-4 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange bg-white shadow-2xs transition-all"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleCloseCustomSaveModal}
+                      disabled={customSaveOtpVerifying}
+                      className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-all cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={customSaveOtpVerifying || customSaveOtpCode.length !== 6}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-brand-orange hover:bg-orange-600 active:scale-[0.99] text-white font-semibold text-xs shadow-sm transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {customSaveOtpVerifying ? (
+                        <>
+                          <RefreshCw size={14} className="animate-spin" />
+                          <span>Verifying…</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check size={14} />
+                          <span>Verify &amp; Save</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Resend Option */}
+                  <div className="pt-1 text-center text-xs text-gray-500">
+                    {customSaveResendTimer > 0 ? (
+                      <div className="flex items-center justify-center gap-1.5 text-gray-400">
+                        <Clock size={13} />
+                        <span>
+                          Resend code in <strong className="text-gray-600 font-mono">{customSaveResendTimer}s</strong>
+                        </span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={sendCustomSaveOtp}
+                        disabled={customSaveOtpSending}
+                        className="text-brand-orange hover:text-orange-700 font-medium hover:underline cursor-pointer"
+                      >
+                        Didn't receive code? Resend Code
+                      </button>
+                    )}
+                  </div>
+                </form>
               </div>
-            </form>
+            )}
           </div>
         </div>
       )}

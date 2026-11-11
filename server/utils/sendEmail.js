@@ -3,8 +3,11 @@ const nodemailer = require("nodemailer");
 const Setting = require("../models/Setting");
 const { getSettingOrEnv } = require("../controllers/settingController");
 
+let cachedTransporter = null;
+let cachedCredentials = null;
+
 /**
- * Creates a transporter with current database credentials or .env fallback
+ * Creates a transporter with connection pooling or reuses cached transporter
  */
 async function getTransporter() {
   const user = await getSettingOrEnv("emailUser", "EMAIL_USER");
@@ -14,17 +17,32 @@ async function getTransporter() {
     throw new Error("Email credentials are not configured in Settings or .env.");
   }
 
+  // Reuse pooled transporter if credentials haven't changed
+  if (
+    cachedTransporter &&
+    cachedCredentials?.user === user &&
+    cachedCredentials?.pass === pass
+  ) {
+    return { transporter: cachedTransporter, user };
+  }
+
   const transporter = nodemailer.createTransport({
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 100,
     host: "smtp.gmail.com",
     port: 465,
     secure: true,
     family: 4,
-    connectionTimeout: 10000,
+    connectionTimeout: 8000,
     tls: {
       rejectUnauthorized: process.env.NODE_ENV === "production",
     },
     auth: { user, pass },
   });
+
+  cachedTransporter = transporter;
+  cachedCredentials = { user, pass };
 
   return { transporter, user };
 }

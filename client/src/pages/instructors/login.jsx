@@ -13,6 +13,8 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showCaptchaModal, setShowCaptchaModal] = useState(false);
   const navigate = useNavigate();
   const recaptchaRef = useRef(null);
   const [captchaToken, setCaptchaToken] = useState(null);
@@ -45,21 +47,16 @@ function Login() {
     }
   };
 
-  //MANUAL LOGIN
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // EXECUTE LOGIN REQUEST
+  const executeLogin = async (token) => {
+    setLoading(true);
     setError("");
-
-    if (apiConfig.recaptchaEnabled && !captchaToken) {
-      setError("Please complete the reCAPTCHA.");
-      return;
-    }
 
     try {
       const res = await axios.post(`${API_BASE}/login`, {
         email,
         password,
-        captchaToken: apiConfig.recaptchaEnabled ? captchaToken : undefined,
+        captchaToken: apiConfig.recaptchaEnabled ? token : undefined,
       });
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("instructor", JSON.stringify(res.data.instructor));
@@ -73,9 +70,35 @@ function Login() {
       }
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
-      recaptchaRef.current?.reset(); // tokens are single-use
+      recaptchaRef.current?.reset();
       setCaptchaToken(null);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // MANUAL LOGIN FORM SUBMIT
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!email || !password) {
+      setError("Please fill in both email and password.");
+      return;
+    }
+
+    // If reCAPTCHA is enabled, trigger the verification modal
+    if (apiConfig.recaptchaEnabled) {
+      setShowCaptchaModal(true);
+    } else {
+      executeLogin(null);
+    }
+  };
+
+  const handleCaptchaSuccess = (token) => {
+    setCaptchaToken(token);
+    setShowCaptchaModal(false);
+    executeLogin(token);
   };
 
   //GOOGLE LOGIN
@@ -200,22 +223,24 @@ function Login() {
           </a>
         </div>
 
-        {apiConfig.recaptchaEnabled && (
-          <ReCAPTCHA
-            ref={recaptchaRef}
-            sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
-            onChange={(token) => setCaptchaToken(token)}
-            onExpired={() => setCaptchaToken(null)}
-          />
-        )}
-
         {error && <p className="text-red-500 text-sm">{error}</p>}
 
         <button
           type="submit"
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 rounded-lg transition"
+          disabled={loading}
+          className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2 cursor-pointer"
         >
-          Log In
+          {loading ? (
+            <>
+              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span>Logging in...</span>
+            </>
+          ) : (
+            "Log In"
+          )}
         </button>
       </form>
 
@@ -252,6 +277,65 @@ function Login() {
             Continue with Google
           </button>
         </>
+      )}
+      {/* Security Verification Modal */}
+      {showCaptchaModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4"
+          onClick={() => {
+            setShowCaptchaModal(false);
+            recaptchaRef.current?.reset();
+            setCaptchaToken(null);
+          }}
+        >
+          <div
+            className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl transition-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowCaptchaModal(false);
+                recaptchaRef.current?.reset();
+                setCaptchaToken(null);
+              }}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600 transition cursor-pointer p-1 rounded-full hover:bg-gray-100"
+              aria-label="Close"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+
+            {/* Icon & Heading */}
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Security Verification</h3>
+              <p className="mt-1 text-xs text-gray-500">
+                Please complete the check below to continue logging in.
+              </p>
+            </div>
+
+            {/* Centered reCAPTCHA */}
+            <div className="mt-5 flex justify-center">
+              <ReCAPTCHA
+                ref={recaptchaRef}
+                sitekey={apiConfig.recaptchaSiteKey || import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+                onChange={handleCaptchaSuccess}
+                onExpired={() => setCaptchaToken(null)}
+              />
+            </div>
+
+            <p className="mt-4 text-center text-[11px] text-gray-400">
+              This dialog will close automatically once verified.
+            </p>
+          </div>
+        </div>
       )}
     </AuthLayout>
   );

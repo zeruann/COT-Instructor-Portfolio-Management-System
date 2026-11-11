@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Eye,
   CheckSquare,
+  Lock,
 } from 'lucide-react';
 import PreviewModal from '../../components/documentActions/PreviewModal';
 import { CLASS_REQUIREMENT_CARDS } from './ViewClassPortfolio';
@@ -158,6 +159,100 @@ export default function ClassRequirementUpload({ reqConfig, classData: propClass
   const backPath = isAdmin
     ? `/admin/class-portfolio/${classId}`
     : `/instructors/class-portfolio/${classId}`;
+
+  const isArchived = Boolean(
+    classData?.archivedAt ||
+    classData?.academicPeriod?.isArchived ||
+    classData?.academicPeriod?.status === 'Archived'
+  );
+
+  // If Archived (and not admin reviewing), show preserved read-only UI
+  if (isArchived && !isAdmin) {
+    return (
+      <div className="space-y-6 w-full">
+        {/* Top Title Bar with Back Arrow */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to={backPath}
+            className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition cursor-pointer"
+            aria-label="Back to Class Portfolio"
+          >
+            <ArrowLeft size={18} />
+          </Link>
+          <h1 className="text-xl sm:text-2xl font-bold text-brand-purple tracking-tight">
+            {resolvedReq.title}
+          </h1>
+          <span className="rounded-full bg-gray-100 px-3 py-0.5 text-xs font-medium text-gray-500">
+            {statusLabel}
+          </span>
+        </div>
+
+        {/* Read-Only Notice Banner */}
+        <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-purple-50 border border-purple-200 text-xs sm:text-sm text-brand-purple font-medium">
+          <Lock size={15} className="shrink-0 text-brand-purple" />
+          <span>
+            This requirement belongs to an archived academic record. All documents are preserved in read-only mode for audit &amp; compliance.
+          </span>
+        </div>
+
+        {/* Document Display Card */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-xs">
+          <div className="border-b border-gray-100 pb-5">
+            <h2 className="text-xl font-bold text-brand-purple">Preserved Evidence</h2>
+            <p className="mt-1 text-sm text-gray-400">
+              Archived evidence on record for this requirement.
+            </p>
+          </div>
+
+          <div className="mt-6">
+            {existingDoc ? (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-xl border border-gray-200 bg-gray-50">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 text-brand-purple shrink-0">
+                    <FileText size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-gray-900 break-all">
+                      {currentFileName || 'Submitted Document'}
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Status: <span className="font-semibold text-gray-700 capitalize">{existingDoc.status?.replace('_', ' ') || 'Submitted'}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-brand-purple px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-opacity-90 transition cursor-pointer"
+                  >
+                    <Eye size={16} />
+                    <span>View Document</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center text-gray-400">
+                <AlertCircle size={36} className="mb-2 text-gray-300" />
+                <p className="text-base font-semibold text-gray-600">No document was submitted</p>
+                <p className="text-xs mt-1 text-gray-400">This requirement has no archived evidence on file.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {existingDoc && (
+          <PreviewModal
+            isOpen={previewOpen}
+            onClose={() => setPreviewOpen(false)}
+            document={existingDoc}
+            isAdmin={false}
+          />
+        )}
+      </div>
+    );
+  }
 
   // If Admin, show review-only UI
   if (isAdmin) {

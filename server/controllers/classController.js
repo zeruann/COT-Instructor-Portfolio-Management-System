@@ -127,25 +127,30 @@ exports.getClassById = async (req, res) => {
   try {
     const isAdmin = req.user.accountType === 'Administrator';
     const { id } = req.params;
+    const { includeArchived } = req.query;
 
-    const filter = { _id: id, archivedAt: null };
+    const filter = { _id: id };
     if (!isAdmin) {
       filter.ownerId = req.user.id;
+      if (includeArchived !== 'true') {
+        filter.archivedAt = null;
+      }
     }
 
     const classDoc = await Class.findOne(filter)
-      .populate('academicPeriodId', 'schoolYear semester isCurrent')
-      .populate('ownerId', 'fullName email profile');
+      .populate('academicPeriodId', 'schoolYear semester isCurrent isArchived')
+      .populate('ownerId', 'fullName email department profile');
 
     if (!classDoc) {
       return res.status(404).json({ message: 'Class not found.' });
     }
 
     // Fetch documents associated with this class
-    const docs = await Document.find({
-      classIds: classDoc._id,
-      archivedAt: null,
-    }).select('requirementKey status');
+    const docFilter = { classIds: classDoc._id };
+    if (!classDoc.archivedAt && includeArchived !== 'true') {
+      docFilter.archivedAt = null;
+    }
+    const docs = await Document.find(docFilter).select('requirementKey status');
 
     let approved = 0;
     let pendingReview = 0;
@@ -309,10 +314,11 @@ exports.updateClass = async (req, res) => {
  */
 exports.archiveClass = async (req, res) => {
   try {
-    const ownerId = req.user.id;
+    const isAdmin = req.user.accountType === 'Administrator';
     const { id } = req.params;
+    const filter = isAdmin ? { _id: id } : { _id: id, ownerId: req.user.id };
 
-    const classDoc = await Class.findOne({ _id: id, ownerId });
+    const classDoc = await Class.findOne(filter);
     if (!classDoc) {
       return res.status(404).json({ message: 'Class not found.' });
     }
@@ -333,10 +339,11 @@ exports.archiveClass = async (req, res) => {
  */
 exports.unarchiveClass = async (req, res) => {
   try {
-    const ownerId = req.user.id;
+    const isAdmin = req.user.accountType === 'Administrator';
     const { id } = req.params;
+    const filter = isAdmin ? { _id: id } : { _id: id, ownerId: req.user.id };
 
-    const classDoc = await Class.findOne({ _id: id, ownerId });
+    const classDoc = await Class.findOne(filter);
     if (!classDoc) {
       return res.status(404).json({ message: 'Class not found.' });
     }

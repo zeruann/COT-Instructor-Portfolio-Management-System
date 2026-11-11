@@ -504,6 +504,7 @@ exports.closeAcademicPeriod = async (req, res) => {
 
     period.status = 'Closed';
     period.isCurrent = false;
+    period.isArchived = false;
     period.closedAt = new Date();
     await period.save();
 
@@ -570,6 +571,44 @@ exports.archiveAcademicPeriod = async (req, res) => {
   } catch (err) {
     console.error('Error archiving academic period:', err);
     res.status(500).json({ message: 'Failed to archive academic period.' });
+  }
+};
+
+/**
+ * PATCH /api/academic-periods/:id/unarchive
+ * Reopens / unarchives an academic period back to 'Closed'
+ */
+exports.unarchiveAcademicPeriod = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const period = await AcademicPeriod.findById(id);
+    if (!period) {
+      return res.status(404).json({ message: 'Academic period not found.' });
+    }
+
+    period.status = 'Closed';
+    period.isArchived = false;
+    period.archivedAt = null;
+    await period.save();
+
+    await logAudit({
+      actor: req.user,
+      action: ACTION.PERIOD_CLOSE || 'PERIOD_CLOSE',
+      targetType: 'academicPeriod',
+      targetId: period._id,
+      targetLabel: formatPeriodName(period),
+      category: CATEGORY.PERIOD,
+      details: `Reopened archived academic period ${formatPeriodName(period)}. Status set to Closed.`,
+    });
+
+    res.json({
+      success: true,
+      message: `Academic period ${formatPeriodName(period)} reopened successfully.`,
+      period,
+    });
+  } catch (err) {
+    console.error('Error unarchiving academic period:', err);
+    res.status(500).json({ message: 'Failed to reopen academic period.' });
   }
 };
 

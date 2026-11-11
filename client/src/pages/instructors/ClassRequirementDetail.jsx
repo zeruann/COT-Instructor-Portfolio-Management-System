@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Eye, Upload, RefreshCw, Trash2, CheckSquare } from 'lucide-react';
+import { ChevronDown, ChevronRight, Eye, Upload, RefreshCw, Trash2, CheckSquare, Lock } from 'lucide-react';
 import UploadModal from '../../components/documentActions/UploadModal';
 import PreviewModal from '../../components/documentActions/PreviewModal';
 import ConfirmationModal from '../../components/common/ConfirmationModal';
@@ -162,11 +162,11 @@ function summarize(records) {
   return { counts, total, percent };
 }
 
-function getRowActions(status) {
+function getRowActions(status, isArchived = false) {
   return {
     view: { disabled: false },
-    replace: { disabled: false, tip: 'Reupload file' },
-    remove: { disabled: status === 'approved', tip: 'Delete entry' },
+    replace: { disabled: isArchived, tip: isArchived ? 'Archived (read-only)' : 'Reupload file' },
+    remove: { disabled: isArchived || status === 'approved', tip: isArchived ? 'Archived (read-only)' : 'Delete entry' },
   };
 }
 
@@ -275,7 +275,14 @@ export default function ClassRequirementPage() {
     }
   };
 
+  const isArchived = Boolean(
+    classData?.archivedAt ||
+    classData?.academicPeriod?.isArchived ||
+    classData?.academicPeriod?.status === 'Archived'
+  );
+
   const openModal = (doc = null, slot = null, label = '') => {
+    if (isArchived) return;
     setSelectedDoc(doc);
     setSelectedSlot(slot);
     setSelectedModalLabel(label);
@@ -429,12 +436,21 @@ export default function ClassRequirementPage() {
         title={reqConfig.title}
         backTo={isAdmin ? `/admin/class-portfolio/${classId}` : `/instructors/class-portfolio/${classId}`}
         onAddClick={
-          isAdmin || isFixedTerm || isCheckedActivities || isClassRecord || isConsultation
-            ? null // Admin or fixed rows: no generic add button
+          isArchived || isAdmin || isFixedTerm || isCheckedActivities || isClassRecord || isConsultation
+            ? null // Admin, archived, or fixed rows: no generic add button
             : () => openModal(null)
         }
         addLabel={`Add ${reqConfig.title}`}
       />
+
+      {isArchived && (
+        <div className="flex items-center gap-2.5 p-3.5 rounded-xl bg-purple-50 border border-purple-200 text-xs sm:text-sm text-brand-purple font-medium">
+          <Lock size={15} className="shrink-0 text-brand-purple" />
+          <span>
+            This requirement belongs to an archived academic record. All documents are preserved in read-only mode for audit &amp; compliance.
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <ComplianceCard counts={counts} message={complianceMessage} className="col-span-3" />
@@ -564,6 +580,17 @@ export default function ClassRequirementPage() {
                               >
                                 <CheckSquare className="w-4 h-4" />
                                 Review
+                              </button>
+                            ) : isArchived ? (
+                              <button
+                                type="button"
+                                className="doc-btn doc-btn--view"
+                                disabled={!hasRecord}
+                                title={hasRecord ? 'View document' : 'No document submitted'}
+                                onClick={() => handleView(doc)}
+                              >
+                                <Eye className="w-4 h-4" />
+                                View
                               </button>
                             ) : (
                               <>
@@ -700,6 +727,17 @@ export default function ClassRequirementPage() {
                                 <CheckSquare className="w-4 h-4" />
                                 Review
                               </button>
+                            ) : isArchived ? (
+                              <button
+                                type="button"
+                                className="doc-btn doc-btn--view"
+                                disabled={!hasRecord}
+                                title={hasRecord ? 'View document' : 'No document submitted'}
+                                onClick={() => handleView(doc)}
+                              >
+                                <Eye className="w-4 h-4" />
+                                View
+                              </button>
                             ) : (
                               <>
                                 <button
@@ -835,6 +873,17 @@ export default function ClassRequirementPage() {
                                 <CheckSquare className="w-4 h-4" />
                                 Review
                               </button>
+                            ) : isArchived ? (
+                              <button
+                                type="button"
+                                className="doc-btn doc-btn--view"
+                                disabled={!hasRecord}
+                                title={hasRecord ? 'View document' : 'No document submitted'}
+                                onClick={() => handleView(doc)}
+                              >
+                                <Eye className="w-4 h-4" />
+                                View
+                              </button>
                             ) : (
                               <>
                                 <button
@@ -920,7 +969,7 @@ export default function ClassRequirementPage() {
                 fixedTermRows.map((row) => {
                   const doc = row.doc;
                   const hasRecord = row.hasRecord;
-                  const actions = getRowActions(row.status);
+                  const actions = getRowActions(row.status, isArchived);
 
                   return (
                     <tr key={row.term}>
@@ -999,6 +1048,8 @@ export default function ClassRequirementPage() {
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
                               </IconButton>
                             </>
+                          ) : isArchived ? (
+                            <span className="text-gray-400 italic text-xs">Archived (read-only)</span>
                           ) : (
                             <button
                               type="button"
@@ -1021,7 +1072,7 @@ export default function ClassRequirementPage() {
                 </tr>
               ) : (
                 records.map((doc) => {
-                  const actions = getRowActions(doc.status);
+                  const actions = getRowActions(doc.status, isArchived);
                   const title = doc.meta?.title || doc.meta?.name || reqConfig.title || 'Class Document';
                   const fileName = getCurrentFileName(doc);
 
