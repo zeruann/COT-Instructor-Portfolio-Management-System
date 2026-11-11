@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   Mail,
@@ -27,6 +28,7 @@ import driveIcon from "../../assets/Google_Drive_icon_(2026).svg";
 import googleIcon from "../../assets/Google_Favicon_2025.svg";
 import sheetsIcon from "../../assets/google-sheets.svg";
 import excelIcon from "../../assets/ExcelJS_icon.svg";
+import securityShieldIcon from "../../assets/security-shield.png";
 
 const API_URL = "http://localhost:5000/api/settings";
 
@@ -226,6 +228,7 @@ function getInitials(name) {
 }
 
 export default function AdminSettings() {
+  const navigate = useNavigate();
   const [settings, setSettings] = useState({
     googleMailEnabled: true,
     recaptchaEnabled: true,
@@ -319,7 +322,7 @@ export default function AdminSettings() {
             : `${u.slice(0, 2)}•••••${u.slice(-1)}@${d}`;
         setMaskedAdminEmail(censored);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   // 30-Second Countdown timer for OTP resend
@@ -545,6 +548,17 @@ export default function AdminSettings() {
   const handleCancelEdit = (groupKey, target) => {
     const group = INTEGRATIONS.find((g) => g.groupKey === groupKey);
     if (group) {
+      // Hide any revealed password/email/sensitive fields in this group
+      setRevealedFields((prev) => {
+        const next = { ...prev };
+        group.fields.forEach((f) => {
+          if (f.sensitive || f.isEmail || f.key === "emailUser") {
+            delete next[`${target}_${f.key}`];
+          }
+        });
+        return next;
+      });
+
       if (target === "custom") {
         setCustomCredentials((prev) => {
           const next = { ...prev };
@@ -853,9 +867,8 @@ export default function AdminSettings() {
   return (
     <div className="relative bg-white rounded-3xl pt-8 pr-8 pl-8 min-h-[calc(100vh-140px)] overflow-hidden">
       <div
-        className={`max-w-7xl mx-auto space-y-6 pb-12 transition-opacity duration-300 ${
-          !isUnlocked ? "pointer-events-none select-none opacity-40" : "opacity-100"
-        }`}
+        className={`max-w-7xl mx-auto space-y-6 pb-12 transition-opacity duration-300 ${!isUnlocked ? "pointer-events-none select-none opacity-40" : "opacity-100"
+          }`}
         aria-hidden={!isUnlocked}
       >
         {/* Page Header */}
@@ -1010,374 +1023,388 @@ export default function AdminSettings() {
 
                   {/* Smooth Dropdown Content */}
                   {!isToggleOnly && (
-                  <div
-                    className={`grid transition-all duration-300 ease-in-out ${isOpen
-                      ? "grid-rows-[1fr] opacity-100"
-                      : "grid-rows-[0fr] opacity-0 pointer-events-none"
-                      }`}
-                  >
-                    <div className="overflow-hidden">
-                      <div className="border-t border-gray-100 bg-gray-50/40 p-4 sm:p-5 space-y-4">
-                        {/* Inline card feedback if any */}
-                        {feedback && (
-                          <div
-                            className={`flex items-center justify-between p-3 rounded-lg text-xs font-medium border ${feedback.type === "success"
-                              ? "bg-green-50 text-green-700 border-green-200"
-                              : "bg-red-50 text-red-700 border-red-200"
-                              }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              {feedback.type === "success" ? (
-                                <CheckCircle2 size={14} className="shrink-0 text-green-600" />
-                              ) : (
-                                <AlertCircle size={14} className="shrink-0 text-red-600" />
-                              )}
-                              <span>{feedback.message}</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setGroupFeedback((prev) => ({ ...prev, [group.groupKey]: null }))
-                              }
-                              className="text-gray-400 hover:text-gray-700"
+                    <div
+                      className={`grid transition-all duration-300 ease-in-out ${isOpen
+                        ? "grid-rows-[1fr] opacity-100"
+                        : "grid-rows-[0fr] opacity-0 pointer-events-none"
+                        }`}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="border-t border-gray-100 bg-gray-50/40 p-4 sm:p-5 space-y-4">
+                          {/* Inline card feedback if any */}
+                          {feedback && (
+                            <div
+                              className={`flex items-center justify-between p-3 rounded-lg text-xs font-medium border ${feedback.type === "success"
+                                ? "bg-green-50 text-green-700 border-green-200"
+                                : "bg-red-50 text-red-700 border-red-200"
+                                }`}
                             >
-                              <X size={12} />
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Two Columns: Custom API (Left) vs Default API (Right) */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          {/* ── LEFT COLUMN: Custom API ───────────── */}
-                          <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 space-y-4 shadow-2xs">
-                            <div className="flex items-center justify-between pb-3 border-b border-gray-100 flex-wrap gap-2">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
-                                    Custom API
-                                  </h4>
-                                  <label
-                                    className="flex items-center cursor-pointer select-none"
-                                    title="Select to use Custom API for this service"
-                                  >
-                                    <input
-                                      type="radio"
-                                      name={`apiMode_${group.groupKey}`}
-                                      value="custom"
-                                      checked={apiModes[group.groupKey] === "custom"}
-                                      onChange={() => handleModeChange(group.groupKey, "custom")}
-                                      className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600 cursor-pointer"
-                                    />
-                                  </label>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                  {hasCustom
-                                    ? apiModes[group.groupKey] === "custom"
-                                      ? "Active and in use by the system"
-                                      : "Configured (using Default API)"
-                                    : "Not configured (using Default API)"}
-                                </p>
+                              <div className="flex items-center gap-2">
+                                {feedback.type === "success" ? (
+                                  <CheckCircle2 size={14} className="shrink-0 text-green-600" />
+                                ) : (
+                                  <AlertCircle size={14} className="shrink-0 text-red-600" />
+                                )}
+                                <span>{feedback.message}</span>
                               </div>
-
-                              {!isEditingCustom && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    executeAction({
-                                      groupKey: group.groupKey,
-                                      target: "custom",
-                                      action: "edit",
-                                    })
-                                  }
-                                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 active:scale-[0.99] text-gray-700 font-semibold text-xs sm:text-sm shadow-2xs transition-all cursor-pointer"
-                                >
-                                  <Edit3 size={14} className="text-gray-500" />
-                                  <span>{hasCustom ? "Edit Custom API" : "Set Custom API"}</span>
-                                </button>
-                              )}
-                            </div>
-
-                            {/* Custom Fields */}
-                            <div className="space-y-3.5">
-                              {group.fields.map((field) => {
-                                const val = customCredentials[field.key] || "";
-                                const isRevealed = revealedFields[`custom_${field.key}`];
-                                const unmasked = unmaskedCustomCredentials[field.key];
-                                const isSet = Boolean(val && val !== MASK);
-
-                                let displayVal = "Not configured";
-                                if (isSet || unmasked) {
-                                  if (field.isEmail || field.key === "emailUser") {
-                                    displayVal = censorEmail(unmasked || val);
-                                  } else if (field.sensitive) {
-                                    displayVal = isRevealed && unmasked ? unmasked : MASK;
-                                  } else {
-                                    displayVal = unmasked || val;
-                                  }
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setGroupFeedback((prev) => ({ ...prev, [group.groupKey]: null }))
                                 }
-
-                                return (
-                                  <div key={field.key} className="space-y-1.5">
-                                    <label className="text-xs sm:text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-                                      <span>{field.label}</span>
-                                      {field.sensitive && <Lock size={12} className="text-gray-400" />}
-                                    </label>
-
-                                    {isEditingCustom ? (
-                                      <div className="flex items-center gap-2">
-                                        <div className="relative flex-1">
-                                          <input
-                                            type={field.sensitive && !isRevealed ? "password" : "text"}
-                                            value={val}
-                                            onChange={(e) =>
-                                              handleCustomChange(field.key, e.target.value)
-                                            }
-                                            placeholder={field.placeholder}
-                                            className="w-full text-sm font-mono px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all pr-10"
-                                          />
-                                          {field.sensitive && (
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                setRevealedFields((prev) => ({
-                                                  ...prev,
-                                                  [`custom_${field.key}`]: !prev[`custom_${field.key}`],
-                                                }))
-                                              }
-                                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
-                                            >
-                                              {isRevealed ? <EyeOff size={15} /> : <Eye size={15} />}
-                                            </button>
-                                          )}
-                                        </div>
-                                        {val && (
-                                          <button
-                                            type="button"
-                                            title="Clear field to fallback to default"
-                                            onClick={() => handleCustomChange(field.key, "")}
-                                            className="p-2.5 rounded-xl border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors shrink-0 cursor-pointer"
-                                          >
-                                            <Trash2 size={15} />
-                                          </button>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200/80">
-                                        <span
-                                          className={`text-sm font-mono truncate select-all ${!isSet && !unmasked
-                                            ? "text-gray-400 italic"
-                                            : "text-gray-800"
-                                            }`}
-                                        >
-                                          {displayVal}
-                                        </span>
-
-                                        {field.sensitive && isSet && (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              executeAction({
-                                                groupKey: group.groupKey,
-                                                target: "custom",
-                                                action: "reveal",
-                                                fieldKey: `custom_${field.key}`,
-                                              })
-                                            }
-                                            className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-brand-purple bg-white px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-all shrink-0 cursor-pointer shadow-2xs"
-                                          >
-                                            {isRevealed ? (
-                                              <>
-                                                <EyeOff size={13} />
-                                                <span>Hide</span>
-                                              </>
-                                            ) : (
-                                              <>
-                                                <Eye size={13} />
-                                                <span>Reveal</span>
-                                              </>
-                                            )}
-                                          </button>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                                className="text-gray-400 hover:text-gray-700"
+                              >
+                                <X size={12} />
+                              </button>
                             </div>
+                          )}
 
-                            {/* Custom Actions if Editing */}
-                            {isEditingCustom && (
-                              <div className="flex items-center justify-end pt-3 border-t border-gray-100 gap-2.5">
-                                <button
-                                  type="button"
-                                  onClick={() => handleCancelEdit(group.groupKey, "custom")}
-                                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-xs sm:text-sm shadow-2xs transition-colors cursor-pointer"
-                                >
-                                  <X size={14} />
-                                  <span>Cancel</span>
-                                </button>
-
-                                <button
-                                  type="button"
-                                  onClick={() => handleSaveGroup(group, "custom")}
-                                  disabled={isSaving}
-                                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-orange hover:bg-orange-600 active:scale-[0.99] text-white font-semibold text-xs sm:text-sm shadow-xs transition-all cursor-pointer disabled:opacity-50"
-                                >
-                                  {isSaving ? (
-                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                  ) : (
-                                    <Check size={14} />
-                                  )}
-                                  <span>{isSaving ? "Saving…" : "Save Custom API"}</span>
-                                </button>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* ── RIGHT COLUMN: Default API ──────────── */}
-                          <div className="bg-gray-50/80 rounded-2xl border border-gray-200/90 p-4 sm:p-5 space-y-4 shadow-2xs">
-                            <div className="flex items-center justify-between pb-3 border-b border-gray-200/60">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider">
-                                    Default API
-                                  </h4>
-                                  <label
-                                    className="flex items-center cursor-pointer select-none"
-                                    title="Select to use Default API for this service"
-                                  >
-                                    <input
-                                      type="radio"
-                                      name={`apiMode_${group.groupKey}`}
-                                      value="default"
-                                      checked={(apiModes[group.groupKey] || "default") === "default"}
-                                      onChange={() => handleModeChange(group.groupKey, "default")}
-                                      className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600 cursor-pointer"
-                                    />
-                                  </label>
+                          {/* Two Columns: Custom API (Left) vs Default API (Right) */}
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                            {/* ── LEFT COLUMN: Custom API ───────────── */}
+                            <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 space-y-4 shadow-2xs">
+                              <div className="flex items-center justify-between pb-3 border-b border-gray-100 flex-wrap gap-2">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
+                                      Custom API
+                                    </h4>
+                                    <label
+                                      className="flex items-center cursor-pointer select-none"
+                                      title="Select to use Custom API for this service"
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`apiMode_${group.groupKey}`}
+                                        value="custom"
+                                        checked={apiModes[group.groupKey] === "custom"}
+                                        onChange={() => handleModeChange(group.groupKey, "custom")}
+                                        className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600 cursor-pointer"
+                                      />
+                                    </label>
+                                  </div>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    {hasCustom
+                                      ? apiModes[group.groupKey] === "custom"
+                                        ? "Active and in use by the system"
+                                        : "Configured (using Default API)"
+                                      : "Not configured (using Default API)"}
+                                  </p>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                  {(apiModes[group.groupKey] || "default") === "default"
-                                    ? "Active and in use by the system"
-                                    : "Standby fallback"}
-                                </p>
-                              </div>
 
-                              {allowDefaultEdit ? (
-                                !isEditingDefault && (
+                                {!isEditingCustom && (
                                   <button
                                     type="button"
                                     onClick={() =>
                                       executeAction({
                                         groupKey: group.groupKey,
-                                        target: "default",
+                                        target: "custom",
                                         action: "edit",
                                       })
                                     }
-                                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-300 bg-white text-gray-700 font-semibold text-xs sm:text-sm hover:bg-gray-50 transition-all cursor-pointer shadow-2xs"
+                                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 active:scale-[0.99] text-gray-700 font-semibold text-xs sm:text-sm shadow-2xs transition-all cursor-pointer"
                                   >
-                                    <Edit3 size={13} className="text-gray-500" />
-                                    <span>Edit Default API</span>
+                                    <Edit3 size={14} className="text-gray-500" />
+                                    <span>{hasCustom ? "Edit Custom API" : "Set Custom API"}</span>
                                   </button>
-                                )
-                              ) : (
-                                <div className="flex items-center gap-1.5 text-xs text-gray-400 bg-gray-200/60 px-2.5 py-1 rounded-lg">
-                                  <Lock size={12} />
-                                  <span>System Locked</span>
+                                )}
+                              </div>
+
+                              {/* Custom Fields */}
+                              <div className="space-y-3.5">
+                                {group.fields.map((field) => {
+                                  const val = customCredentials[field.key] || "";
+                                  const isRevealed = revealedFields[`custom_${field.key}`];
+                                  const unmasked = unmaskedCustomCredentials[field.key];
+                                  const isSet = Boolean(val && val !== MASK);
+
+                                  let displayVal = "Not configured";
+                                  if (isSet || unmasked) {
+                                    if (field.isEmail || field.key === "emailUser") {
+                                      displayVal = censorEmail(unmasked || val);
+                                    } else if (field.sensitive) {
+                                      displayVal = isRevealed && unmasked ? unmasked : MASK;
+                                    } else {
+                                      displayVal = unmasked || val;
+                                    }
+                                  }
+
+                                  const isEmailField = field.isEmail || field.key === "emailUser";
+                                  const showEyeToggle = field.sensitive && isSet;
+
+                                  return (
+                                    <div key={field.key} className="space-y-1.5">
+                                      <label className="text-xs sm:text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                                        <span>{field.label}</span>
+                                        {field.sensitive && <Lock size={12} className="text-gray-400" />}
+                                      </label>
+
+                                      {isEditingCustom ? (
+                                        <div className="flex items-center gap-2">
+                                          <div className="relative flex-1">
+                                            <input
+                                              type={
+                                                (field.sensitive && !isRevealed)
+                                                  ? "password"
+                                                  : "text"
+                                              }
+                                              value={
+                                                isEmailField && !isRevealed
+                                                  ? censorEmail(val)
+                                                  : val
+                                              }
+                                              readOnly={isEmailField && !isRevealed}
+                                              onChange={(e) =>
+                                                handleCustomChange(field.key, e.target.value)
+                                              }
+                                              placeholder={field.placeholder}
+                                              className={`w-full text-sm font-mono px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-orange/30 focus:border-brand-orange transition-all pr-10 ${isEmailField && !isRevealed ? "cursor-default select-none" : ""
+                                                }`}
+                                            />
+                                            {(field.sensitive || isEmailField) && (
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  setRevealedFields((prev) => ({
+                                                    ...prev,
+                                                    [`custom_${field.key}`]: !prev[`custom_${field.key}`],
+                                                  }))
+                                                }
+                                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+                                                title={isRevealed ? "Hide" : "Show full"}
+                                              >
+                                                {isRevealed ? <EyeOff size={15} /> : <Eye size={15} />}
+                                              </button>
+                                            )}
+                                          </div>
+                                          {val && (
+                                            <button
+                                              type="button"
+                                              title="Clear field to fallback to default"
+                                              onClick={() => handleCustomChange(field.key, "")}
+                                              className="p-2.5 rounded-xl border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors shrink-0 cursor-pointer"
+                                            >
+                                              <Trash2 size={15} />
+                                            </button>
+                                          )}
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200/80">
+                                          <span
+                                            className={`text-sm font-mono truncate select-all ${!isSet && !unmasked
+                                              ? "text-gray-400 italic"
+                                              : "text-gray-800"
+                                              }`}
+                                          >
+                                            {displayVal}
+                                          </span>
+
+                                          {showEyeToggle && (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                executeAction({
+                                                  groupKey: group.groupKey,
+                                                  target: "custom",
+                                                  action: "reveal",
+                                                  fieldKey: `custom_${field.key}`,
+                                                })
+                                              }
+                                              className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-brand-purple bg-white px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-gray-300 transition-all shrink-0 cursor-pointer shadow-2xs"
+                                            >
+                                              {isRevealed ? (
+                                                <>
+                                                  <EyeOff size={13} />
+                                                  <span>Hide</span>
+                                                </>
+                                              ) : (
+                                                <>
+                                                  <Eye size={13} />
+                                                  <span>Reveal</span>
+                                                </>
+                                              )}
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Custom Actions if Editing */}
+                              {isEditingCustom && (
+                                <div className="flex items-center justify-end pt-3 border-t border-gray-100 gap-2.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCancelEdit(group.groupKey, "custom")}
+                                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-xs sm:text-sm shadow-2xs transition-colors cursor-pointer"
+                                  >
+                                    <X size={14} />
+                                    <span>Cancel</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveGroup(group, "custom")}
+                                    disabled={isSaving}
+                                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-orange hover:bg-orange-600 active:scale-[0.99] text-white font-semibold text-xs sm:text-sm shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                                  >
+                                    {isSaving ? (
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <Check size={14} />
+                                    )}
+                                    <span>{isSaving ? "Saving…" : "Save Custom API"}</span>
+                                  </button>
                                 </div>
                               )}
                             </div>
 
-                            {/* Default Fields */}
-                            <div className="space-y-3.5">
-                              {group.fields.map((field) => {
-                                const val = defaultCredentials[field.key] || "";
-                                const isRevealed = revealedFields[`default_${field.key}`];
-                                const unmasked = unmaskedDefaultCredentials[field.key];
-                                const isSet = Boolean(val);
-
-                                let displayVal = "Not available";
-                                if (isSet || unmasked) {
-                                  if (field.isEmail || field.key === "emailUser") {
-                                    displayVal = censorEmail(unmasked || val);
-                                  } else if (field.sensitive) {
-                                    displayVal =
-                                      isRevealed && unmasked && allowDefaultEdit
-                                        ? unmasked
-                                        : MASK;
-                                  } else {
-                                    displayVal = unmasked || val;
-                                  }
-                                }
-
-                                return (
-                                  <div key={field.key} className="space-y-1.5">
-                                    <label className="text-xs sm:text-sm font-semibold text-gray-600 flex items-center gap-1.5">
-                                      <span>{field.label}</span>
-                                      {field.sensitive && <Lock size={12} className="text-gray-400" />}
+                            {/* ── RIGHT COLUMN: Default API ──────────── */}
+                            <div className="bg-gray-50/80 rounded-2xl border border-gray-200/90 p-4 sm:p-5 space-y-4 shadow-2xs">
+                              <div className="flex items-center justify-between pb-3 border-b border-gray-200/60">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider">
+                                      Default API
+                                    </h4>
+                                    <label
+                                      className="flex items-center cursor-pointer select-none"
+                                      title="Select to use Default API for this service"
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`apiMode_${group.groupKey}`}
+                                        value="default"
+                                        checked={(apiModes[group.groupKey] || "default") === "default"}
+                                        onChange={() => handleModeChange(group.groupKey, "default")}
+                                        className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600 cursor-pointer"
+                                      />
                                     </label>
-
-                                    {isEditingDefault && allowDefaultEdit ? (
-                                      <div className="flex items-center gap-2">
-                                        <input
-                                          type={
-                                            field.sensitive && !isRevealed ? "password" : "text"
-                                          }
-                                          value={val}
-                                          onChange={(e) =>
-                                            handleDefaultChange(field.key, e.target.value)
-                                          }
-                                          placeholder={field.placeholder}
-                                          className="w-full text-sm font-mono px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all"
-                                        />
-                                      </div>
-                                    ) : (
-                                      <div className="p-2.5 rounded-xl bg-white/90 border border-gray-200">
-                                        <span className="text-sm font-mono text-gray-700 truncate block select-all">
-                                          {displayVal}
-                                        </span>
-                                      </div>
-                                    )}
                                   </div>
-                                );
-                              })}
-                            </div>
+                                  <p className="text-xs text-gray-500 mt-0.5">
+                                    {(apiModes[group.groupKey] || "default") === "default"
+                                      ? "Active and in use by the system"
+                                      : "Standby fallback"}
+                                  </p>
+                                </div>
 
-                            {/* Default Actions if Editing */}
-                            {isEditingDefault && allowDefaultEdit && (
-                              <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                                <button
-                                  type="button"
-                                  onClick={() => handleCancelEdit(group.groupKey, "default")}
-                                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-xs sm:text-sm shadow-2xs transition-colors cursor-pointer"
-                                >
-                                  <X size={14} />
-                                  <span>Cancel</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleSaveGroup(group, "default")}
-                                  disabled={isSaving}
-                                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-purple hover:bg-purple-900 active:scale-[0.99] text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
-                                >
-                                  {isSaving ? (
-                                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                  ) : (
-                                    <Check size={14} />
-                                  )}
-                                  <span>{isSaving ? "Saving…" : "Save Default API"}</span>
-                                </button>
+                                {allowDefaultEdit ? (
+                                  !isEditingDefault && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        executeAction({
+                                          groupKey: group.groupKey,
+                                          target: "default",
+                                          action: "edit",
+                                        })
+                                      }
+                                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-300 bg-white text-gray-700 font-semibold text-xs sm:text-sm hover:bg-gray-50 transition-all cursor-pointer shadow-2xs"
+                                    >
+                                      <Edit3 size={13} className="text-gray-500" />
+                                      <span>Edit Default API</span>
+                                    </button>
+                                  )
+                                ) : (
+                                  <div className="flex items-center gap-1.5 text-xs text-gray-400 bg-gray-200/60 px-2.5 py-1 rounded-lg">
+                                    <Lock size={12} />
+                                    <span>System Locked</span>
+                                  </div>
+                                )}
                               </div>
-                            )}
+
+                              {/* Default Fields */}
+                              <div className="space-y-3.5">
+                                {group.fields.map((field) => {
+                                  const val = defaultCredentials[field.key] || "";
+                                  const isRevealed = revealedFields[`default_${field.key}`];
+                                  const unmasked = unmaskedDefaultCredentials[field.key];
+                                  const isSet = Boolean(val);
+
+                                  let displayVal = "Not available";
+                                  if (isSet || unmasked) {
+                                    if (field.isEmail || field.key === "emailUser") {
+                                      displayVal = censorEmail(unmasked || val);
+                                    } else if (field.sensitive) {
+                                      displayVal =
+                                        isRevealed && unmasked && allowDefaultEdit
+                                          ? unmasked
+                                          : MASK;
+                                    } else {
+                                      displayVal = unmasked || val;
+                                    }
+                                  }
+
+                                  return (
+                                    <div key={field.key} className="space-y-1.5">
+                                      <label className="text-xs sm:text-sm font-semibold text-gray-600 flex items-center gap-1.5">
+                                        <span>{field.label}</span>
+                                        {field.sensitive && <Lock size={12} className="text-gray-400" />}
+                                      </label>
+
+                                      {isEditingDefault && allowDefaultEdit ? (
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            type={
+                                              field.sensitive && !isRevealed ? "password" : "text"
+                                            }
+                                            value={val}
+                                            onChange={(e) =>
+                                              handleDefaultChange(field.key, e.target.value)
+                                            }
+                                            placeholder={field.placeholder}
+                                            className="w-full text-sm font-mono px-3.5 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all"
+                                          />
+                                        </div>
+                                      ) : (
+                                        <div className="p-2.5 rounded-xl bg-white/90 border border-gray-200">
+                                          <span className="text-sm font-mono text-gray-700 truncate block select-all">
+                                            {displayVal}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Default Actions if Editing */}
+                              {isEditingDefault && allowDefaultEdit && (
+                                <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCancelEdit(group.groupKey, "default")}
+                                    className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 font-semibold text-xs sm:text-sm shadow-2xs transition-colors cursor-pointer"
+                                  >
+                                    <X size={14} />
+                                    <span>Cancel</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSaveGroup(group, "default")}
+                                    disabled={isSaving}
+                                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-purple hover:bg-purple-900 active:scale-[0.99] text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                                  >
+                                    {isSaving ? (
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <Check size={14} />
+                                    )}
+                                    <span>{isSaving ? "Saving…" : "Save Default API"}</span>
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
+
+
+
+
                         </div>
-
-
-
-
                       </div>
                     </div>
-                  </div>
                   )}
                 </div>
               );
@@ -1386,19 +1413,39 @@ export default function AdminSettings() {
         </section>
       </div>
 
-      {/* ── SECURITY VERIFICATION OVERLAY COVER (Only covers settings page; pure white, smooth fadeout) ── */}
+      {/* ── SECURITY VERIFICATION OVERLAY COVER (Dark backdrop blur, centered across the whole screen) ── */}
       {!isUnlocked && (
         <div
-          className={`absolute inset-0 z-30 flex items-start justify-center pt-8 sm:pt-12 md:pt-14 p-4 sm:p-8 bg-white transition-all duration-500 ease-out ${
-            isFadingOut
-              ? "opacity-0 scale-[0.98] pointer-events-none"
-              : "opacity-100 scale-100"
-          }`}
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm transition-all duration-500 ease-out overflow-y-auto ${isFadingOut
+            ? "opacity-0 scale-[0.98] pointer-events-none"
+            : "opacity-100 scale-100"
+            }`}
         >
-          <div className="relative w-full max-w-[540px] rounded-3xl bg-white p-6 sm:p-8 md:p-9 shadow-2xl border border-gray-100/90 text-center">
+          <div className="relative w-full max-w-[540px] rounded-3xl bg-white p-6 sm:p-8 md:p-9 shadow-2xl border border-gray-100/90 text-center animate-in fade-in zoom-in-95 duration-200">
+            {/* Close 'X' Button to exit and return back */}
+            <button
+              type="button"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate("/admin/AdminDashboard");
+                }
+              }}
+              className="absolute top-5 right-5 p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+              title="Close and return"
+              aria-label="Close and return"
+            >
+              <X size={20} />
+            </button>
+
             {/* Header Icon */}
-            <div className="mx-auto mb-3 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-orange-50 text-brand-orange border border-orange-100 shadow-2xs">
-              <ShieldCheck size={32} />
+            <div className="mx-auto mb-3 flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-gray-50 border border-gray-200/80 shadow-2xs p-3">
+              <img
+                src={securityShieldIcon}
+                alt="Security Verification"
+                className="w-full h-full object-contain"
+              />
             </div>
 
             {/* Title & Subtitle */}

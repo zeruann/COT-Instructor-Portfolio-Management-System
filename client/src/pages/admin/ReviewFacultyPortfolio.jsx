@@ -1,5 +1,5 @@
 // client/src/pages/admin/ReviewFacultyPortfolio.jsx
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
   Search,
@@ -9,6 +9,13 @@ import {
   MoreVertical,
   MessageSquare,
   FileText,
+  LayoutGrid,
+  List,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  Check,
+  Minus,
 } from 'lucide-react';
 import { fetchFacultySummary } from '../../api/documents';
 
@@ -222,7 +229,23 @@ export default function ReviewFacultyPortfolio() {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [viewBy, setViewBy] = useState('all');
+  const [displayMode, setDisplayMode] = useState('grid'); // 'grid' | 'table'
+  const [viewVisible, setViewVisible] = useState(true);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
   const [openMenu, setOpenMenu] = useState(null);
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setDepartmentFilter('all');
+    setViewBy('all');
+  };
+
+  const switchDisplayMode = (mode) => {
+    if (mode === displayMode) return;
+    setDisplayMode(mode);
+  };
 
   // Load list of instructors
   useEffect(() => {
@@ -298,6 +321,11 @@ export default function ReviewFacultyPortfolio() {
   const clearSelection = () => {
     setSearchParams({});
   };
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, departmentFilter, viewBy]);
 
   const departments = [
     ...new Set(instructors.map((i) => i.department).filter(Boolean)),
@@ -389,34 +417,40 @@ export default function ReviewFacultyPortfolio() {
   const instructorGridClass =
     'grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-4 sm:gap-6';
 
-  // ───────────────────────── Selected instructor view ─────────────────────────
-    if (selectedInstructor) {
-      const id = selectedInstructor._id || selectedInstructor.id;
-      const profile = selectedInstructor.profile || {};
-      const rank = profile.rank || profile.position || 'Assistant Professor IV';
-      const department = selectedInstructor.department || 'IT Department';
-      const phone = selectedInstructor.phone || profile.phone || profile.contactNumber;
-      const address = selectedInstructor.address || profile.address;
-      const pdsUrl = profile.pdsUrl || selectedInstructor.pdsUrl;
-      const education = Array.isArray(profile.education)
-        ? profile.education
-        : Array.isArray(selectedInstructor.education)
-          ? selectedInstructor.education
-          : [];
-      const instructorSummaries = summariesById[id] || {};
-      const completion = getCompletion(selectedInstructor) || computeCompletion({});
-      const percent = completion.percent;
-      const { counts } = completion;
-      const uploaded = counts ? counts.approved + counts.pending + counts.rejected : null;
+  const totalPages = Math.ceil(filteredInstructors.length / pageSize) || 1;
+  const paginatedInstructors = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredInstructors.slice(start, start + pageSize);
+  }, [filteredInstructors, currentPage, pageSize]);
 
-      const completionMessage =
-        percent >= 100
-          ? 'Your portfolio has been verified and approved!'
-          : counts?.rejected > 0
-            ? 'Some documents need revision.'
-            : counts?.pending > 0
-              ? 'Some documents are waiting for review.'
-              : 'No documents have been approved yet.';
+  // ───────────────────────── Selected instructor view ─────────────────────────
+  if (selectedInstructor) {
+    const id = selectedInstructor._id || selectedInstructor.id;
+    const profile = selectedInstructor.profile || {};
+    const rank = profile.rank || profile.position || 'Assistant Professor IV';
+    const department = selectedInstructor.department || 'IT Department';
+    const phone = selectedInstructor.phone || profile.phone || profile.contactNumber;
+    const address = selectedInstructor.address || profile.address;
+    const pdsUrl = profile.pdsUrl || selectedInstructor.pdsUrl;
+    const education = Array.isArray(profile.education)
+      ? profile.education
+      : Array.isArray(selectedInstructor.education)
+        ? selectedInstructor.education
+        : [];
+    const instructorSummaries = summariesById[id] || {};
+    const completion = getCompletion(selectedInstructor) || computeCompletion({});
+    const percent = completion.percent;
+    const { counts } = completion;
+    const uploaded = counts ? counts.approved + counts.pending + counts.rejected : null;
+
+    const completionMessage =
+      percent >= 100
+        ? 'Your portfolio has been verified and approved!'
+        : counts?.rejected > 0
+          ? 'Some documents need revision.'
+          : counts?.pending > 0
+            ? 'Some documents are waiting for review.'
+            : 'No documents have been approved yet.';
 
     const legend = [
       { color: '#d1d5db', label: 'Documents uploaded', value: uploaded },
@@ -425,257 +459,297 @@ export default function ReviewFacultyPortfolio() {
       { color: '#ef6c35', label: 'Rejected', value: counts?.rejected },
     ];
 
-      // Two rows of four cards, separated by a divider (matches the prototype)
-      const cardRows = [requirementCards.slice(0, 4), requirementCards.slice(4)];
+    // Two rows of four cards, separated by a divider (matches the prototype)
+    const cardRows = [requirementCards.slice(0, 4), requirementCards.slice(4)];
 
-      return (
-        <div className="min-w-0 space-y-4 sm:space-y-6">
-          {/* Page title */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={clearSelection}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple transition hover:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2"
-              title="Back to all instructors"
-              aria-label="Back to all instructors"
-            >
-              <ArrowLeft size={16} />
-            </button>
-            <h1 className="min-w-0 text-2xl font-semibold text-brand-purple sm:text-3xl">
-              Faculty Portfolio Review
-            </h1>
-          </div>
+    return (
+      <div className="min-w-0 space-y-4 sm:space-y-6">
+        {/* Page title */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={clearSelection}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple transition hover:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2"
+            title="Back to all instructors"
+            aria-label="Back to all instructors"
+          >
+            <ArrowLeft size={16} />
+          </button>
+          <h1 className="min-w-0 text-2xl font-semibold text-brand-purple sm:text-3xl">
+            Faculty Portfolio Review
+          </h1>
+        </div>
 
-    {/* Profile + completion: side by side only when there is really room (2xl), stacked otherwise */}
-    <div className="grid grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">
-      {/* Profile card (container: layout reacts to the card's own width) */}
-      <div className="@container min-w-0">
-        <div className="flex h-full min-w-0 flex-col rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 @2xl:flex-row">
-          {/* Identity */}
-          <div className="flex min-w-0 flex-col items-center gap-4 border-b border-gray-200 pb-5 text-center @md:flex-row @md:text-left @2xl:shrink-0 @2xl:border-b-0 @2xl:border-r @2xl:pb-0 @2xl:pr-6">
-            <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 @md:h-28 @md:w-28">
-              {profile.photoUrl ? (
-                <img
-                  src={profile.photoUrl}
-                  alt={getDisplayName(selectedInstructor)}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#fb923c"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-12 w-12 sm:h-14 sm:w-14"
-                  aria-hidden="true"
-                >
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
-              )}
-            </div>
-
-            <div className="min-w-0 w-full @md:w-auto @md:max-w-[220px]">
-              <h2 className="break-words text-lg font-semibold leading-tight text-gray-900 sm:text-xl">
-                {getDisplayName(selectedInstructor)}
-              </h2>
-              <p className="mt-1 break-words text-sm text-gray-500">{rank}</p>
-              <p className="break-words text-sm text-gray-500">{department}</p>
-
-              {pdsUrl ? (
-                <a
-                  href={pdsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 block w-full rounded-md border border-gray-300 px-6 py-2 text-center text-sm text-gray-600 transition hover:bg-gray-50"
-                >
-                  See PDS
-                </a>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  title="No PDS uploaded yet"
-                  className="mt-3 w-full cursor-not-allowed rounded-md border border-gray-300 px-6 py-2 text-sm text-gray-400"
-                >
-                  See PDS
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Contact + educational background */}
-          <div className="grid min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(min(100%,230px),1fr))] gap-x-10 gap-y-6 pt-5 @2xl:pl-8 @2xl:pt-0">
-            <div className="min-w-0">
-              <h3 className="mb-1 border-b border-gray-200 pb-3 text-base font-semibold text-gray-800">
-                Contact Information
-              </h3>
-              <ContactRow label="Email" value={selectedInstructor.email} />
-              <ContactRow label="Phone" value={phone} />
-              <ContactRow label="Address" value={address} />
-            </div>
-
-            <div className="min-w-0">
-              <h3 className="mb-1 border-b border-gray-200 pb-3 text-base font-semibold text-gray-800">
-                Educational Background
-              </h3>
-              {education.length > 0 ? (
-                <ul>
-                  {education.map((edu, i) => (
-                    <li
-                      key={`${edu.degree}-${i}`}
-                      className="border-b border-gray-200 py-3 last:border-b-0"
+        {/* Profile + completion: side by side only when there is really room (2xl), stacked otherwise */}
+        <div className="grid grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">
+          {/* Profile card (container: layout reacts to the card's own width) */}
+          <div className="@container min-w-0">
+            <div className="flex h-full min-w-0 flex-col rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 @2xl:flex-row">
+              {/* Identity */}
+              <div className="flex min-w-0 flex-col items-center gap-4 border-b border-gray-200 pb-5 text-center @md:flex-row @md:text-left @2xl:shrink-0 @2xl:border-b-0 @2xl:border-r @2xl:pb-0 @2xl:pr-6">
+                <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 @md:h-28 @md:w-28">
+                  {profile.photoUrl ? (
+                    <img
+                      src={profile.photoUrl}
+                      alt={getDisplayName(selectedInstructor)}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#fb923c"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-12 w-12 sm:h-14 sm:w-14"
+                      aria-hidden="true"
                     >
-                      <p className="break-words text-sm font-semibold text-gray-800">{edu.degree}</p>
-                      <p className="break-words text-xs text-gray-400">
-                        {[edu.school || edu.institution, edu.year].filter(Boolean).join(' · ')}
-                      </p>
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  )}
+                </div>
+
+                <div className="min-w-0 w-full @md:w-auto @md:max-w-[220px]">
+                  <h2 className="break-words text-lg font-semibold leading-tight text-gray-900 sm:text-xl">
+                    {getDisplayName(selectedInstructor)}
+                  </h2>
+                  <p className="mt-1 break-words text-sm text-gray-500">{rank}</p>
+                  <p className="break-words text-sm text-gray-500">{department}</p>
+
+                  {pdsUrl ? (
+                    <a
+                      href={pdsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 block w-full rounded-md border border-gray-300 px-6 py-2 text-center text-sm text-gray-600 transition hover:bg-gray-50"
+                    >
+                      See PDS
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      title="No PDS uploaded yet"
+                      className="mt-3 w-full cursor-not-allowed rounded-md border border-gray-300 px-6 py-2 text-sm text-gray-400"
+                    >
+                      See PDS
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Contact + educational background */}
+              <div className="grid min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(min(100%,230px),1fr))] gap-x-10 gap-y-6 pt-5 @2xl:pl-8 @2xl:pt-0">
+                <div className="min-w-0">
+                  <h3 className="mb-1 border-b border-gray-200 pb-3 text-base font-semibold text-gray-800">
+                    Contact Information
+                  </h3>
+                  <ContactRow label="Email" value={selectedInstructor.email} />
+                  <ContactRow label="Phone" value={phone} />
+                  <ContactRow label="Address" value={address} />
+                </div>
+
+                <div className="min-w-0">
+                  <h3 className="mb-1 border-b border-gray-200 pb-3 text-base font-semibold text-gray-800">
+                    Educational Background
+                  </h3>
+                  {education.length > 0 ? (
+                    <ul>
+                      {education.map((edu, i) => (
+                        <li
+                          key={`${edu.degree}-${i}`}
+                          className="border-b border-gray-200 py-3 last:border-b-0"
+                        >
+                          <p className="break-words text-sm font-semibold text-gray-800">{edu.degree}</p>
+                          <p className="break-words text-xs text-gray-400">
+                            {[edu.school || edu.institution, edu.year].filter(Boolean).join(' · ')}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="py-3 text-sm text-gray-400">No educational background provided.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Completion status card (also a container) */}
+          <div className="@container min-w-0">
+            <div className="flex h-full min-w-0 flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
+              <h2 className="text-lg font-medium text-brand-purple sm:text-2xl">Completion Status</h2>
+
+              <div className="flex flex-1 flex-col gap-5 @md:flex-row @md:items-center">
+                <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+                  <p className="text-5xl font-extrabold leading-none text-[#6aaa64] sm:text-6xl @md:text-7xl">
+                    {percent}%
+                  </p>
+                  <p className="mt-4 text-sm leading-snug text-gray-400">{completionMessage}</p>
+                </div>
+
+                <ul className="w-full shrink-0 divide-y divide-gray-100 border-t border-gray-200 pt-2 @md:flex @md:w-56 @md:flex-col @md:justify-center @md:self-stretch @md:border-l @md:border-t-0 @md:pl-6 @md:pt-0">
+                  {legend.map((item) => (
+                    <li
+                      key={item.label}
+                      className="flex items-center justify-between gap-3 py-2.5 text-sm text-gray-500"
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span
+                          className="h-3 w-3 shrink-0 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <span className="truncate">{item.label}</span>
+                      </span>
+                      <span className="font-semibold tabular-nums text-gray-800">{item.value ?? '—'}</span>
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className="py-3 text-sm text-gray-400">No educational background provided.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Completion status card (also a container) */}
-      <div className="@container min-w-0">
-        <div className="flex h-full min-w-0 flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
-          <h2 className="text-lg font-medium text-brand-purple sm:text-2xl">Completion Status</h2>
-
-          <div className="flex flex-1 flex-col gap-5 @md:flex-row @md:items-center">
-            <div className="flex min-w-0 flex-1 flex-col items-center text-center">
-              <p className="text-5xl font-extrabold leading-none text-[#6aaa64] sm:text-6xl @md:text-7xl">
-                {percent}%
-              </p>
-              <p className="mt-4 text-sm leading-snug text-gray-400">{completionMessage}</p>
-            </div>
-
-            <ul className="w-full shrink-0 divide-y divide-gray-100 border-t border-gray-200 pt-2 @md:flex @md:w-56 @md:flex-col @md:justify-center @md:self-stretch @md:border-l @md:border-t-0 @md:pl-6 @md:pt-0">
-              {legend.map((item) => (
-                <li
-                  key={item.label}
-                  className="flex items-center justify-between gap-3 py-2.5 text-sm text-gray-500"
-                >
-                  <span className="flex min-w-0 items-center gap-2.5">
-                    <span
-                      className="h-3 w-3 shrink-0 rounded-full"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <span className="truncate">{item.label}</span>
-                  </span>
-                  <span className="font-semibold tabular-nums text-gray-800">{item.value ?? '—'}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-
-      {/* Portfolio content */}
-      <section className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
-        <div className="mb-4 flex items-center gap-3 sm:mb-5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#efeef8] text-brand-purple">
-            <Folder size={20} />
-          </span>
-          <h2 className="min-w-0 text-xl font-medium text-brand-purple sm:text-2xl">
-            Portfolio Content
-          </h2>
-        </div>
-
-        <div className="space-y-4 sm:space-y-6">
-          {cardRows.map((row, rowIndex) => (
-            <div key={rowIndex}>
-              {rowIndex > 0 && <hr className="mb-4 border-gray-200 sm:mb-6" />}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
-                {row.map((card) => (
-                  <PortfolioCard
-                    key={card.path}
-                    card={card}
-                    summary={instructorSummaries[card.path] || {}}
-                    instructorId={id}
-                    menuOpen={openMenu === card.path}
-                    onToggleMenu={(e) => {
-                      e.stopPropagation();
-                      setOpenMenu(openMenu === card.path ? null : card.path);
-                    }}
-                    onCloseMenu={() => setOpenMenu(null)}
-                  />
-                ))}
               </div>
             </div>
-          ))}
+          </div>
         </div>
-      </section>
-    </div>
-  );
-}
+
+        {/* Portfolio content */}
+        <section className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
+          <div className="mb-4 flex items-center gap-3 sm:mb-5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#efeef8] text-brand-purple">
+              <Folder size={20} />
+            </span>
+            <h2 className="min-w-0 text-xl font-medium text-brand-purple sm:text-2xl">
+              Portfolio Content
+            </h2>
+          </div>
+
+          <div className="space-y-4 sm:space-y-6">
+            {cardRows.map((row, rowIndex) => (
+              <div key={rowIndex}>
+                {rowIndex > 0 && <hr className="mb-4 border-gray-200 sm:mb-6" />}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
+                  {row.map((card) => (
+                    <PortfolioCard
+                      key={card.path}
+                      card={card}
+                      summary={instructorSummaries[card.path] || {}}
+                      instructorId={id}
+                      menuOpen={openMenu === card.path}
+                      onToggleMenu={(e) => {
+                        e.stopPropagation();
+                        setOpenMenu(openMenu === card.path ? null : card.path);
+                      }}
+                      onCloseMenu={() => setOpenMenu(null)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   // ───────────────────────── Instructor Selection Screen ─────────────────────────
   return (
     <div className="min-w-0 space-y-4 sm:space-y-6">
-{/* Title & Subtitle */}
-<div>
-  <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">Faculty Portfolio</h1>
-  <p className="mt-1 text-sm font-medium text-gray-500">
-    Review instructor submitted requirement documents
-  </p>
-</div>
+      {/* Title & Subtitle */}
+      <div>
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">Faculty Portfolio</h1>
+        <p className="mt-1 text-sm font-medium text-gray-500">
+          Review instructor submitted requirement documents
+        </p>
+      </div>
 
-{/* Search, Department, View by */}
-<div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-  {/* Search */}
-  <div className="relative min-w-0 flex-1">
-    <input
-      type="text"
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-      placeholder="Search instructor by name or email.."
-      className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-2xs transition focus:border-brand-orange focus:outline-none"
-    />
-    <Search className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-  </div>
+      {/* Search, Department, View by */}
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+        {/* Search */}
+        <div className="relative min-w-0 flex-1">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search instructor by name or email.."
+            className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+          />
+          <Search className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        </div>
 
-  {/* Department Filter */}
-  <div className="relative shrink-0 sm:w-52 lg:w-60">
-    <select
-      value={departmentFilter}
-      onChange={(e) => setDepartmentFilter(e.target.value)}
-      className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
-    >
-      <option value="all">All Departments</option>
-      {departments.map((dept) => (
-        <option key={dept} value={dept}>{dept}</option>
-      ))}
-    </select>
-    <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-  </div>
+        {/* Department Filter */}
+        <div className="relative shrink-0 sm:w-52 lg:w-60">
+          <select
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+          >
+            <option value="all">All Departments</option>
+            {departments.map((dept) => (
+              <option key={dept} value={dept}>{dept}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        </div>
 
-  {/* View by */}
-  <div className="relative shrink-0 sm:w-44 lg:w-48">
-    <select
-      value={viewBy}
-      onChange={(e) => setViewBy(e.target.value)}
-      aria-label="View by"
-      className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
-    >
-      <option value="all">View by</option>
-      {viewByOptions.filter((o) => o.value !== 'all').map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-    </select>
-    <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-  </div>
-</div>
+        {/* View by */}
+        <div className="relative shrink-0 sm:w-36 lg:w-44">
+          <select
+            value={viewBy}
+            onChange={(e) => setViewBy(e.target.value)}
+            aria-label="View by"
+            className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+          >
+            <option value="all">View by</option>
+            {viewByOptions.filter((o) => o.value !== 'all').map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        </div>
 
-      {/* Cards Grid */}
+        {/* Reset Filter Button */}
+        <button
+          type="button"
+          onClick={resetFilters}
+          title="Reset filters"
+          aria-label="Reset filters"
+          className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-2xs transition hover:bg-gray-50 hover:text-brand-orange hover:border-brand-orange/40 cursor-pointer whitespace-nowrap active:bg-gray-100"
+        >
+          <RotateCcw size={15} className="text-gray-500" />
+          <span>Reset</span>
+        </button>
+
+        {/* Cards vs Table Switcher */}
+        <div className="flex items-center shrink-0 rounded-xl border border-gray-200 bg-white p-1 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => switchDisplayMode('grid')}
+            title="Grid view"
+            aria-label="Grid view"
+            className={`rounded-lg p-2 transition cursor-pointer ${displayMode === 'grid'
+              ? 'bg-orange-500 text-white shadow-xs'
+              : 'text-gray-400 hover:text-gray-700'
+              }`}
+          >
+            <LayoutGrid size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={() => switchDisplayMode('table')}
+            title="Table view"
+            aria-label="Table view"
+            className={`rounded-lg p-2 transition cursor-pointer ${displayMode === 'table'
+              ? 'bg-orange-500 text-white shadow-xs'
+              : 'text-gray-400 hover:text-gray-700'
+              }`}
+          >
+            <List size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Cards Grid or Table View */}
       {loading ? (
         <div className={instructorGridClass}>
           {[...Array(6)].map((_, i) => (
@@ -714,9 +788,203 @@ export default function ReviewFacultyPortfolio() {
             </button>
           )}
         </div>
+      ) : displayMode === 'table' ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-2xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100 text-xs font-bold uppercase tracking-wider text-gray-600">
+                  <th className="pb-3 pl-2 pr-4 w-10">
+                    <label
+                      className="inline-flex items-center justify-center cursor-pointer select-none"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="checkbox"
+                        aria-label="Select all instructors"
+                        checked={
+                          paginatedInstructors.length > 0 &&
+                          paginatedInstructors.every((i) => selectedIds.includes(i._id || i.id))
+                        }
+                        onChange={(e) => {
+                          const pageIds = paginatedInstructors.map((i) => i._id || i.id);
+                          if (e.target.checked) {
+                            setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+                          } else {
+                            setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+                          }
+                        }}
+                        className="sr-only"
+                      />
+                      {(() => {
+                        const isAllSelected =
+                          paginatedInstructors.length > 0 &&
+                          paginatedInstructors.every((i) => selectedIds.includes(i._id || i.id));
+                        const isSomeSelected =
+                          !isAllSelected &&
+                          paginatedInstructors.some((i) => selectedIds.includes(i._id || i.id));
+
+                        return (
+                          <span
+                            className={`h-4.5 w-4.5 rounded-md border flex items-center justify-center transition-all duration-150 ${isAllSelected || isSomeSelected
+                                ? 'bg-orange-500 border-orange-500 text-white shadow-2xs'
+                                : 'bg-white border-gray-300 hover:border-orange-400'
+                              }`}
+                          >
+                            {isAllSelected && <Check size={12} strokeWidth={3} className="text-white" />}
+                            {isSomeSelected && <Minus size={12} strokeWidth={3} className="text-white" />}
+                          </span>
+                        );
+                      })()}
+                    </label>
+                  </th>
+                  <th className="pb-3 pr-4">LOG ID</th>
+                  <th className="pb-3 px-4">INSTRUCTOR</th>
+                  <th className="pb-3 px-4">DEPARTMENT</th>
+                  <th className="pb-3 px-4 min-w-[280px]">COMPLETION STATUS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm">
+                {paginatedInstructors.map((inst) => {
+                  const id = inst._id || inst.id;
+                  const name = getDisplayName(inst) || 'Instructor';
+                  const email = inst.email || '';
+                  const department = inst.department || 'IT Department';
+                  const photoUrl = inst.profile?.photoUrl || inst.googlePhotoUrl;
+                  const completion = getCompletion(inst);
+                  const percent = completion?.percent;
+                  const displayId = inst.instructorId || inst.employeeId || id.slice(-8).toUpperCase();
+                  const isChecked = selectedIds.includes(id);
+
+                  return (
+                    <tr
+                      key={id}
+                      onClick={() => selectInstructor(inst)}
+                      className="group cursor-pointer hover:bg-gray-50/70 transition-colors duration-150"
+                    >
+                      {/* CHECKBOX */}
+                      <td
+                        className="py-4 pl-2 pr-4 w-10"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <label
+                          className="inline-flex items-center justify-center cursor-pointer select-none"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            aria-label={`Select ${name}`}
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIds((prev) => [...prev, id]);
+                              } else {
+                                setSelectedIds((prev) => prev.filter((x) => x !== id));
+                              }
+                            }}
+                            className="sr-only"
+                          />
+                          <span
+                            className={`h-4.5 w-4.5 rounded-md border flex items-center justify-center transition-all duration-150 ${isChecked
+                                ? 'bg-orange-500 border-orange-500 text-white shadow-2xs'
+                                : 'bg-white border-gray-300 hover:border-orange-400'
+                              }`}
+                          >
+                            {isChecked && <Check size={12} strokeWidth={3} className="text-white" />}
+                          </span>
+                        </label>
+                      </td>
+
+                      {/* LOG ID / INSTRUCTOR ID */}
+                      <td className="py-4 pr-4 text-[14px] font-medium text-gray-700 whitespace-nowrap">
+                        {displayId}
+                      </td>
+
+                      {/* INSTRUCTOR (Avatar + Name [16px] + Email [14px]) */}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0 overflow-hidden border border-orange-100">
+                            {photoUrl ? (
+                              <img src={photoUrl} alt={name} className="w-full h-full object-cover rounded-full" />
+                            ) : (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="#fb923c"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="h-5 w-5"
+                                aria-hidden="true"
+                              >
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[16px] font-semibold text-gray-800 leading-tight group-hover:text-brand-orange transition-colors truncate">
+                              {name}
+                            </p>
+                            <p className="text-[14px] text-gray-400 leading-tight truncate mt-0.5">{email}</p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* DEPARTMENT (Exact View Instructors styling) */}
+                      <td className="py-4 px-4 text-gray-500 text-[14px] whitespace-nowrap">
+                        {department || '—'}
+                      </td>
+
+                      {/* COMPLETION STATUS (Progress bar with rate beside it) */}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3 w-full max-w-[280px]">
+                          {/* Progress Bar (Increased height to h-2.5) */}
+                          <div className="flex-1 flex h-2.5 overflow-hidden rounded-full bg-gray-100">
+                            {completion?.approvedPct > 0 && (
+                              <div
+                                style={{ width: `${completion.approvedPct}%` }}
+                                className="bg-[#10b981] transition-all duration-300"
+                                title={`Approved: ${Math.round(completion.approvedPct)}%`}
+                              />
+                            )}
+                            {completion?.pendingPct > 0 && (
+                              <div
+                                style={{ width: `${completion.pendingPct}%` }}
+                                className="bg-amber-400 transition-all duration-300"
+                                title={`Pending: ${Math.round(completion.pendingPct)}%`}
+                              />
+                            )}
+                            {completion?.rejectedPct > 0 && (
+                              <div
+                                style={{ width: `${completion.rejectedPct}%` }}
+                                className="bg-red-400 transition-all duration-300"
+                                title={`Rejected: ${Math.round(completion.rejectedPct)}%`}
+                              />
+                            )}
+                            {(!percent || percent === 0) &&
+                              (!completion?.pendingPct && !completion?.rejectedPct) && (
+                                <div className="w-full bg-gray-200" />
+                              )}
+                          </div>
+
+                          {/* Rate beside progress bar */}
+                          <span className="shrink-0 text-xs font-bold text-[#10b981] min-w-[34px] text-right">
+                            {percent != null ? `${percent}%` : '0%'}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
       ) : (
         <div className={instructorGridClass}>
-          {filteredInstructors.map((inst) => {
+          {paginatedInstructors.map((inst) => {
             const id = inst._id || inst.id;
             const name = getDisplayName(inst) || 'Instructor';
             const rank =
@@ -753,7 +1021,6 @@ export default function ReviewFacultyPortfolio() {
                     </svg>
                   )}
                 </div>
-
 
                 {/* Right: Info + Progress + View button */}
                 <div className="flex min-w-0 flex-1 flex-col justify-between">
@@ -821,6 +1088,55 @@ export default function ReviewFacultyPortfolio() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination Footer */}
+      {!loading && filteredInstructors.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gray-100 text-[13px] text-gray-500">
+          <span>
+            Showing {(currentPage - 1) * pageSize + 1}–
+            {Math.min(currentPage * pageSize, filteredInstructors.length)} of{' '}
+            {filteredInstructors.length} instructors
+          </span>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                aria-label="Previous page"
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4 inline" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setCurrentPage(p)}
+                  className={`w-8 h-8 rounded-lg text-xs font-medium border transition cursor-pointer ${p === currentPage
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                    }`}
+                >
+                  {p}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="Next page"
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4 inline" />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

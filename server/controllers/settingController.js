@@ -206,8 +206,6 @@ exports.getSettings = async (req, res) => {
             // Custom credentials (Left Column)
             if (config.sensitive) {
                 customCredentials[key] = hasCustom ? MASK_PLACEHOLDER : '';
-            } else if (config.isEmail && hasCustom) {
-                customCredentials[key] = censorEmail(effectiveCustomVal);
             } else {
                 customCredentials[key] = effectiveCustomVal || '';
             }
