@@ -458,17 +458,13 @@ export default function PreviewModal({
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">
-                    Administrator Review: verify this document against requirements.
-                  </span>
+                <div className="flex items-center justify-end">
                   <div className="flex items-center gap-2.5">
-                    {downloadButton}
                     <button
                       type="button"
                       onClick={() => setRejecting(true)}
                       disabled={submitting || document.status === 'rejected'}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl disabled:opacity-50 transition"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl disabled:opacity-50 transition cursor-pointer"
                     >
                       <XCircle className="w-3.5 h-3.5" />
                       Reject Document
@@ -477,7 +473,7 @@ export default function PreviewModal({
                       type="button"
                       onClick={() => handleReview('approved')}
                       disabled={submitting || document.status === 'approved'}
-                      className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl disabled:opacity-50 transition"
+                      className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl disabled:opacity-50 transition cursor-pointer"
                     >
                       {submitting ? (
                         <Loader2 className="w-4 h-4 animate-spin" />

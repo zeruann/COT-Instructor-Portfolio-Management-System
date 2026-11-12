@@ -280,7 +280,7 @@ exports.createClass = async (req, res) => {
     });
 
     if (existing) {
-      return res.status(409).json({ message: 'Class already exists for this academic period.' });
+      return res.status(409).json({ message: `A class with subject code "${subjectCode.trim().toUpperCase()}" and section code "${sectionCode.trim().toUpperCase()}" already exists in the current academic period.` });
     }
 
     const newClass = await Class.create({
@@ -355,9 +355,30 @@ exports.updateClass = async (req, res) => {
       return res.status(404).json({ message: 'Class not found.' });
     }
 
-    if (subjectCode) classDoc.subject.code = subjectCode.trim().toUpperCase();
+    const newSubjCode = subjectCode ? subjectCode.trim().toUpperCase() : classDoc.subject.code;
+    const newSecCode = sectionCode ? sectionCode.trim().toUpperCase() : classDoc.section.code;
+
+    // Check duplicate if subject.code or section.code is changing
+    if (newSubjCode !== classDoc.subject.code || newSecCode !== classDoc.section.code) {
+      const duplicate = await Class.findOne({
+        _id: { $ne: id },
+        ownerId,
+        academicPeriodId: classDoc.academicPeriodId,
+        'subject.code': newSubjCode,
+        'section.code': newSecCode,
+        archivedAt: null,
+      });
+
+      if (duplicate) {
+        return res.status(409).json({
+          message: `A class with subject code "${newSubjCode}" and section code "${newSecCode}" already exists in this academic period.`,
+        });
+      }
+    }
+
+    if (subjectCode) classDoc.subject.code = newSubjCode;
     if (subjectName) classDoc.subject.name = subjectName.trim();
-    if (sectionCode) classDoc.section.code = sectionCode.trim().toUpperCase();
+    if (sectionCode) classDoc.section.code = newSecCode;
     if (sectionName) classDoc.section.name = sectionName.trim();
 
     await classDoc.save();

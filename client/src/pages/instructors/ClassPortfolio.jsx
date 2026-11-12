@@ -17,6 +17,7 @@ function ClassCard({ classItem, onOpen, onArchive, onEdit, menuOpen, onToggleMen
   } = classItem;
 
   const subjectCode = subject?.code || 'SUBJ';
+  const subjectName = subject?.name && subject.name.toLowerCase() !== subjectCode.toLowerCase() ? subject.name : '';
   const sectionCode = section?.code || 'SEC';
   const program = section?.name || section?.code || '';
   const academicYear = academicPeriod?.schoolYear || '2026-2027';
@@ -34,9 +35,16 @@ function ClassCard({ classItem, onOpen, onArchive, onEdit, menuOpen, onToggleMen
       {/* Top Header Row: Course Code, Details & Button */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-xl font-bold text-brand-purple tracking-tight sm:text-2xl">
-            {displayCode}
-          </h3>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-xl font-bold text-brand-purple tracking-tight sm:text-2xl">
+              {displayCode}
+            </h3>
+            {subjectName && (
+              <span className="text-xs sm:text-sm font-semibold text-gray-600 bg-orange-50 border border-orange-100 rounded-md px-2.5 py-0.5">
+                {subjectName}
+              </span>
+            )}
+          </div>
           <p className="mt-1 text-sm font-medium text-gray-400 sm:text-base">
             {displayDetails}
           </p>
@@ -154,26 +162,56 @@ function ClassCard({ classItem, onOpen, onArchive, onEdit, menuOpen, onToggleMen
   );
 }
 
-function ClassModal({ isOpen, onClose, onSave, loading, initialData = null }) {
+const PROGRAMS = ['BSIT', 'BSEMC', 'BSFT', 'BSET', 'BSAT'];
+const YEAR_LEVELS = [
+  { value: '1', label: '1st Year' },
+  { value: '2', label: '2nd Year' },
+  { value: '3', label: '3rd Year' },
+  { value: '4', label: '4th Year' },
+];
+
+function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, existingClasses = [] }) {
   const [formData, setFormData] = useState({
     subjectCode: '',
+    subjectName: '',
     sectionCode: '',
-    program: '',
+    program: 'BSIT',
+    yearLevel: '1',
+    sectionGroup: 'A',
   });
   const [error, setError] = useState('');
 
   useEffect(() => {
     if (initialData) {
+      // Parse section.name if formatted like "BSIT-2B" or fallback
+      const secName = initialData.section?.name || '';
+      let detectedProg = 'BSIT';
+      let detectedYear = '1';
+      let detectedGroup = 'A';
+
+      const match = secName.match(/^([A-Z]+)-?(\d)?([A-Za-z0-9]+)?/);
+      if (match) {
+        if (PROGRAMS.includes(match[1])) detectedProg = match[1];
+        if (match[2]) detectedYear = match[2];
+        if (match[3]) detectedGroup = match[3];
+      }
+
       setFormData({
         subjectCode: initialData.subject?.code || '',
+        subjectName: initialData.subject?.name || '',
         sectionCode: initialData.section?.code || '',
-        program: initialData.section?.name || '',
+        program: detectedProg,
+        yearLevel: detectedYear,
+        sectionGroup: detectedGroup,
       });
     } else {
       setFormData({
         subjectCode: '',
+        subjectName: '',
         sectionCode: '',
-        program: '',
+        program: 'BSIT',
+        yearLevel: '1',
+        sectionGroup: 'A',
       });
     }
     setError('');
@@ -183,16 +221,58 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.subjectCode.trim() || !formData.sectionCode.trim() || !formData.program.trim()) {
-      setError('Please fill in all required fields.');
+    const cleanSubjCode = formData.subjectCode.trim().toUpperCase();
+    const cleanSubjDesc = formData.subjectName.trim();
+    const cleanSecCode = formData.sectionCode.trim().toUpperCase();
+    const cleanProgram = formData.program.trim();
+    const cleanYear = formData.yearLevel.trim();
+    const cleanGroup = formData.sectionGroup.trim().toUpperCase();
+
+    if (!cleanSubjCode) {
+      setError('Please provide a subject/course code.');
+      return;
+    }
+    if (!cleanSubjDesc) {
+      setError('Please provide a subject/course description.');
+      return;
+    }
+    if (!cleanSecCode) {
+      setError('Please provide a section code.');
+      return;
+    }
+    if (!cleanProgram || !cleanYear) {
+      setError('Please select both a program and year level.');
       return;
     }
 
-    onSave({
-      subjectCode: formData.subjectCode.trim(),
-      sectionCode: formData.sectionCode.trim(),
-      sectionName: formData.program.trim(),
+    // Client-side duplicate check (same subject code + same section code)
+    const currentEditId = initialData?._id || initialData?.id;
+    const isDuplicate = existingClasses.some((c) => {
+      const cId = c._id || c.id;
+      if (currentEditId && String(cId) === String(currentEditId)) return false;
+      const existingSubj = (c.subject?.code || '').trim().toUpperCase();
+      const existingSec = (c.section?.code || '').trim().toUpperCase();
+      return existingSubj === cleanSubjCode && existingSec === cleanSecCode;
     });
+
+    if (isDuplicate) {
+      setError(
+        `A class with Subject Code "${cleanSubjCode}" and Section Code "${cleanSecCode}" already exists. Please choose a different section or subject code.`
+      );
+      return;
+    }
+
+    const assembledSectionName = `${cleanProgram}-${cleanYear}${cleanGroup ? cleanGroup : ''}`;
+
+    onSave(
+      {
+        subjectCode: cleanSubjCode,
+        subjectName: cleanSubjDesc,
+        sectionCode: cleanSecCode,
+        sectionName: assembledSectionName,
+      },
+      setError
+    );
   };
 
   const isEdit = Boolean(initialData);
@@ -211,7 +291,7 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null }) {
                 {isEdit ? 'Edit Class' : 'Add New Class'}
               </h3>
               <p className="text-xs text-gray-500">
-                {isEdit ? 'Update details for this class load' : 'Create a class portfolio card for your teaching load'}
+                {isEdit ? 'Update details for this class load' : 'Enter your course, section, and program assignments'}
               </p>
             </div>
           </div>
@@ -228,16 +308,17 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null }) {
         {/* Form */}
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {error && (
-            <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600">
-              <AlertCircle size={16} className="shrink-0" />
-              <span>{error}</span>
+            <div className="flex items-start gap-2.5 rounded-xl bg-red-50 p-3.5 text-xs sm:text-sm text-red-600 border border-red-200">
+              <AlertCircle size={17} className="shrink-0 mt-0.5" />
+              <span className="leading-snug">{error}</span>
             </div>
           )}
 
+          {/* Subject Code and Section Code */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-xs font-semibold text-gray-700">
-                Subject Code <span className="text-red-500">*</span>
+                Subject / Course Code <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -247,7 +328,7 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null }) {
                   setError('');
                   setFormData({ ...formData, subjectCode: e.target.value });
                 }}
-                className="mt-1 w-full rounded-xl border border-gray-300 px-3.5 py-2 text-sm focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+                className="mt-1 w-full rounded-xl border border-gray-300 px-3.5 py-2 text-sm uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
                 required
               />
             </div>
@@ -264,27 +345,99 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null }) {
                   setError('');
                   setFormData({ ...formData, sectionCode: e.target.value });
                 }}
-                className="mt-1 w-full rounded-xl border border-gray-300 px-3.5 py-2 text-sm focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+                className="mt-1 w-full rounded-xl border border-gray-300 px-3.5 py-2 text-sm uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
                 required
               />
+              <span className="mt-1 block text-[11px] text-gray-400">Unique schedule / class code</span>
             </div>
           </div>
 
+          {/* Subject / Course Description */}
           <div>
             <label className="block text-xs font-semibold text-gray-700">
-              Program & Year Section <span className="text-red-500">*</span>
+              Subject / Course Description <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              placeholder="e.g. BSIT-2B"
-              value={formData.program}
+              placeholder="e.g. Data Structures and Algorithms"
+              value={formData.subjectName}
               onChange={(e) => {
                 setError('');
-                setFormData({ ...formData, program: e.target.value });
+                setFormData({ ...formData, subjectName: e.target.value });
               }}
               className="mt-1 w-full rounded-xl border border-gray-300 px-3.5 py-2 text-sm focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
               required
             />
+          </div>
+
+          {/* Program, Year Level, and Section Group (Same Row) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700">
+                Program <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.program}
+                onChange={(e) => {
+                  setError('');
+                  setFormData({ ...formData, program: e.target.value });
+                }}
+                className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple cursor-pointer"
+                required
+              >
+                {PROGRAMS.map((prog) => (
+                  <option key={prog} value={prog}>
+                    {prog}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700">
+                Year Level <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.yearLevel}
+                onChange={(e) => {
+                  setError('');
+                  setFormData({ ...formData, yearLevel: e.target.value });
+                }}
+                className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple cursor-pointer"
+                required
+              >
+                {YEAR_LEVELS.map((yl) => (
+                  <option key={yl.value} value={yl.value}>
+                    {yl.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700">
+                Section Group / Suffix
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. A, B, or 1"
+                value={formData.sectionGroup}
+                onChange={(e) => {
+                  setError('');
+                  setFormData({ ...formData, sectionGroup: e.target.value });
+                }}
+                maxLength={4}
+                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+              />
+            </div>
+          </div>
+
+          {/* Section Name Live Preview */}
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 pt-0.5">
+            <span>Generated Section Name:</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-orange-50 border border-orange-200 text-brand-orange font-bold text-xs tracking-wide">
+              {formData.program}-{formData.yearLevel}{formData.sectionGroup.toUpperCase()}
+            </span>
           </div>
 
           <div className="mt-6 flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
@@ -358,7 +511,7 @@ function ClassPortfolio() {
     loadClasses();
   }, []);
 
-  const handleSaveClass = async (payload) => {
+  const handleSaveClass = async (payload, setModalError) => {
     try {
       setIsSubmitting(true);
       if (editingClass) {
@@ -376,7 +529,11 @@ function ClassPortfolio() {
         (err.code === 'ERR_NETWORK'
           ? 'Cannot connect to backend server. Please verify the server is running.'
           : 'Failed to save class.');
-      alert(msg);
+      if (setModalError) {
+        setModalError(msg);
+      } else {
+        alert(msg);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -491,31 +648,31 @@ function ClassPortfolio() {
       {/* YOUR CLASSES SECTION */}
       <section className="space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-xl font-bold text-brand-purple tracking-tight sm:text-2xl">
+          <h2 className="text-xl font-bold text-brand-purple tracking-tight sm:text-2xl shrink-0">
             Your classes
           </h2>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full sm:w-auto sm:flex-1 sm:justify-end">
             {/* Search Input */}
-            <div className="relative">
+            <div className="relative flex-1 sm:max-w-md w-full">
               <Search
                 size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
               />
               <input
                 type="text"
-                placeholder="Search classes..."
+                placeholder="Search by subject code, description, section, or program..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-40 sm:w-56 rounded-lg border border-gray-200 bg-white py-1.5 pl-9 pr-3 text-xs sm:text-sm text-gray-800 placeholder-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+                className="w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-9 text-xs sm:text-sm text-gray-800 placeholder-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple shadow-xs transition"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
                 >
-                  <X size={14} />
+                  <X size={15} />
                 </button>
               )}
             </div>
@@ -524,7 +681,7 @@ function ClassPortfolio() {
             <button
               type="button"
               onClick={() => setIsAddModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-orange px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition hover:bg-orange-600 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-orange px-4 py-2 text-xs sm:text-sm font-semibold text-white shadow-xs transition hover:bg-orange-600 cursor-pointer shrink-0"
             >
               <Plus size={16} />
               <span>Add class</span>
@@ -579,6 +736,7 @@ function ClassPortfolio() {
         onSave={handleSaveClass}
         loading={isSubmitting}
         initialData={editingClass}
+        existingClasses={classes}
       />
 
       {/* Archive Confirmation Modal */}
