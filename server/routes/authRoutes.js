@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 const {
-  login, logout, googleLogin, forgotPassword, resetPassword,
+  login, logout, googleLogin, forgotPassword, verifyResetOtp, resetPassword,
 } = require("../controllers/authController");
 
 const optionalAuth = (req, res, next) => {
@@ -22,6 +22,7 @@ router.post("/login", login);
 router.post("/google", googleLogin);
 router.post("/logout", optionalAuth, logout);
 router.post("/forgot-password", forgotPassword);
+router.post("/verify-reset-otp", verifyResetOtp);
 router.post("/reset-password/:token", resetPassword);
 
 module.exports = router;
