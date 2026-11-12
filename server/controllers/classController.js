@@ -33,12 +33,19 @@ exports.getClasses = async (req, res) => {
     // Compute document counts per class
     const classIds = classes.map((c) => c._id);
     const docFilter = {
-      classIds: { $in: classIds },
+      $or: [
+        { classIds: { $in: classIds } },
+        {
+          requirementKey: 'CLASS_A_LOAD_REPORT',
+          ownerId: !isAdmin || req.query.instructorId ? ownerId : { $in: classes.map((c) => c.ownerId) },
+          archivedAt: null,
+        },
+      ],
     };
     if (!isAdmin || req.query.instructorId) {
       docFilter.ownerId = ownerId;
     }
-    const docs = await Document.find(docFilter).select('status classIds requirementKey');
+    const docs = await Document.find(docFilter).select('status classIds requirementKey ownerId academicPeriodId');
 
     // Total required class portfolio items count
     const totalRequiredDocs = await Requirement.countDocuments({
@@ -53,19 +60,40 @@ exports.getClasses = async (req, res) => {
     });
 
     docs.forEach((doc) => {
-      const docClasses = doc.classIds || [];
-      docClasses.forEach((cid) => {
-        const idStr = cid.toString();
-        if (classStatsMap[idStr]) {
-          if (doc.status === STATUS.APPROVED) {
-            classStatsMap[idStr].approvedCount += 1;
-          } else if (doc.status === STATUS.PENDING_REVIEW) {
-            classStatsMap[idStr].pendingCount += 1;
-          } else if (doc.status === STATUS.REJECTED) {
-            classStatsMap[idStr].rejectedCount += 1;
+      if (doc.requirementKey === 'CLASS_A_LOAD_REPORT') {
+        // Shared load report applies to all classes of this instructor & period
+        classes.forEach((cls) => {
+          const isSameOwner = String(cls.ownerId) === String(doc.ownerId);
+          const clsPeriod = cls.academicPeriodId?._id || cls.academicPeriodId;
+          const isSamePeriod = !doc.academicPeriodId || String(clsPeriod) === String(doc.academicPeriodId);
+          if (isSameOwner && isSamePeriod) {
+            const idStr = cls._id.toString();
+            if (classStatsMap[idStr]) {
+              if (doc.status === STATUS.APPROVED) {
+                classStatsMap[idStr].approvedCount += 1;
+              } else if (doc.status === STATUS.PENDING_REVIEW) {
+                classStatsMap[idStr].pendingCount += 1;
+              } else if (doc.status === STATUS.REJECTED) {
+                classStatsMap[idStr].rejectedCount += 1;
+              }
+            }
           }
-        }
-      });
+        });
+      } else {
+        const docClasses = doc.classIds || [];
+        docClasses.forEach((cid) => {
+          const idStr = cid.toString();
+          if (classStatsMap[idStr]) {
+            if (doc.status === STATUS.APPROVED) {
+              classStatsMap[idStr].approvedCount += 1;
+            } else if (doc.status === STATUS.PENDING_REVIEW) {
+              classStatsMap[idStr].pendingCount += 1;
+            } else if (doc.status === STATUS.REJECTED) {
+              classStatsMap[idStr].rejectedCount += 1;
+            }
+          }
+        });
+      }
     });
 
     const enrichedClasses = classes.map((cls) => {
@@ -146,7 +174,19 @@ exports.getClassById = async (req, res) => {
     }
 
     // Fetch documents associated with this class
-    const docFilter = { classIds: classDoc._id };
+    const classOwnerId = classDoc.ownerId?._id || classDoc.ownerId;
+    const classPeriodId = classDoc.academicPeriodId?._id || classDoc.academicPeriodId;
+
+    const docFilter = {
+      $or: [
+        { classIds: classDoc._id },
+        {
+          requirementKey: 'CLASS_A_LOAD_REPORT',
+          ownerId: classOwnerId,
+          academicPeriodId: classPeriodId,
+        },
+      ],
+    };
     if (!classDoc.archivedAt && includeArchived !== 'true') {
       docFilter.archivedAt = null;
     }
@@ -258,6 +298,28 @@ exports.createClass = async (req, res) => {
 
     await newClass.populate('academicPeriodId', 'schoolYear semester isCurrent');
 
+    // Automatically link existing Instructional Load Report for this instructor & period
+    const loadReportDoc = await Document.findOne({
+      ownerId,
+      academicPeriodId: targetPeriodId,
+      requirementKey: 'CLASS_A_LOAD_REPORT',
+      archivedAt: null,
+    });
+
+    let initialApproved = 0;
+    let initialPending = 0;
+    let initialRejected = 0;
+
+    if (loadReportDoc) {
+      if (!loadReportDoc.classIds.some((cid) => String(cid) === String(newClass._id))) {
+        loadReportDoc.classIds.push(newClass._id);
+        await loadReportDoc.save();
+      }
+      if (loadReportDoc.status === STATUS.APPROVED) initialApproved = 1;
+      else if (loadReportDoc.status === STATUS.PENDING_REVIEW) initialPending = 1;
+      else if (loadReportDoc.status === STATUS.REJECTED) initialRejected = 1;
+    }
+
     const totalRequiredDocs = await Requirement.countDocuments({ scope: 'class', active: true });
 
     res.status(201).json({
@@ -266,9 +328,9 @@ exports.createClass = async (req, res) => {
       subject: newClass.subject,
       section: newClass.section,
       academicPeriod: newClass.academicPeriodId,
-      approvedCount: 0,
-      pendingCount: 0,
-      rejectedCount: 0,
+      approvedCount: initialApproved,
+      pendingCount: initialPending,
+      rejectedCount: initialRejected,
       totalRequired: totalRequiredDocs || 31,
       createdAt: newClass.createdAt,
     });

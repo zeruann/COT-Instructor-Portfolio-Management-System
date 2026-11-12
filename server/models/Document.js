@@ -76,7 +76,10 @@ const documentSchema = new mongoose.Schema(
 );
 
 documentSchema.statics.buildSlotKey = function ({ ownerId, requirementKey, academicPeriodId, classIds = [], slot = {} }) {
-  const classPart = [...classIds].map(String).sort().join(',') || '-';
+  // A 1.0 Instructional Load Report is shared across all classes of an instructor in a semester.
+  // Scope it strictly to instructor + requirement + academic period without per-class isolation.
+  const isSharedClassDoc = requirementKey === 'CLASS_A_LOAD_REPORT';
+  const classPart = isSharedClassDoc ? '-' : ([...classIds].map(String).sort().join(',') || '-');
   const slotPart = [slot.type, slot.term, slot.co, slot.source].filter(Boolean).join('/') || '-';
   return [ownerId, requirementKey, academicPeriodId || '-', classPart, slotPart].join(':');
 };

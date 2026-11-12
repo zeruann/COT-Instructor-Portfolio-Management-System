@@ -69,7 +69,7 @@ const requirementCards = [
     accent: '#6aaa64',
   },
   {
-    title: 'Professional Organization',
+    title: 'Other Requirements',
     description: 'Upload proof of membership in your professional organizations, such as a membership certificate or form.',
     path: 'other-requirements',
     accent: '#6aaa64',

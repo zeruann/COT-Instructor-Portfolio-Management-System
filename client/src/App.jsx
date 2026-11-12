@@ -1,8 +1,13 @@
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useLocation } from "react-router-dom";
 
 function RedirectToFacultyReview() {
   const { id } = useParams();
   return <Navigate to={`/admin/review/faculty-portfolio?instructorId=${id}`} replace />;
+}
+
+function AdminOtherRequirementsIndex() {
+  const location = useLocation();
+  return <Navigate to={`professional-organization-membership${location.search}`} replace />;
 }
 
 // INSTRUCTORS
@@ -133,7 +138,7 @@ function App() {
             {/* OTHER REQUIREMENTS: parent page with 3 tab pages inside it */}
 
             <Route path="/admin/portfolio/faculty-portfolio/other-requirements" element={<OtherRequirements />}>
-              <Route index element={<Navigate to="professional-organization-membership" replace />} />
+              <Route index element={<AdminOtherRequirementsIndex />} />
               <Route path="professional-organization-membership" element={<ProfessionalOrgs />} />
               <Route path="passed-licensure-examinations" element={<PassedLicensureExams />} />
               <Route path="ipcr" element={<IPCR />} />

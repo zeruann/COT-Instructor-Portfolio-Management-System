@@ -68,7 +68,7 @@ const requirementCards = [
     accent: '#6aaa64',
   },
   {
-    title: 'Professional Organization',
+    title: 'Other Requirements ',
     description: 'Sample copy of your professional membership form.',
     path: 'other-requirements',
     accent: '#6aaa64',
@@ -827,8 +827,8 @@ export default function ReviewFacultyPortfolio() {
                         return (
                           <span
                             className={`h-4.5 w-4.5 rounded-md border flex items-center justify-center transition-all duration-150 ${isAllSelected || isSomeSelected
-                                ? 'bg-orange-500 border-orange-500 text-white shadow-2xs'
-                                : 'bg-white border-gray-300 hover:border-orange-400'
+                              ? 'bg-orange-500 border-orange-500 text-white shadow-2xs'
+                              : 'bg-white border-gray-300 hover:border-orange-400'
                               }`}
                           >
                             {isAllSelected && <Check size={12} strokeWidth={3} className="text-white" />}
@@ -886,8 +886,8 @@ export default function ReviewFacultyPortfolio() {
                           />
                           <span
                             className={`h-4.5 w-4.5 rounded-md border flex items-center justify-center transition-all duration-150 ${isChecked
-                                ? 'bg-orange-500 border-orange-500 text-white shadow-2xs'
-                                : 'bg-white border-gray-300 hover:border-orange-400'
+                              ? 'bg-orange-500 border-orange-500 text-white shadow-2xs'
+                              : 'bg-white border-gray-300 hover:border-orange-400'
                               }`}
                           >
                             {isChecked && <Check size={12} strokeWidth={3} className="text-white" />}

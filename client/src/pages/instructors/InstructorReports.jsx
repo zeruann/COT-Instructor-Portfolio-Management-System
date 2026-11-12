@@ -254,12 +254,20 @@ const isDone = (s = '') => String(s).startsWith('☑');
 const isPending = (s = '') => String(s).includes('Pending');
 const toApiYear = (y) => y.replace('–', '-');
 
-// -> { checked, pending, link }
+// -> { checked, pending, link, files, docStatus }
 function stateOf(x) {
-  if (x == null) return { checked: false, pending: false };
-  if (typeof x === 'boolean') return { checked: x, pending: false };
-  if (typeof x === 'string') return { checked: isDone(x), pending: isPending(x) };
-  return { checked: isDone(x.status), pending: isPending(x.status), link: x.link };
+  if (x == null) return { checked: false, pending: false, link: '', files: [] };
+  if (typeof x === 'boolean') return { checked: x, pending: false, link: '', files: [] };
+  if (typeof x === 'string') return { checked: isDone(x), pending: isPending(x), link: '', files: [] };
+  const checked = isDone(x.status) || x.docStatus === 'approved';
+  const pending = isPending(x.status) || x.docStatus === 'pending_review';
+  const link = x.link || '';
+  const files = Array.isArray(x.files) && x.files.length > 0
+    ? x.files
+    : link
+      ? [{ link, status: x.docStatus || (checked ? 'approved' : 'pending_review'), name: x.name || 'Document' }]
+      : [];
+  return { checked, pending, link, files, docStatus: x.docStatus };
 }
 
 // Find the API row that corresponds to a row of the official form.
@@ -310,30 +318,43 @@ function Box({ state }) {
   );
 }
 
-// Wraps a checkbox (and optional label) in a link when a file exists.
-function Check({ state, label, labelFirst = false }) {
-  const sr = state.checked ? 'Submitted' : state.pending ? 'Pending review' : 'Not submitted';
-  const isFolder = state.link?.includes('/drive/folders/');
-  const inner = (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap">
-      {labelFirst && label}
-      <Box state={state} />
-      {!labelFirst && label}
-      <span className="sr-only">{sr}</span>
-    </span>
+function StatusDot({ status }) {
+  const isApproved = status === 'approved';
+  const isPending = status === 'pending_review' || status === 'pending';
+  const bg = isApproved ? 'bg-emerald-600' : isPending ? 'bg-amber-500' : 'bg-gray-400';
+  const label = isApproved ? 'Approved' : isPending ? 'Pending review' : 'Uploaded';
+
+  return (
+    <span
+      className={`inline-block h-2 w-2 rounded-full shrink-0 ${bg} print:border print:border-black`}
+      title={label}
+      aria-label={label}
+    />
   );
-  return state.link ? (
-    <a
-      href={state.link}
-      target="_blank"
-      rel="noreferrer"
-      className="text-blue-700 hover:underline cursor-pointer"
-      title={isFolder ? 'Open folder in Google Drive' : 'View file in Google Drive'}
-    >
-      {inner}
-    </a>
-  ) : (
-    inner
+}
+
+// Shows the original checkbox in place, with a centered "View file" below when a file exists
+function Check({ state, label }) {
+  const hasFile = (state.checked || state.pending) && Boolean(state.link);
+
+  return (
+    <span className="inline-flex flex-col items-center justify-center gap-0.5 text-center">
+      <span className="inline-flex items-center justify-center gap-1">
+        {label && <span className="text-[10px] font-medium leading-tight text-gray-800">{label}</span>}
+        <Box state={state} />
+      </span>
+      {hasFile && (
+        <a
+          href={state.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-blue-700 underline hover:text-blue-900 cursor-pointer text-[10.5px] whitespace-nowrap print:text-black print:no-underline"
+          title="Open file in Google Drive"
+        >
+          View File
+        </a>
+      )}
+    </span>
   );
 }
 
@@ -344,33 +365,63 @@ function RedNote({ children }) {
 // A boxed requirement (Faculty Portfolio, and the O–R block)
 function RequirementCell({ item, state, minH }) {
   if (item.blank) return <td colSpan={item.span} className="border border-black" />;
-  const isFolder = state.link?.includes('/drive/folders/');
-  const wrapped = (
-    <span className="flex items-start gap-1.5">
-      <span className="mt-[2px]">
-        <Box state={state} />
-      </span>
-      <span>
-        {item.title}
-        {item.note && <RedNote>{item.note}</RedNote>}
-      </span>
-    </span>
-  );
+
+  const validFiles = (state.files || []).filter((f) => Boolean(f.link));
+  const hasFile = (state.checked || state.pending) && (validFiles.length > 0 || Boolean(state.link));
+  const singleLink = validFiles[0]?.link || state.link;
+
   return (
     <td colSpan={item.span} className={`border border-black p-1.5 align-top ${minH}`}>
-      {state.link ? (
-        <a
-          href={state.link}
-          target="_blank"
-          rel="noreferrer"
-          className="hover:underline cursor-pointer block h-full"
-          title={isFolder ? 'Open folder in Google Drive' : 'View file in Google Drive'}
-        >
-          {wrapped}
-        </a>
-      ) : (
-        wrapped
-      )}
+      <div className="flex flex-col h-full justify-between gap-1.5">
+        {/* Requirement title & note with the original box in its original place */}
+        <div className="flex items-start gap-1.5">
+          <span className="mt-[2px] shrink-0">
+            <Box state={state} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <span className="font-semibold text-gray-900">{item.title}</span>
+            {item.note && <RedNote>{item.note}</RedNote>}
+          </div>
+        </div>
+
+        {/* View file(s) centered below the text (only when file exists) */}
+        {hasFile && singleLink && (
+          <div className="flex flex-col items-center justify-center gap-1 my-auto text-center w-full pt-1">
+            {validFiles.length <= 1 ? (
+              <a
+                href={singleLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-blue-700 underline hover:text-blue-900 cursor-pointer text-[11px] whitespace-nowrap print:text-black print:no-underline"
+                title="Open file in Google Drive"
+              >
+                View File
+              </a>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-1 w-full">
+                {validFiles.map((file, idx) => (
+                  <div key={file.id || idx} className="flex items-center justify-center gap-1 text-[11px] leading-tight">
+                    <a
+                      href={file.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-blue-700 underline hover:text-blue-900 cursor-pointer whitespace-nowrap print:text-black print:no-underline"
+                      title={`Open ${file.name || 'file'} in Google Drive`}
+                    >
+                      View File {validFiles.length > 1 ? `(${idx + 1})` : ''}
+                    </a>
+                    {file.name && file.name !== 'Document' && (
+                      <span className="text-[10px] text-gray-500 truncate max-w-[130px]" title={file.name}>
+                        — {file.name}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </td>
   );
 }
@@ -917,14 +968,13 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
                                   >
                                     {tpl.empty ? null : tpl.subs ? (
                                       <span
-                                        className={`inline-flex gap-x-2 gap-y-0.5 ${tpl.stack ? 'flex-col items-start' : 'flex-wrap justify-center'
+                                        className={`inline-flex gap-x-3 gap-y-1 ${tpl.stack ? 'flex-col items-center' : 'flex-wrap justify-center'
                                           }`}
                                       >
                                         {tpl.subs.map((sub) => (
                                           <Check
                                             key={sub}
                                             label={<span>{sub}</span>}
-                                            labelFirst
                                             state={s ? readBox(cell, sub) : stateOf(null)}
                                           />
                                         ))}
@@ -1287,21 +1337,24 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
             </p>
 
             {/* Box Guide */}
-            <div className="space-y-1 rounded-xl border border-gray-200 bg-gray-50/70 p-2.5 text-xs text-gray-600">
+            <div className="space-y-1.5 rounded-xl border border-gray-200 bg-gray-50/70 p-2.5 text-xs text-gray-600">
               <p className="font-semibold text-gray-800">
                 Box guide
               </p>
 
               <p className="flex items-center gap-2">
-                <Box state={{ checked: true }} /> Approved
+                <Box state={{ checked: true }} />
+                <span>Approved</span>
               </p>
 
               <p className="flex items-center gap-2">
-                <Box state={{ pending: true }} /> Pending review
+                <Box state={{ pending: true }} />
+                <span>Pending review</span>
               </p>
 
               <p className="flex items-center gap-2">
-                <Box state={{}} /> Not submitted
+                <Box state={{}} />
+                <span>Not submitted</span>
               </p>
             </div>
 

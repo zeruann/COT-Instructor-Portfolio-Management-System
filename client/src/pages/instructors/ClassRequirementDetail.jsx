@@ -1178,8 +1178,16 @@ export default function ClassRequirementPage() {
       {/* Delete Confirmation Modal */}
       <ConfirmationModal
         open={deleteModal.open}
-        title="Delete Document?"
-        message={`Are you sure you want to delete "${deleteModal.title}"? This action cannot be undone.`}
+        title={
+          reqConfig.key === 'CLASS_A_LOAD_REPORT'
+            ? 'Delete Instructional Load Report'
+            : 'Delete Document?'
+        }
+        message={
+          reqConfig.key === 'CLASS_A_LOAD_REPORT'
+            ? 'This will remove the Instructional Load Report for all of your classes in this semester. Are you sure you want to delete this document?'
+            : `Are you sure you want to delete "${deleteModal.title}"? This action cannot be undone.`
+        }
         confirmLabel="Delete"
         cancelLabel="Cancel"
         variant="danger"

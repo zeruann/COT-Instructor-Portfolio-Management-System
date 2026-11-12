@@ -7,6 +7,7 @@ import PreviewModal from '../../../../components/documentActions/PreviewModal';
 import ComplianceCard from '../../../../components/portfolio/ComplianceCard';
 import CompletionStatusCard from '../../../../components/portfolio/CompletionStatusCard';
 import { fetchDocuments, deleteDocument } from '../../../../api/documents';
+import { usePortfolio } from '../../../../context/usePortfolio';
 
 import '../requirementStyle.css';
 import '../listEntries.css';
@@ -154,8 +155,16 @@ function IconButton({ variant, label, title, disabled, onClick, children }) {
 function ProfessionalOrgs() {
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
+  const outletContext = useOutletContext() || {};
+  const { selectedInstructor, targetInstructorId } = usePortfolio();
   const isAdmin = pathname.startsWith('/admin');
-  const instructorId = searchParams.get('instructorId');
+  const instructorId =
+    searchParams.get('instructorId') ||
+    outletContext.instructorId ||
+    targetInstructorId ||
+    selectedInstructor?._id ||
+    selectedInstructor?.id ||
+    null;
 
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -186,6 +195,11 @@ function ProfessionalOrgs() {
   const loadRecords = async () => {
     try {
       setLoading(true);
+      if (isAdmin && !instructorId) {
+        setRecords([]);
+        setLoading(false);
+        return;
+      }
       const params = { requirementKey: REQUIREMENT.key };
       if (isAdmin && instructorId) {
         params.instructorId = instructorId;
@@ -213,7 +227,7 @@ function ProfessionalOrgs() {
 
   // The parent's "Add Document" button bumps addTrigger -> open the Add popup of THIS tab.
   // lastTrigger remembers the value we started with, so switching tabs does not open it by accident.
-  const { addTrigger } = useOutletContext() || {};
+  const { addTrigger } = outletContext;
   const lastTrigger = useRef(addTrigger);
   useEffect(() => {
     if (addTrigger !== lastTrigger.current) {

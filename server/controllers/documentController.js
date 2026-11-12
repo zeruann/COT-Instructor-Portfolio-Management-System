@@ -89,10 +89,32 @@ exports.uploadDocument = async (req, res) => {
       }
     }
 
+    // 3b. Determine effective class IDs and academic period
+    let effectiveClassIds = classIds;
+    const isSharedLoadReport = requirementKey === 'CLASS_A_LOAD_REPORT';
+    if (isSharedLoadReport) {
+      const Class = require('../models/Class');
+      const instClasses = await Class.find({
+        ownerId,
+        ...(targetPeriodId ? { academicPeriodId: targetPeriodId } : {}),
+        archivedAt: null,
+      }).select('_id');
+      const idSet = new Set([...classIds.map(String), ...instClasses.map((c) => c._id.toString())]);
+      effectiveClassIds = Array.from(idSet);
+    }
+
     //4. Check if replacing an existing document or creating a new one
     let existingDoc = null;
     if (documentId) {
       existingDoc = await Document.findOne({ _id: documentId, ownerId });
+    } else if (isSharedLoadReport) {
+      // A 1.0 Instructional Load Report is one shared record per instructor + academic period
+      existingDoc = await Document.findOne({
+        ownerId,
+        requirementKey: 'CLASS_A_LOAD_REPORT',
+        academicPeriodId: targetPeriodId || null,
+        archivedAt: null,
+      });
     } else if (!requirement.multiple) {
       //Single-entry requirement: check if a record already exists
       const slotKey = Document.buildSlotKey({
@@ -120,7 +142,17 @@ exports.uploadDocument = async (req, res) => {
 
     //6. Build Google Drive folder path and filename
     let folderPath;
-    if (requirement.scope === 'class' && classIds.length > 0) {
+    if (isSharedLoadReport) {
+      const AcademicPeriod = require('../models/AcademicPeriod');
+      const period = targetPeriodId ? await AcademicPeriod.findById(targetPeriodId) : null;
+      folderPath = driveNaming.classFolderPath({
+        department: instructor.department || 'General',
+        fullName: instructor.fullName,
+        instructorId: ownerId,
+        period: period || { schoolYear: '2026-2027', semester: '1st' },
+        classDoc: null, // "All classes" shared folder
+      });
+    } else if (requirement.scope === 'class' && classIds.length > 0) {
       const Class = require('../models/Class');
       const AcademicPeriod = require('../models/AcademicPeriod');
       const classDoc = await Class.findById(classIds[0]);
@@ -194,6 +226,18 @@ exports.uploadDocument = async (req, res) => {
       existingDoc.status = STATUS.PENDING_REVIEW;
       existingDoc.submittedAt = new Date();
 
+      if (isSharedLoadReport) {
+        existingDoc.classIds = effectiveClassIds;
+        existingDoc.academicPeriodId = targetPeriodId || existingDoc.academicPeriodId;
+        existingDoc.slotKey = Document.buildSlotKey({
+          ownerId,
+          requirementKey,
+          academicPeriodId: targetPeriodId || existingDoc.academicPeriodId,
+          classIds: [],
+          slot,
+        });
+      }
+
       if (Object.keys(meta).length > 0) {
         existingDoc.meta = { ...existingDoc.meta, ...meta };
       }
@@ -205,21 +249,19 @@ exports.uploadDocument = async (req, res) => {
         ? Document.buildSlotKey({
           ownerId,
           requirementKey,
-          academicPeriodId: academicPeriodId || null,
-          classIds,
+          academicPeriodId: targetPeriodId || academicPeriodId || null,
+          classIds: isSharedLoadReport ? [] : effectiveClassIds,
           slot,
         })
-
         : undefined;
-
 
       savedDoc = await Document.create({
         _id: targetDocId,
         requirementKey,
         ownerId,
-        classIds,
+        classIds: effectiveClassIds,
         slot,
-        academicPeriodId: academicPeriodId || null,
+        academicPeriodId: targetPeriodId || academicPeriodId || null,
         meta,
         slotKey,
         status: STATUS.PENDING_REVIEW,
@@ -344,11 +386,33 @@ exports.getDocuments = async (req, res) => {
     if (requirementKey) filter.requirementKey = requirementKey;
     if (academicPeriodId) filter.academicPeriodId = academicPeriodId;
     if (status) filter.status = status;
-    if (classId) filter.classIds = classId;
+
+    if (requirementKey === 'CLASS_A_LOAD_REPORT') {
+      // A 1.0 Instructional Load Report is shared across all classes of that instructor for the academic period
+      if (classId && !filter.academicPeriodId) {
+        const cls = await Class.findById(classId).select('academicPeriodId ownerId');
+        if (cls) {
+          if (!filter.ownerId) filter.ownerId = cls.ownerId;
+          filter.academicPeriodId = cls.academicPeriodId;
+        }
+      }
+      // Do not restrict by single classId so all classes of that instructor/period see the shared load report
+    } else if (classId) {
+      filter.classIds = classId;
+    }
 
     const documents = await Document.find(filter)
       .sort({ updatedAt: -1 })
       .lean();
+
+    // If a shared load report was found and classId is specified, ensure classId is linked
+    if (requirementKey === 'CLASS_A_LOAD_REPORT' && classId && documents.length > 0) {
+      const doc = documents[0];
+      const hasClass = (doc.classIds || []).some((cid) => String(cid) === String(classId));
+      if (!hasClass) {
+        await Document.updateOne({ _id: doc._id }, { $addToSet: { classIds: classId } });
+      }
+    }
 
     return res.json(documents);
   } catch (err) {
@@ -730,15 +794,25 @@ exports.updateDocument = async (req, res) => {
 exports.getFacultyPortfolioSummary = async (req, res) => {
   try {
     let targetOwnerId = req.user.id;
-    if (req.user.accountType === 'Administrator' && req.query.instructorId) {
-      targetOwnerId = req.query.instructorId;
+    if (req.user.accountType === 'Administrator') {
+      if (req.query.instructorId) {
+        targetOwnerId = req.query.instructorId;
+      } else {
+        return res.json({});
+      }
     }
 
-    // Fetch all faculty requirements
+    // Fetch all active faculty requirements
     const requirements = await Requirement.find({ scope: 'faculty', active: true }).lean();
+    const facultyKeys = requirements.map((r) => r.key);
 
-    // Fetch all documents submitted by this instructor
-    const documents = await Document.find({ ownerId: targetOwnerId }).lean();
+    // Fetch only active faculty documents submitted by this instructor (excluding class documents and archived)
+    const documents = await Document.find({
+      ownerId: targetOwnerId,
+      archivedAt: null,
+      requirementKey: { $in: facultyKeys },
+      $or: [{ classIds: { $exists: false } }, { classIds: { $size: 0 } }],
+    }).lean();
 
     // Map requirement keys to card names
     const reqKeyToCard = {};
@@ -746,26 +820,32 @@ exports.getFacultyPortfolioSummary = async (req, res) => {
       reqKeyToCard[r.key] = r.card;
     }
 
-    // Card path map
+    // Card path map matching requirement cards
     const cardNameToPath = {
       'Educational Attainment': 'educational-attainment',
       'Service Records': 'service-records',
       'Seminars and Workshops': 'seminars-and-workshops',
+      'List of Seminars and Workshops': 'seminars-and-workshops',
       'Achievements': 'achievements',
+      'Grants, Awards and Certifications of Commendation': 'achievements',
       'Research': 'research',
       'Extension Involvement': 'extension-involvement',
       'Production': 'production',
       'Other Requirements': 'other-requirements',
       'Membership to Professional Organization': 'other-requirements',
+      'Professional Organization Membership': 'other-requirements',
       'Passed Licensure Examinations': 'other-requirements',
       'IPCR': 'other-requirements',
+      'Other Documents': 'other-requirements',
     };
 
     const summaries = {};
 
     for (const doc of documents) {
-      const cardName = reqKeyToCard[doc.requirementKey] || 'other-requirements';
-      const cardPath = cardNameToPath[cardName] || 'other-requirements';
+      const cardName = reqKeyToCard[doc.requirementKey];
+      if (!cardName) continue;
+      const cardPath = cardNameToPath[cardName];
+      if (!cardPath) continue;
 
       if (!summaries[cardPath]) {
         summaries[cardPath] = {

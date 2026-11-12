@@ -12,11 +12,13 @@ import {
   Eye,
   CheckSquare,
   Lock,
+  Trash2,
 } from 'lucide-react';
 import PreviewModal from '../../components/documentActions/PreviewModal';
+import ConfirmationModal from '../../components/common/ConfirmationModal';
 import { CLASS_REQUIREMENT_CARDS } from './ViewClassPortfolio';
 import { fetchClassById } from '../../api/classes';
-import { fetchDocuments, uploadDocument } from '../../api/documents';
+import { fetchDocuments, uploadDocument, deleteDocument } from '../../api/documents';
 
 export default function ClassRequirementUpload({ reqConfig, classData: propClassData, onDone }) {
   const params = useParams();
@@ -44,7 +46,26 @@ export default function ClassRequirementUpload({ reqConfig, classData: propClass
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const fileInputRef = useRef(null);
+
+  const handleDeleteDoc = async () => {
+    if (!existingDoc?._id) return;
+    try {
+      setDeleting(true);
+      await deleteDocument(existingDoc._id);
+      setDeleteModalOpen(false);
+      setExistingDoc(null);
+      setSuccessMessage('Document deleted successfully.');
+      if (onDone) onDone();
+    } catch (err) {
+      console.error('Delete error:', err);
+      setErrorMessage(err.response?.data?.message || 'Failed to delete document.');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // Load class info and current document for this requirement
   const loadClassAndDoc = async () => {
@@ -357,167 +378,258 @@ export default function ClassRequirementUpload({ reqConfig, classData: propClass
         </span>
       </div>
 
-      {/* Main Upload Card */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-xs">
-        {/* Card Header */}
-        <div className="border-b border-gray-100 pb-5">
-          <h2 className="text-xl font-bold text-brand-purple">Upload document</h2>
-          <p className="mt-1 text-sm text-gray-400">
-            Choose a file to submit as evidence for this requirement.
-          </p>
-        </div>
+      {/* Submitted Document Evidence Card */}
+      {existingDoc && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-xs">
+          <div className="border-b border-gray-100 pb-5">
+            <h2 className="text-xl font-bold text-brand-purple">Submitted Evidence</h2>
+            <p className="mt-1 text-sm text-gray-400">
+              Current document on record for this requirement.
+            </p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="mt-6 space-y-6">
-          {/* Replacement document section */}
-          <div>
-            <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-brand-purple mb-2">
-              <span>{existingDoc ? 'Replacement document' : 'Select document'}</span>
-              <span className="font-normal text-gray-400">
-                {file ? file.name : 'No file selected'}
-              </span>
+          <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-xl border border-gray-200 bg-gray-50">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 text-brand-purple shrink-0">
+                <FileText size={24} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-sm sm:text-base font-bold text-gray-900 break-all">
+                  {currentFileName || 'Submitted Document'}
+                </h3>
+                <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-gray-500">
+                  <span>Status:</span>
+                  <span
+                    className={`font-semibold capitalize ${
+                      existingDoc.status === 'approved'
+                        ? 'text-emerald-600'
+                        : existingDoc.status === 'rejected'
+                        ? 'text-red-600'
+                        : 'text-amber-600'
+                    }`}
+                  >
+                    {existingDoc.status?.replace('_', ' ') || 'Submitted'}
+                  </span>
+                  {existingDoc.submittedAt && (
+                    <span>· Submitted {new Date(existingDoc.submittedAt).toLocaleDateString()}</span>
+                  )}
+                </div>
+                {resolvedReq.key === 'CLASS_A_LOAD_REPORT' && (
+                  <p className="mt-1 text-xs text-brand-purple font-medium">
+                    This load report is automatically shared across all your class portfolios for this semester.
+                  </p>
+                )}
+              </div>
             </div>
 
-            {/* Drag & Drop Dropzone */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-12 px-6 text-center transition cursor-pointer ${
-                isDragging
-                  ? 'border-brand-purple bg-purple-50/50'
-                  : 'border-purple-200 bg-white hover:border-brand-purple/50'
-              }`}
-            >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.xls,.xlsx,.csv"
-                onChange={(e) => handleFileSelect(e.target.files?.[0])}
-              />
-
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-brand-purple mb-3">
-                <Plus size={20} />
-              </div>
-
-              <p className="text-base font-semibold text-brand-purple">
-                Drag and drop your document here
-              </p>
-              <p className="mt-1 text-xs text-gray-400">
-                or <span className="underline hover:text-brand-purple">browse files</span> · PDF, up to 10 MB
-              </p>
-
-              {file && (
-                <div className="mt-4 flex items-center gap-2 rounded-xl bg-purple-50 px-3.5 py-2 text-xs font-medium text-brand-purple">
-                  <FileText size={16} />
-                  <span>{file.name}</span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFile(null);
-                    }}
-                    className="ml-2 hover:text-red-500"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setPreviewOpen(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-purple px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-opacity-90 transition cursor-pointer"
+              >
+                <Eye size={16} />
+                <span>View Document</span>
+              </button>
+              {!isArchived && existingDoc.status !== 'approved' && (
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100 transition cursor-pointer"
+                >
+                  <Trash2 size={16} />
+                  <span>Delete</span>
+                </button>
               )}
             </div>
           </div>
+        </div>
+      )}
 
-          {/* Existing evidence notice */}
-          <div>
-            <h3 className="text-sm font-semibold text-brand-purple mb-2">Existing evidence</h3>
-            <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white p-4 text-xs sm:text-sm text-gray-500">
-              <AlertCircle size={18} className="shrink-0 text-brand-purple mt-0.5" />
-              <div>
-                {currentFileName ? (
-                  <span>
-                    Current file on record:{' '}
-                    <strong>{currentFileName}</strong>. Uploading a replacement will update this submission.
-                  </span>
-                ) : (
-                  <span>
-                    This requirement has no evidence yet. Uploading will add this file as the first submission.
-                  </span>
+      {/* When approved, lock further uploads */}
+      {existingDoc?.status === 'approved' ? (
+        <div className="flex items-center gap-2.5 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs sm:text-sm text-emerald-800 font-medium">
+          <CheckCircle2 size={18} className="shrink-0 text-emerald-600" />
+          <span>
+            This requirement has been approved by the administrator. Evidence on record is verified and cannot be re-uploaded or modified.
+          </span>
+        </div>
+      ) : (
+        /* Main Upload / Replacement Card */
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-xs">
+          {/* Card Header */}
+          <div className="border-b border-gray-100 pb-5">
+            <h2 className="text-xl font-bold text-brand-purple">
+              {existingDoc ? 'Replace evidence' : 'Upload document'}
+            </h2>
+            <p className="mt-1 text-sm text-gray-400">
+              {existingDoc
+                ? 'Choose a new file to replace the current submission.'
+                : 'Choose a file to submit as evidence for this requirement.'}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="mt-6 space-y-6">
+            {/* Replacement document section */}
+            <div>
+              <div className="flex items-center justify-between text-xs sm:text-sm font-semibold text-brand-purple mb-2">
+                <span>{existingDoc ? 'Replacement document' : 'Select document'}</span>
+                <span className="font-normal text-gray-400">
+                  {file ? file.name : 'No file selected'}
+                </span>
+              </div>
+
+              {/* Drag & Drop Dropzone */}
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-12 px-6 text-center transition cursor-pointer ${
+                  isDragging
+                    ? 'border-brand-purple bg-purple-50/50'
+                    : 'border-purple-200 bg-white hover:border-brand-purple/50'
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.docx,.doc,.jpg,.jpeg,.png,.xls,.xlsx,.csv"
+                  onChange={(e) => handleFileSelect(e.target.files?.[0])}
+                />
+
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 text-brand-purple mb-3">
+                  <Plus size={20} />
+                </div>
+
+                <p className="text-base font-semibold text-brand-purple">
+                  Drag and drop your document here
+                </p>
+                <p className="mt-1 text-xs text-gray-400">
+                  or <span className="underline hover:text-brand-purple">browse files</span> · PDF, up to 10 MB
+                </p>
+
+                {file && (
+                  <div className="mt-4 flex items-center gap-2 rounded-xl bg-purple-50 px-3.5 py-2 text-xs font-medium text-brand-purple">
+                    <FileText size={16} />
+                    <span>{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFile(null);
+                      }}
+                      className="ml-2 hover:text-red-500"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
-          </div>
 
-          {/* Feedback Messages */}
-          {errorMessage && (
-            <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600">
-              <AlertCircle size={16} />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-700">
-              <CheckCircle2 size={16} />
-              <span>{successMessage}</span>
-            </div>
-          )}
-
-          {/* Upload progress bar */}
-          {uploading && (
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>Uploading...</span>
-                <span>{uploadProgress}%</span>
+            {/* Feedback Messages */}
+            {errorMessage && (
+              <div className="flex items-center gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600">
+                <AlertCircle size={16} />
+                <span>{errorMessage}</span>
               </div>
-              <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
-                <div
-                  className="h-full bg-brand-orange transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Footer Actions */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t border-gray-100">
-            <span className="text-xs text-gray-400">
-              {file
-                ? `Ready to upload: ${file.name}`
-                : existingDoc
+            {successMessage && (
+              <div className="flex items-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-700">
+                <CheckCircle2 size={16} />
+                <span>{successMessage}</span>
+              </div>
+            )}
+
+            {/* Upload progress bar */}
+            {uploading && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Uploading...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className="h-full bg-brand-orange transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Footer Actions */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-4 border-t border-gray-100">
+              <span className="text-xs text-gray-400">
+                {file
+                  ? `Ready to upload: ${file.name}`
+                  : existingDoc
                   ? 'Select a file to replace existing evidence.'
                   : 'Select a file to enable upload. Nothing has been submitted yet.'}
-            </span>
+              </span>
 
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="rounded-xl border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition cursor-pointer"
-              >
-                Cancel
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="rounded-xl border border-gray-300 px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
 
-              <button
-                type="submit"
-                disabled={!file || uploading}
-                className="inline-flex items-center gap-2 rounded-xl bg-brand-orange px-5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-orange-600 transition cursor-pointer disabled:opacity-50"
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span>Uploading...</span>
-                  </>
-                ) : (
-                  <>
-                    <UploadCloud size={16} />
-                    <span>{existingDoc ? 'Replace evidence' : 'Upload'}</span>
-                  </>
-                )}
-              </button>
+                <button
+                  type="submit"
+                  disabled={!file || uploading}
+                  className="inline-flex items-center gap-2 rounded-xl bg-brand-orange px-5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-orange-600 transition cursor-pointer disabled:opacity-50"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UploadCloud size={16} />
+                      <span>{existingDoc ? 'Replace evidence' : 'Upload'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
-        </form>
-      </div>
+          </form>
+        </div>
+      )}
+
+      {existingDoc && (
+        <PreviewModal
+          isOpen={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          document={existingDoc}
+          isAdmin={false}
+        />
+      )}
+
+      <ConfirmationModal
+        open={deleteModalOpen}
+        onCancel={() => !deleting && setDeleteModalOpen(false)}
+        onConfirm={handleDeleteDoc}
+        title={
+          resolvedReq.key === 'CLASS_A_LOAD_REPORT'
+            ? 'Delete Instructional Load Report'
+            : 'Delete Document'
+        }
+        message={
+          resolvedReq.key === 'CLASS_A_LOAD_REPORT'
+            ? 'This will remove the Instructional Load Report for all of your classes in this semester. Are you sure you want to delete this document?'
+            : 'Are you sure you want to delete this document? This action cannot be undone.'
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deleting}
+      />
     </div>
   );
 }

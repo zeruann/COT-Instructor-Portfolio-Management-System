@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import SharedRequirementHeader from '../../../../components/portfolio/SharedRequirementHeader';
 import { usePortfolio } from '../../../../context/usePortfolio';
 import '../requirementStyle.css';
@@ -14,13 +14,23 @@ const tabs = [
 
 function OtherRequirements() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const { selectedInstructor, targetInstructorId } = usePortfolio();
   const isAdmin = location.pathname.startsWith('/admin');
+  const instructorId =
+    searchParams.get('instructorId') ||
+    targetInstructorId ||
+    selectedInstructor?._id ||
+    selectedInstructor?.id ||
+    null;
 
   // HOW THE "Add Document" BUTTON KNOWS WHICH TAB IS OPEN
   // The button does not know the tab. It only adds 1 to this counter.
   // Every tab page reads the counter through <Outlet context>, and the tab that is
   // open (the only one on screen) opens its OWN upload popup with its OWN requirement.
   const [addTrigger, setAddTrigger] = useState(0);
+
+  const query = instructorId ? `?instructorId=${instructorId}` : location.search;
 
   return (
     <div className="space-y-5">
@@ -40,7 +50,7 @@ function OtherRequirements() {
         <nav aria-label="Other requirements" className="max-w-full overflow-x-auto">
           <div className="inline-flex border border-gray-200 bg-white rounded-lg overflow-hidden">
             {tabs.map((tab) => {
-              const targetTo = location.search ? `${tab.to}${location.search}` : tab.to;
+              const targetTo = query ? `${tab.to}${query}` : tab.to;
               return (
                 <NavLink
                   key={tab.to}
@@ -73,7 +83,7 @@ function OtherRequirements() {
       </div>
 
       {/* ACTIVE TAB PAGE (ProfessionalOrgs, PassedLicensureExams or IPCR) */}
-      <Outlet context={{ addTrigger }} />
+      <Outlet context={{ addTrigger, instructorId }} />
     </div>
   );
 }

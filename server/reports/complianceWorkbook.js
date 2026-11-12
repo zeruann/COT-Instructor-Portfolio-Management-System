@@ -97,6 +97,15 @@ function readBox(cell, sub) {
   return isChecked(cell);
 }
 
+function readBoxLink(cell, sub) {
+  if (!cell) return '';
+  if (!sub) return cell.link || '';
+  const hit =
+    cell.items?.find?.((i) => norm(i.label) === norm(sub)) ?? cell.subs?.[sub] ?? cell[sub];
+  if (hit !== undefined) return hit?.link || cell.link || '';
+  return cell.link || '';
+}
+
 /* ------------------------------ CELL WRITERS ------------------------------- */
 function splitLeadingBoxRuns(text, mark) {
   const cleaned = String(text || '').replace(BOX_REGEX, '').replace(/^\s+/, '');
@@ -202,12 +211,19 @@ async function buildComplianceWorkbook(data, { schoolYear, semester } = {}) {
     byLetter[String(i.code || '').trim().charAt(0).toUpperCase()] = i;
   });
   for (const [letter, addr] of Object.entries(SINGLE_CELLS)) {
-    let ticked = isChecked(byLetter[letter]);
+    let item = byLetter[letter];
+    let ticked = isChecked(item);
     if (!ticked && !byLetter[letter]) {
       const apiRow = classRows.find((r) => norm(r.code).startsWith(letter.toLowerCase()) && norm(r.code).length <= 4);
       ticked = isChecked(apiRow) || Boolean(apiRow?.values?.some((v) => isChecked(v)));
+      if (ticked) item = apiRow;
     }
-    tickLeadingBox(ws.getCell(addr), ticked);
+    const cell = ws.getCell(addr);
+    tickLeadingBox(cell, ticked);
+    const link = item?.link || item?.files?.[0]?.link;
+    if (ticked && link) {
+      cell.hyperlink = link;
+    }
   }
 
   /* Class Portfolio header: subject + section codes */
@@ -224,8 +240,18 @@ async function buildComplianceWorkbook(data, { schoolYear, semester } = {}) {
       const apiCell = subjects[i] ? apiRow?.values?.[i] : undefined;
       if (tpl.subs) {
         tickSubBoxes(cell, tpl.subs, tpl.subs.map((s) => readBox(apiCell, s)));
+        const firstLink = tpl.subs.map((s) => readBoxLink(apiCell, s)).find(Boolean);
+        if (firstLink) cell.hyperlink = firstLink;
       } else {
-        tickLeadingBox(cell, readBox(apiCell));
+        const ticked = readBox(apiCell);
+        const cellLink = readBoxLink(apiCell);
+        if (ticked && cellLink) {
+          cell.value = { text: 'View file', hyperlink: cellLink };
+          cell.font = { name: 'Cambria', size: 9, color: { argb: 'FF0563C1' }, underline: true };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        } else {
+          tickLeadingBox(cell, ticked);
+        }
       }
     });
   }

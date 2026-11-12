@@ -133,14 +133,32 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
 
       const isMultiple = Boolean(def.multiple || total > 1);
 
+      const files = matchingDocs.map((doc) => {
+        const curVer = doc.versions?.find((v) => v.n === doc.currentVersion) || doc.versions?.[doc.versions.length - 1];
+        const driveId = curVer?.driveFileId;
+        const fileLink = driveId ? `https://drive.google.com/file/d/${driveId}/view` : `/api/documents/${doc._id}/file`;
+        const name =
+          doc.meta?.organization ||
+          doc.meta?.name ||
+          doc.meta?.title ||
+          curVer?.originalName ||
+          'Document';
+        return {
+          id: doc._id,
+          name,
+          status: doc.status,
+          link: fileLink,
+          driveFileId: driveId || null,
+        };
+      });
+
       if (total === 0) {
         status = '☐';
         link = '';
       } else if (!isMultiple) {
         // Single document requirement (e.g. Faculty Profile / PDS, Licensure, IPCR)
         const doc = matchingDocs[0];
-        const driveId = doc.versions?.[doc.versions.length - 1]?.driveFileId;
-        link = driveId ? `https://drive.google.com/file/d/${driveId}/view` : `/api/documents/${doc._id}/file`;
+        link = files[0]?.link || '';
 
         if (doc.status === 'approved') status = '☑ View Document';
         else if (doc.status === 'pending_review') status = '☐ Pending review';
@@ -190,9 +208,8 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
               { $set: { 'versions.$.driveFolderId': folderId } }
             ).exec().catch(() => {});
           }
-        } else if (firstDriveId) {
-          // Graceful fallback to file if Drive folder is unreachable
-          link = `https://drive.google.com/file/d/${firstDriveId}/view`;
+        } else if (files.length > 0 && files[0].link) {
+          link = files[0].link;
         } else if (preferredDoc) {
           link = `/api/documents/${preferredDoc._id}/file`;
         }
@@ -212,10 +229,11 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
         code: def.code,
         label: def.label,
         status,
-        link,
+        link: link || (files.length > 0 ? files[0].link : ''),
         count: total,
         approvedCount: approved,
         isMultiple,
+        files,
       };
     })
   );
@@ -228,8 +246,9 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
   }));
 
   const docToCellState = (doc) => {
-    if (!doc) return { status: '☐', link: '' };
-    const driveId = doc.versions?.[doc.versions.length - 1]?.driveFileId;
+    if (!doc) return { status: '☐', link: '', docStatus: null };
+    const curVer = doc.versions?.find((v) => v.n === doc.currentVersion) || doc.versions?.[doc.versions.length - 1];
+    const driveId = curVer?.driveFileId;
     const link = driveId
       ? `https://drive.google.com/file/d/${driveId}/view`
       : `/api/documents/${doc._id}/file`;
@@ -239,7 +258,13 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
         : doc.status === 'pending_review'
           ? '☐ Pending'
           : '☐ View';
-    return { status, link };
+    return {
+      status,
+      link,
+      docStatus: doc.status,
+      id: doc._id,
+      name: curVer?.originalName || 'Document',
+    };
   };
 
   const standardClassRows = [
@@ -333,11 +358,24 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
         matchingDocs.find((d) => d.status === 'pending_review') ||
         matchingDocs[0];
       const cellState = docToCellState(bestDoc);
+      const files = matchingDocs.map((doc) => {
+        const curVer = doc.versions?.find((v) => v.n === doc.currentVersion) || doc.versions?.[doc.versions.length - 1];
+        const driveId = curVer?.driveFileId;
+        return {
+          id: doc._id,
+          name: curVer?.originalName || 'Document',
+          status: doc.status,
+          link: driveId ? `https://drive.google.com/file/d/${driveId}/view` : `/api/documents/${doc._id}/file`,
+          driveFileId: driveId || null,
+        };
+      });
       return {
         code: rDef.code,
         label: rDef.label,
         status: cellState.status,
         link: cellState.link,
+        docStatus: bestDoc?.status,
+        files,
         values: subjects.length > 0 ? subjects.map(() => cellState) : [cellState],
       };
     }
@@ -346,8 +384,8 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
       const classDocs = documents.filter(
         (d) =>
           d.requirementKey === rDef.key &&
-          d.classIds &&
-          d.classIds.some((cid) => String(cid) === String(subj.id))
+          (rDef.key === 'CLASS_A_LOAD_REPORT' ||
+            (d.classIds && d.classIds.some((cid) => String(cid) === String(subj.id))))
       );
 
       if (rDef.terms) {
