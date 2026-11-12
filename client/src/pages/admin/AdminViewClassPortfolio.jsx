@@ -144,6 +144,8 @@ export default function AdminViewClassPortfolio() {
   const isFromArchive =
     window.location.search.includes('from=archive') || Boolean(classData?.archivedAt);
 
+  const instructorId = classData?.ownerId?._id || classData?.ownerId;
+
   const backToReviewUrl = isFromArchive
     ? '/admin/archive'
     : instructorId

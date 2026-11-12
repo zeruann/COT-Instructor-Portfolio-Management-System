@@ -44,6 +44,7 @@ import AdminReports from "./pages/admin/AdminReports";
 
 // SHARED LAYOUT (sidebar + top bar + breadcrumb) FOR EVERY SIGNED-IN PAGE
 
+import LandingPage from "./pages/LandingPage";
 import AppLayout from "./components/layout/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -70,7 +71,7 @@ function App() {
         <Routes>
           {/* DEFAULT ROUTE */}
 
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<LandingPage />} />
 
           {/* AUTHENTICATION PAGES */}
 
