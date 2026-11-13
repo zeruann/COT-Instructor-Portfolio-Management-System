@@ -16,6 +16,7 @@ import mammoth from 'mammoth';
 import { formatDate } from '../../utils/formatDate';
 import { getDocumentFileUrl, downloadDocumentFile, reviewDocument } from '../../api/documents';
 import StatusBadge from './StatusBadge';
+import AppModal, { useAppModal } from '../common/AppModal';
 
 // Helper for Excel column headers: 0 -> A, 1 -> B, 25 -> Z, 26 -> AA...
 function getColLabel(index) {
@@ -35,6 +36,7 @@ export default function PreviewModal({
   isAdmin = false,
   onReviewSuccess,
 }) {
+  const { modal, close: closeModal, confirm: showConfirm } = useAppModal();
   const [rejecting, setRejecting] = useState(false);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -136,6 +138,23 @@ export default function PreviewModal({
   }, [isOpen, document?._id, currentVersion?.n, isWord]);
 
   if (!isOpen || !document) return null;
+
+  const handleApproveClick = () => {
+    const docName =
+      document?.versions?.[document.versions.length - 1]?.originalName ||
+      document?.meta?.name ||
+      document?.meta?.title ||
+      'this document';
+
+    showConfirm({
+      tone: 'approve',
+      title: 'Approve Document?',
+      message: `Are you sure you want to approve "${docName}"?`,
+      confirmLabel: 'Approve',
+      cancelLabel: 'Cancel',
+      onConfirm: () => handleReview('approved'),
+    });
+  };
 
   const handleReview = async (decision) => {
     if (decision === 'rejected' && !comment.trim()) {
@@ -471,7 +490,7 @@ export default function PreviewModal({
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleReview('approved')}
+                      onClick={handleApproveClick}
                       disabled={submitting || document.status === 'approved'}
                       className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl disabled:opacity-50 transition cursor-pointer"
                     >
@@ -494,6 +513,8 @@ export default function PreviewModal({
           )}
         </div>
       </div>
+
+      <AppModal modal={modal} onClose={closeModal} />
     </div>
   );
 }

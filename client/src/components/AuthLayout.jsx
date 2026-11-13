@@ -29,7 +29,7 @@ function AuthLayout({ children }) {
             to="/"
             className="text-[#575488] font-bold hover:text-[#ff6900] transition-colors cursor-pointer"
           >
-            BukSU
+            Home
           </Link>
           <Link
             to={{ pathname: "/", hash: "#about" }}

@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Eye, Upload, RefreshCw, Trash2, CheckSquare,
 import UploadModal from '../../components/documentActions/UploadModal';
 import PreviewModal from '../../components/documentActions/PreviewModal';
 import ConfirmationModal from '../../components/common/ConfirmationModal';
+import AppModal, { useAppModal } from '../../components/common/AppModal';
 import SharedRequirementHeader from '../../components/portfolio/SharedRequirementHeader';
 import ComplianceCard from '../../components/portfolio/ComplianceCard';
 import CompletionStatusCard from '../../components/portfolio/CompletionStatusCard';
@@ -219,6 +220,7 @@ export default function ClassRequirementPage() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState(null);
   const [deleteModal, setDeleteModal] = useState({ open: false, doc: null, title: '', loading: false });
+  const { modal, close: closeModal, notify } = useAppModal();
 
   const loadData = async () => {
     try {
@@ -269,9 +271,10 @@ export default function ClassRequirementPage() {
       await deleteDocument(deleteModal.doc._id);
       await loadData();
       setDeleteModal({ open: false, doc: null, title: '', loading: false });
+      notify('success', 'Document Deleted', 'The document has been removed successfully.');
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete document.');
-      setDeleteModal((prev) => ({ ...prev, loading: false }));
+      setDeleteModal({ open: false, doc: null, title: '', loading: false });
+      notify('error', 'Delete Failed', err.response?.data?.message || 'Failed to delete document.');
     }
   };
 
@@ -571,16 +574,23 @@ export default function ClassRequirementPage() {
                           {/* View + Upload/Reupload buttons */}
                           <div className="flex shrink-0 items-center gap-2">
                             {isAdmin ? (
-                              <button
-                                type="button"
-                                className="doc-btn doc-btn--review"
-                                disabled={!hasRecord}
-                                title={hasRecord ? 'Review document' : 'No document submitted yet'}
-                                onClick={() => handleView(doc)}
-                              >
-                                <CheckSquare className="w-4 h-4" />
-                                Review
-                              </button>
+                              status === 'approved' || status === 'rejected' ? (
+                                <span className="doc-badge--reviewed">
+                                  <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
+                                  Reviewed
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="doc-btn doc-btn--review"
+                                  disabled={!hasRecord}
+                                  title={hasRecord ? 'Review document' : 'No document submitted yet'}
+                                  onClick={() => handleView(doc)}
+                                >
+                                  <CheckSquare className="w-4 h-4" />
+                                  Review
+                                </button>
+                              )
                             ) : isArchived ? (
                               <button
                                 type="button"
@@ -717,16 +727,23 @@ export default function ClassRequirementPage() {
                         <td>
                           <div className="doc-actions flex items-center gap-2">
                             {isAdmin ? (
-                              <button
-                                type="button"
-                                className="doc-btn doc-btn--review"
-                                disabled={!hasRecord}
-                                title={hasRecord ? 'Review document' : 'No document submitted yet'}
-                                onClick={() => handleView(doc)}
-                              >
-                                <CheckSquare className="w-4 h-4" />
-                                Review
-                              </button>
+                              status === 'approved' || status === 'rejected' ? (
+                                <span className="doc-badge--reviewed">
+                                  <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
+                                  Reviewed
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="doc-btn doc-btn--review"
+                                  disabled={!hasRecord}
+                                  title={hasRecord ? 'Review document' : 'No document submitted yet'}
+                                  onClick={() => handleView(doc)}
+                                >
+                                  <CheckSquare className="w-4 h-4" />
+                                  Review
+                                </button>
+                              )
                             ) : isArchived ? (
                               <button
                                 type="button"
@@ -863,16 +880,23 @@ export default function ClassRequirementPage() {
                         <td>
                           <div className="doc-actions flex items-center gap-2">
                             {isAdmin ? (
-                              <button
-                                type="button"
-                                className="doc-btn doc-btn--review"
-                                disabled={!hasRecord}
-                                title={hasRecord ? 'Review document' : 'No document submitted yet'}
-                                onClick={() => handleView(doc)}
-                              >
-                                <CheckSquare className="w-4 h-4" />
-                                Review
-                              </button>
+                              status === 'approved' || status === 'rejected' ? (
+                                <span className="doc-badge--reviewed">
+                                  <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
+                                  Reviewed
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="doc-btn doc-btn--review"
+                                  disabled={!hasRecord}
+                                  title={hasRecord ? 'Review document' : 'No document submitted yet'}
+                                  onClick={() => handleView(doc)}
+                                >
+                                  <CheckSquare className="w-4 h-4" />
+                                  Review
+                                </button>
+                              )
                             ) : isArchived ? (
                               <button
                                 type="button"
@@ -1012,54 +1036,74 @@ export default function ClassRequirementPage() {
                       </td>
 
                       <td className="whitespace-nowrap">
-                        <div className="doc-icon-actions">
-                          {hasRecord ? (
-                            <>
-                              <IconButton
-                                variant="view"
-                                label={`View ${row.term}`}
-                                title="View"
-                                disabled={actions.view.disabled}
-                                onClick={() => handleView(doc)}
-                              >
-                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-                                <circle cx="12" cy="12" r="3" />
-                              </IconButton>
-
-                              <IconButton
-                                variant="replace"
-                                label={`Reupload ${row.term}`}
-                                title="Reupload"
-                                disabled={actions.replace.disabled}
-                                onClick={() => openModal(doc, { term: row.term })}
-                              >
-                                <path d="M21 12a9 9 0 1 1-3-6.7" />
-                                <path d="M21 4v5h-5" />
-                              </IconButton>
-
-                              <IconButton
-                                variant="delete"
-                                label={`Delete ${row.term}`}
-                                title={actions.remove.disabled ? actions.remove.tip : 'Delete'}
-                                disabled={actions.remove.disabled}
-                                onClick={() => handleDelete(doc)}
-                              >
-                                <polyline points="3 6 5 6 21 6" />
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                              </IconButton>
-                            </>
-                          ) : isArchived ? (
-                            <span className="text-gray-400 italic text-xs">Archived (read-only)</span>
+                        {isAdmin ? (
+                          row.status === 'approved' || row.status === 'rejected' ? (
+                            <span className="doc-badge--reviewed">
+                              <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
+                              Reviewed
+                            </span>
                           ) : (
                             <button
                               type="button"
-                              onClick={() => openModal(null, { term: row.term })}
-                              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-purple px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-opacity-90 shadow-2xs"
+                              className="doc-btn doc-btn--review"
+                              disabled={!hasRecord}
+                              title={hasRecord ? 'Review document' : 'No document submitted yet'}
+                              onClick={() => handleView(doc)}
                             >
-                              <span>Upload {row.term}</span>
+                              <CheckSquare className="w-4 h-4" />
+                              Review
                             </button>
-                          )}
-                        </div>
+                          )
+                        ) : (
+                          <div className="doc-icon-actions">
+                            {hasRecord ? (
+                              <>
+                                <IconButton
+                                  variant="view"
+                                  label={`View ${row.term}`}
+                                  title="View"
+                                  disabled={actions.view.disabled}
+                                  onClick={() => handleView(doc)}
+                                >
+                                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                                  <circle cx="12" cy="12" r="3" />
+                                </IconButton>
+
+                                <IconButton
+                                  variant="replace"
+                                  label={`Reupload ${row.term}`}
+                                  title="Reupload"
+                                  disabled={actions.replace.disabled}
+                                  onClick={() => openModal(doc, { term: row.term })}
+                                >
+                                  <path d="M21 12a9 9 0 1 1-3-6.7" />
+                                  <path d="M21 4v5h-5" />
+                                </IconButton>
+
+                                <IconButton
+                                  variant="delete"
+                                  label={`Delete ${row.term}`}
+                                  title={actions.remove.disabled ? actions.remove.tip : 'Delete'}
+                                  disabled={actions.remove.disabled}
+                                  onClick={() => handleDelete(doc)}
+                                >
+                                  <polyline points="3 6 5 6 21 6" />
+                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                </IconButton>
+                              </>
+                            ) : isArchived ? (
+                              <span className="text-gray-400 italic text-xs">Archived (read-only)</span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => openModal(null, { term: row.term })}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-purple px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-opacity-90 shadow-2xs"
+                              >
+                                <span>Upload {row.term}</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1111,40 +1155,60 @@ export default function ClassRequirementPage() {
                       </td>
 
                       <td className="whitespace-nowrap">
-                        <div className="doc-icon-actions">
-                          <IconButton
-                            variant="view"
-                            label={`View ${title}`}
-                            title="View"
-                            disabled={actions.view.disabled}
-                            onClick={() => handleView(doc)}
-                          >
-                            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-                            <circle cx="12" cy="12" r="3" />
-                          </IconButton>
+                        {isAdmin ? (
+                          doc.status === 'approved' || doc.status === 'rejected' ? (
+                            <span className="doc-badge--reviewed">
+                              <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
+                              Reviewed
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="doc-btn doc-btn--review"
+                              disabled={!doc}
+                              title="Review document"
+                              onClick={() => handleView(doc)}
+                            >
+                              <CheckSquare className="w-4 h-4" />
+                              Review
+                            </button>
+                          )
+                        ) : (
+                          <div className="doc-icon-actions">
+                            <IconButton
+                              variant="view"
+                              label={`View ${title}`}
+                              title="View"
+                              disabled={actions.view.disabled}
+                              onClick={() => handleView(doc)}
+                            >
+                              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </IconButton>
 
-                          <IconButton
-                            variant="replace"
-                            label={`Reupload ${title}`}
-                            title="Reupload"
-                            disabled={actions.replace.disabled}
-                            onClick={() => openModal(doc)}
-                          >
-                            <path d="M21 12a9 9 0 1 1-3-6.7" />
-                            <path d="M21 4v5h-5" />
-                          </IconButton>
+                            <IconButton
+                              variant="replace"
+                              label={`Reupload ${title}`}
+                              title="Reupload"
+                              disabled={actions.replace.disabled}
+                              onClick={() => openModal(doc)}
+                            >
+                              <path d="M21 12a9 9 0 1 1-3-6.7" />
+                              <path d="M21 4v5h-5" />
+                            </IconButton>
 
-                          <IconButton
-                            variant="delete"
-                            label={`Delete ${title}`}
-                            title={actions.remove.disabled ? actions.remove.tip : 'Delete'}
-                            disabled={actions.remove.disabled}
-                            onClick={() => handleDelete(doc)}
-                          >
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                          </IconButton>
-                        </div>
+                            <IconButton
+                              variant="delete"
+                              label={`Delete ${title}`}
+                              title={actions.remove.disabled ? actions.remove.tip : 'Delete'}
+                              disabled={actions.remove.disabled}
+                              onClick={() => handleDelete(doc)}
+                            >
+                              <polyline points="3 6 5 6 21 6" />
+                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            </IconButton>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
@@ -1195,6 +1259,8 @@ export default function ClassRequirementPage() {
         onConfirm={handleConfirmDelete}
         onCancel={() => !deleteModal.loading && setDeleteModal({ open: false, doc: null, title: '', loading: false })}
       />
+
+      <AppModal modal={modal} onClose={closeModal} />
     </div>
   );
 }

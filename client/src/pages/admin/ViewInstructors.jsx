@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, Plus, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import AppModal, { useAppModal } from '../../components/common/AppModal';
 
 const PAGE_SIZE = 10;
 
@@ -35,6 +36,7 @@ export default function ViewInstructors() {
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [tableVisible, setTableVisible] = useState(true);
+  const { modal, close: closeModal, notify, confirm: showConfirm } = useAppModal();
 
   // Fetch instructors from backend API
   useEffect(() => {
@@ -112,42 +114,59 @@ export default function ViewInstructors() {
 
   // Delete (local only, same as before)
   const handleDelete = (id) => {
-    if (confirm('Are you sure you want to delete this instructor?')) {
-      setInstructors(instructors.filter((inst) => (inst._id || inst.id) !== id));
-    }
+    showConfirm({
+      title: 'Delete Instructor?',
+      message: 'Are you sure you want to delete this instructor? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      tone: 'warning',
+      onConfirm: () => {
+        setInstructors(instructors.filter((inst) => (inst._id || inst.id) !== id));
+        notify('success', 'Instructor Deleted', 'The instructor record has been removed.');
+      },
+    });
   };
 
   // Deactivate / Reactivate
-  const handleToggleStatus = async (item) => {
+  const handleToggleStatus = (item) => {
     const id = item._id || item.id;
     const isActive = (item.accountStatus || '').toLowerCase() === 'active';
     const newStatus = isActive ? 'Deactivated' : 'Active';
     const verb = isActive ? 'deactivate' : 'reactivate';
+    const name = getDisplayName(item);
 
-    if (!confirm(`Are you sure you want to ${verb} ${getDisplayName(item)}?`)) return;
+    showConfirm({
+      title: `${isActive ? 'Deactivate' : 'Reactivate'} Instructor?`,
+      message: `Are you sure you want to ${verb} ${name}?`,
+      confirmLabel: isActive ? 'Deactivate' : 'Reactivate',
+      cancelLabel: 'Cancel',
+      tone: isActive ? 'warning' : 'info',
+      onConfirm: async () => {
+        try {
+          setUpdatingId(id);
+          const res = await fetch(`${API_URL}/${id}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accountStatus: newStatus }),
+          });
+          if (!res.ok) throw new Error(`Failed to ${verb} instructor.`);
+          const updated = await res.json();
 
-    try {
-      setUpdatingId(id);
-      const res = await fetch(`${API_URL}/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountStatus: newStatus }),
-      });
-      if (!res.ok) throw new Error(`Failed to ${verb} instructor.`);
-      const updated = await res.json();
-
-      setInstructors((prev) =>
-        prev.map((inst) =>
-          (inst._id || inst.id) === id
-            ? { ...inst, accountStatus: updated.accountStatus ?? newStatus }
-            : inst
-        )
-      );
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setUpdatingId(null);
-    }
+          setInstructors((prev) =>
+            prev.map((inst) =>
+              (inst._id || inst.id) === id
+                ? { ...inst, accountStatus: updated.accountStatus ?? newStatus }
+                : inst
+            )
+          );
+          notify('success', 'Status Updated', `Instructor account has been ${verb}d successfully.`);
+        } catch (err) {
+          notify('error', 'Update Failed', err.message);
+        } finally {
+          setUpdatingId(null);
+        }
+      },
+    });
   };
 
   // Format dates (e.g. "Sep 24, 2026")
@@ -474,6 +493,8 @@ export default function ViewInstructors() {
           </div>
         )}
       </div>
+
+      <AppModal modal={modal} onClose={closeModal} />
     </>
   );
 }

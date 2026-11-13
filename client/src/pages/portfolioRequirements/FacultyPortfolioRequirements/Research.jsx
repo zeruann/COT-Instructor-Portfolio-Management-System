@@ -11,6 +11,7 @@ import { fetchDocuments, deleteDocument } from '../../../api/documents';
 
 import './requirementStyle.css';
 import './listEntries.css';
+import AppModal, { useAppModal } from "../../../components/common/AppModal";
 
 /* ═════════════════════════════════════════════════════════════
    HOW TO REUSE THIS PAGE FOR ANOTHER DOCUMENT
@@ -150,6 +151,7 @@ function IconButton({ variant, label, title, disabled, onClick, children }) {
 
 // ► CHANGE 3: rename the function (must match the export at the bottom)
 function Research() {
+  const { modal, close: closeModal, notify, confirm: showConfirm } = useAppModal();
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
   const isAdmin = pathname.startsWith('/admin');
@@ -167,17 +169,23 @@ function Research() {
     setPreviewOpen(true);
   };
 
-  const handleDelete = async (doc) => {
-    const title = doc.meta?.name || 'this record';
-    if (!window.confirm(`Are you sure you want to delete "${title}"?`)) {
-      return;
-    }
-    try {
-      await deleteDocument(doc._id);
-      loadRecords();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete document.');
-    }
+  const handleDelete = (doc) => {
+    const title = doc.meta?.name || doc.meta?.title || 'this record';
+    showConfirm({
+      title: 'Delete Document?',
+      message: `Are you sure you want to delete "${title}"? This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      onConfirm: async () => {
+        try {
+          await deleteDocument(doc._id);
+          loadRecords();
+          notify('success', 'Document Deleted', 'The document has been removed successfully.');
+        } catch (err) {
+          notify('error', 'Delete Failed', err.response?.data?.message || 'Failed to delete document.');
+        }
+      },
+    });
   };
 
   // Loads this requirement's documents from the server
@@ -322,16 +330,23 @@ function Research() {
 
                       <td className="whitespace-nowrap">
                         {isAdmin ? (
-                          <button
-                            type="button"
-                            className="doc-btn doc-btn--review"
-                            disabled={!doc}
-                            title="Review document"
-                            onClick={() => handleView(doc)}
-                          >
-                            <CheckSquare className="w-4 h-4" />
-                            Review
-                          </button>
+                          doc.status === 'approved' || doc.status === 'rejected' ? (
+                            <span className="doc-badge--reviewed">
+                              <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
+                              Reviewed
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="doc-btn doc-btn--review"
+                              disabled={!doc}
+                              title="Review document"
+                              onClick={() => handleView(doc)}
+                            >
+                              <CheckSquare className="w-4 h-4" />
+                              Review
+                            </button>
+                          )
                         ) : (
                           <div className="doc-icon-actions">
                             <IconButton
@@ -405,6 +420,7 @@ function Research() {
         }}
         onEdit={(doc) => openModal(doc)}
       />
+      <AppModal modal={modal} onClose={closeModal} />
     </div>
   );
 }
