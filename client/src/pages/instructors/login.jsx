@@ -125,7 +125,7 @@ function Login() {
   //Google button login design
   useEffect(() => {
     const clientId = apiConfig.googleClientId || GOOGLE_CLIENT_ID;
-    if (!apiConfig.googleAuthEnabled || !clientId) return;
+    if (!clientId) return;
 
     const initGoogle = () => {
       if (!window.google?.accounts?.id) return;
@@ -245,8 +245,8 @@ function Login() {
       </form>
 
 
-      {/*Disable Google Auth API*/}
-      {apiConfig.googleAuthEnabled && (
+      {/* Google Auth (Admins remain allowed even when disabled for general users) */}
+      {(apiConfig.googleClientId || GOOGLE_CLIENT_ID) && (
         <>
           <div className="flex items-center my-5">
             <div className="flex-grow h-px bg-gray-200"></div>
@@ -274,8 +274,13 @@ function Login() {
                 <path fill="#34A853" d="M24 48c6.3 0 11.6-2.1 15.5-5.7l-7.1-5.5c-2 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z" />
               </svg>
             </span>
-            Continue with Google
+            {apiConfig.googleAuthEnabled ? "Continue with Google" : "Continue with Google (Admin only)"}
           </button>
+          {!apiConfig.googleAuthEnabled && (
+            <p className="mt-2 text-center text-xs text-gray-400">
+              Google Sign-In is currently restricted to Administrators.
+            </p>
+          )}
         </>
       )}
       {/* Security Verification Modal */}

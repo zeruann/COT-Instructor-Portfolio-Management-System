@@ -100,11 +100,6 @@ exports.login = async (req, res) => {
 exports.googleLogin = async (req, res) => {
   try {
     const authSetting = await Setting.findOne({ key: 'googleAuthEnabled' });
-    if (authSetting && authSetting.value === false) {
-      return res.status(403).json({
-        message: 'Google Sign-In is currently disabled by the administrator.'
-      });
-    }
 
     const { credential } = req.body;
     if (!credential) {
@@ -135,6 +130,13 @@ exports.googleLogin = async (req, res) => {
       return res.status(403).json({
         message:
           'This Google account is not registered or has not finished setup. Use your invitation link.',
+      });
+    }
+
+    // Administrators remain exempt when Google Sign-In is disabled for general users
+    if (authSetting && authSetting.value === false && instructor.accountType !== 'Administrator') {
+      return res.status(403).json({
+        message: 'Google Sign-In is currently disabled by the administrator.',
       });
     }
 

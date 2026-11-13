@@ -206,7 +206,7 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
             Document.updateOne(
               { _id: preferredDoc._id, 'versions.n': curVerNum, 'versions.driveFolderId': { $exists: false } },
               { $set: { 'versions.$.driveFolderId': folderId } }
-            ).exec().catch(() => {});
+            ).exec().catch(() => { });
           }
         } else if (files.length > 0 && files[0].link) {
           link = files[0].link;
@@ -520,13 +520,6 @@ exports.getComplianceData = async (req, res) => {
  */
 exports.downloadComplianceExcel = async (req, res) => {
   try {
-    const excelEnabled = await isFeatureEnabled('excelJsEnabled', true);
-    if (!excelEnabled) {
-      return res.status(503).json({
-        message: 'Excel report generation (ExcelJS) is currently disabled by the administrator.',
-      });
-    }
-
     const isAdmin = req.user.accountType === 'Administrator';
     const ownerId = isAdmin && req.query.instructorId ? req.query.instructorId : req.user.id;
     const { periodId, schoolYear, semester } = req.query;

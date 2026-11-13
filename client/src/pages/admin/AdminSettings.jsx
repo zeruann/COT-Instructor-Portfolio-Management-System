@@ -27,7 +27,6 @@ import recaptchaIcon from "../../assets/ReCAPTCHA_icon.svg";
 import driveIcon from "../../assets/Google_Drive_icon_(2026).svg";
 import googleIcon from "../../assets/Google_Favicon_2025.svg";
 import sheetsIcon from "../../assets/google-sheets.svg";
-import excelIcon from "../../assets/ExcelJS_icon.svg";
 import securityShieldIcon from "../../assets/security-shield.png";
 
 const API_URL = "http://localhost:5000/api/settings";
@@ -144,31 +143,12 @@ const INTEGRATIONS = [
     icon: FileSpreadsheet,
     fields: [
       {
-        key: "googleSheetsProjectId",
-        label: "Project ID",
-        sensitive: false,
-        placeholder: "cot-eportfolio-storage",
-        help: "Google Cloud Project ID from your Service Account JSON key.",
-      },
-      {
         key: "googleSheetsClientEmail",
         label: "Service Account Email",
         sensitive: false,
         isEmail: true,
         placeholder: "service-account@project-id.iam.gserviceaccount.com",
         help: "The client_email address of the Google Cloud Service Account.",
-      },
-      {
-        key: "googleSheetsClientId",
-        label: "Client ID",
-        sensitive: false,
-        placeholder: "100376114074626533998",
-      },
-      {
-        key: "googleSheetsPrivateKeyId",
-        label: "Private Key ID",
-        sensitive: true,
-        placeholder: "Service account private_key_id",
       },
       {
         key: "googleSheetsPrivateKey",
@@ -178,16 +158,6 @@ const INTEGRATIONS = [
         help: "PEM-encoded private_key from your Google Cloud Service Account JSON file.",
       },
     ],
-  },
-  {
-    groupKey: "excelJs",
-    toggleKey: "excelJsEnabled",
-    title: "ExcelJS (Spreadsheet Generator)",
-    description: "Generates and downloads Faculty Compliance Checklist workbooks in Microsoft Excel (.xlsx) format.",
-    logo: excelIcon,
-    icon: FileSpreadsheet,
-    toggleOnly: true,
-    fields: [],
   },
 ];
 
@@ -235,7 +205,6 @@ export default function AdminSettings() {
     googleDriveEnabled: true,
     googleAuthEnabled: true,
     googleSheetsEnabled: true,
-    excelJsEnabled: true,
   });
 
   // Credentials state for Custom and Default APIs
@@ -583,6 +552,15 @@ export default function AdminSettings() {
 
   /* ─── Mode Change Handler (Custom vs Default Radio) ────────── */
   const handleModeChange = async (groupKey, mode) => {
+    const groupObj = INTEGRATIONS.find((g) => g.groupKey === groupKey);
+    if (mode === "custom" && groupObj && !isCustomConfigured(groupObj)) {
+      setGlobalFeedback({
+        type: "error",
+        message: `Please configure and save Custom API credentials for ${groupObj.title} before selecting Custom API.`,
+      });
+      return;
+    }
+
     const prevMode = apiModes[groupKey] || "default";
     if (prevMode === mode) return;
 
@@ -1070,16 +1048,27 @@ export default function AdminSettings() {
                                       Custom API
                                     </h4>
                                     <label
-                                      className="flex items-center cursor-pointer select-none"
-                                      title="Select to use Custom API for this service"
+                                      className={`flex items-center select-none ${
+                                        hasCustom
+                                          ? "cursor-pointer"
+                                          : "cursor-not-allowed opacity-50"
+                                      }`}
+                                      title={
+                                        hasCustom
+                                          ? "Select to use Custom API for this service"
+                                          : "Configure and save Custom API credentials first"
+                                      }
                                     >
                                       <input
                                         type="radio"
                                         name={`apiMode_${group.groupKey}`}
                                         value="custom"
-                                        checked={apiModes[group.groupKey] === "custom"}
+                                        disabled={!hasCustom || modeSaving[group.groupKey]}
+                                        checked={hasCustom && apiModes[group.groupKey] === "custom"}
                                         onChange={() => handleModeChange(group.groupKey, "custom")}
-                                        className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600 cursor-pointer"
+                                        className={`w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600 ${
+                                          hasCustom ? "cursor-pointer" : "cursor-not-allowed"
+                                        }`}
                                       />
                                     </label>
                                   </div>
@@ -1277,14 +1266,14 @@ export default function AdminSettings() {
                                         type="radio"
                                         name={`apiMode_${group.groupKey}`}
                                         value="default"
-                                        checked={(apiModes[group.groupKey] || "default") === "default"}
+                                        checked={!hasCustom || (apiModes[group.groupKey] || "default") === "default"}
                                         onChange={() => handleModeChange(group.groupKey, "default")}
                                         className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600 cursor-pointer"
                                       />
                                     </label>
                                   </div>
                                   <p className="text-xs text-gray-500 mt-0.5">
-                                    {(apiModes[group.groupKey] || "default") === "default"
+                                    {!hasCustom || (apiModes[group.groupKey] || "default") === "default"
                                       ? "Active and in use by the system"
                                       : "Standby fallback"}
                                   </p>

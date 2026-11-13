@@ -20,7 +20,6 @@ const TOGGLE_DEFAULTS = {
     googleDriveEnabled: true,
     googleAuthEnabled: true,
     googleSheetsEnabled: true,
-    excelJsEnabled: true,
 };
 
 const SERVICE_GROUPS = [
@@ -29,8 +28,36 @@ const SERVICE_GROUPS = [
     'googleAuth',
     'recaptcha',
     'googleSheets',
-    'excelJs',
 ];
+
+const SERVICE_LABELS = {
+    googleMail: 'Google Mail (SMTP)',
+    googleDrive: 'Google Drive Storage',
+    googleAuth: 'Google Sign-In (OAuth 2.0)',
+    recaptcha: 'Google reCAPTCHA v2',
+    googleSheets: 'Google Sheets API',
+};
+
+const TOGGLE_LABELS = {
+    googleMailEnabled: 'Google Mail (SMTP)',
+    recaptchaEnabled: 'Google reCAPTCHA v2',
+    googleDriveEnabled: 'Google Drive Storage',
+    googleAuthEnabled: 'Google Sign-In (OAuth 2.0)',
+    googleSheetsEnabled: 'Google Sheets API',
+};
+
+const logSettingAudit = async ({ req, action, outcome = 'success', targetLabel, details, meta }) => {
+    await logAudit({
+        actor: req.user,
+        action,
+        outcome,
+        targetType: 'setting',
+        targetLabel: targetLabel || 'API & Integration Settings',
+        details,
+        meta,
+        req,
+    });
+};
 
 // Map of credential keys, their default .env fallback, and optional custom .env override
 const CREDENTIAL_CONFIG = {
@@ -52,10 +79,7 @@ const CREDENTIAL_CONFIG = {
     recaptchaSecret: { group: 'recaptcha', env: 'RECAPTCHA_SECRET', customEnv: 'CUSTOM_RECAPTCHA_SECRET', sensitive: true },
 
     // Google Sheets API
-    googleSheetsProjectId: { group: 'googleSheets', env: 'GOOGLE_SHEETS_PROJECT_ID', customEnv: 'CUSTOM_GOOGLE_SHEETS_PROJECT_ID', sensitive: false },
     googleSheetsClientEmail: { group: 'googleSheets', env: 'GOOGLE_SHEETS_CLIENT_EMAIL', customEnv: 'CUSTOM_GOOGLE_SHEETS_CLIENT_EMAIL', sensitive: false, isEmail: true },
-    googleSheetsClientId: { group: 'googleSheets', env: 'GOOGLE_SHEETS_CLIENT_ID', customEnv: 'CUSTOM_GOOGLE_SHEETS_CLIENT_ID', sensitive: false },
-    googleSheetsPrivateKeyId: { group: 'googleSheets', env: 'GOOGLE_SHEETS_PRIVATE_KEY_ID', customEnv: 'CUSTOM_GOOGLE_SHEETS_PRIVATE_KEY_ID', sensitive: true },
     googleSheetsPrivateKey: { group: 'googleSheets', env: 'GOOGLE_SHEETS_PRIVATE_KEY', customEnv: 'CUSTOM_GOOGLE_SHEETS_PRIVATE_KEY', sensitive: true },
 };
 
@@ -83,6 +107,46 @@ const censorEmail = (email) => {
     const visibleEnd = user.slice(-2);
     const maskedPart = '•'.repeat(Math.min(user.length - 4, 5));
     return `${visibleStart}${maskedPart}${visibleEnd}${domain}`;
+};
+
+/**
+ * Helper to censor IDs, keys, and other non-email identifiers in Default APIs
+ */
+const censorIdentifier = (val) => {
+    if (!val || typeof val !== 'string') return '';
+    const trimmed = val.trim();
+    if (!trimmed) return '';
+    if (trimmed.length <= 10) return '••••••••';
+    return `${trimmed.slice(0, 4)}••••••••••••${trimmed.slice(-4)}`;
+};
+
+/**
+ * Formats a Default API credential for read-only display (censors secrets, emails, and IDs)
+ */
+const formatDefaultCredential = (envVal, config) => {
+    if (!envVal || String(envVal).trim() === '') return '';
+    if (ALLOW_DEFAULT_API_EDIT) {
+        return config.sensitive ? MASK_PLACEHOLDER : envVal;
+    }
+    if (config.sensitive) return MASK_PLACEHOLDER;
+    if (config.isEmail) return censorEmail(envVal);
+    return censorIdentifier(envVal);
+};
+
+/**
+ * Checks whether a service group has at least one custom credential configured (DB or custom env)
+ */
+const isGroupCustomConfigured = (group, recordMap) => {
+    return Object.keys(CREDENTIAL_CONFIG).some((key) => {
+        const config = CREDENTIAL_CONFIG[key];
+        if (config.group !== group) return false;
+        const dbVal = recordMap[key];
+        const envCustomVal = config.customEnv ? process.env[config.customEnv] : '';
+        return Boolean(
+            (dbVal && String(dbVal).trim() !== '') ||
+            (envCustomVal && String(envCustomVal).trim() !== '')
+        );
+    });
 };
 
 /**
@@ -211,36 +275,21 @@ exports.getSettings = async (req, res) => {
             }
 
             // Default credentials (Right Column)
-            if (!ALLOW_DEFAULT_API_EDIT) {
-                // Read-only / locked mode
-                if (config.sensitive) {
-                    defaultCredentials[key] = hasDefault ? MASK_PLACEHOLDER : '';
-                } else if (config.isEmail) {
-                    defaultCredentials[key] = censorEmail(envVal);
-                } else {
-                    defaultCredentials[key] = envVal;
-                }
-            } else {
-                // Editable mode enabled via backend switch
-                if (config.sensitive) {
-                    defaultCredentials[key] = hasDefault ? MASK_PLACEHOLDER : '';
-                } else {
-                    defaultCredentials[key] = envVal;
-                }
-            }
+            defaultCredentials[key] = formatDefaultCredential(envVal, config);
         });
 
         // Calculate active API mode (Default vs Custom) for each service group
         const apiModes = {};
         SERVICE_GROUPS.forEach((group) => {
+            const hasCustom = Object.keys(CREDENTIAL_CONFIG).some((k) => {
+                return CREDENTIAL_CONFIG[k].group === group && credentialStatus[k]?.hasCustom;
+            });
             const explicitMode = recordMap[`MODE_${group}`];
-            if (explicitMode === 'default' || explicitMode === 'custom') {
+            if (explicitMode === 'custom' && !hasCustom) {
+                apiModes[group] = 'default';
+            } else if (explicitMode === 'default' || explicitMode === 'custom') {
                 apiModes[group] = explicitMode;
             } else {
-                // By default: if custom is configured for this group, utilize it; otherwise fallback to default
-                const hasCustom = Object.keys(CREDENTIAL_CONFIG).some((k) => {
-                    return CREDENTIAL_CONFIG[k].group === group && credentialStatus[k]?.hasCustom;
-                });
                 apiModes[group] = hasCustom ? 'custom' : 'default';
             }
         });
@@ -255,6 +304,13 @@ exports.getSettings = async (req, res) => {
             department: adminUser.department,
             accountType: adminUser.accountType || 'Administrator',
         } : null;
+
+        await logSettingAudit({
+            req,
+            action: ACTION.SETTING_ACCESS,
+            targetLabel: 'API & Integration Settings',
+            details: 'Opened API & Integration Settings',
+        });
 
         res.json({
             success: true,
@@ -279,11 +335,31 @@ exports.updateSettings = async (req, res) => {
         const userId = req.user?.id;
 
         const updates = [];
+        const changedToggles = [];
 
-        // 1. Update toggles if provided
+        // 1. Update toggles if provided (diff against current values so only changed APIs are logged)
         if (settings && typeof settings === 'object') {
+            const existingToggleDocs = await Setting.find({
+                key: { $in: Object.keys(TOGGLE_DEFAULTS) },
+            }).lean();
+            const existingToggleMap = {};
+            existingToggleDocs.forEach((d) => {
+                existingToggleMap[d.key] = d.value;
+            });
+
             Object.keys(TOGGLE_DEFAULTS).forEach((key) => {
                 if (typeof settings[key] === 'boolean') {
+                    const prevVal =
+                        typeof existingToggleMap[key] === 'boolean'
+                            ? existingToggleMap[key]
+                            : TOGGLE_DEFAULTS[key];
+                    if (prevVal !== settings[key]) {
+                        changedToggles.push({
+                            key,
+                            label: TOGGLE_LABELS[key] || key,
+                            enabled: settings[key],
+                        });
+                    }
                     updates.push(
                         Setting.findOneAndUpdate(
                             { key },
@@ -330,6 +406,13 @@ exports.updateSettings = async (req, res) => {
                 admin.apiSettingsOtp = undefined;
                 admin.apiSettingsOtpExpires = undefined;
                 await admin.save();
+                await logSettingAudit({
+                    req,
+                    action: ACTION.SETTING_OTP_VERIFY,
+                    outcome: 'failure',
+                    targetLabel: 'Custom API Setup Verification',
+                    details: 'Failed OTP verification while saving custom API credentials (expired code)',
+                });
                 return res.status(400).json({
                     message: 'Verification code has expired. Please request a new code.',
                 });
@@ -337,6 +420,13 @@ exports.updateSettings = async (req, res) => {
 
             const hashedInput = crypto.createHash('sha256').update(otp.trim()).digest('hex');
             if (hashedInput !== admin.apiSettingsOtp) {
+                await logSettingAudit({
+                    req,
+                    action: ACTION.SETTING_OTP_VERIFY,
+                    outcome: 'failure',
+                    targetLabel: 'Custom API Setup Verification',
+                    details: 'Failed OTP verification while saving custom API credentials (incorrect code)',
+                });
                 return res.status(401).json({
                     message: 'Incorrect verification code. Please check your email and try again.',
                 });
@@ -438,18 +528,65 @@ exports.updateSettings = async (req, res) => {
             // ignore
         }
 
-        // Record audit log for admin settings update
-        await logAudit({
-            actor: req.user,
-            action: ACTION.SETTING_UPDATE,
-            targetType: 'setting',
-            targetLabel: 'System & API Settings',
+        // Record detailed audit log for admin settings update
+        const updatedCustomGroups = customToUpdate && typeof customToUpdate === 'object'
+            ? [...new Set(
+                Object.keys(CREDENTIAL_CONFIG)
+                    .filter((k) => typeof customToUpdate[k] === 'string' && customToUpdate[k] !== MASK_PLACEHOLDER)
+                    .map((k) => SERVICE_LABELS[CREDENTIAL_CONFIG[k].group] || CREDENTIAL_CONFIG[k].group)
+            )]
+            : [];
+
+        const updatedToggles = changedToggles.map(
+            (t) => `${t.label}: ${t.enabled ? 'enabled' : 'disabled'}`
+        );
+
+        const isToggleOnly =
+            settings &&
+            typeof settings === 'object' &&
+            updatedCustomGroups.length === 0 &&
+            !defaultCredentials &&
+            !apiModes;
+
+        const targetLabel = updatedCustomGroups.length > 0
+            ? updatedCustomGroups.join(', ')
+            : isToggleOnly
+                ? (changedToggles.length === 1 ? changedToggles[0].label : 'API Service Toggles')
+                : 'System & API Settings';
+
+        const detailsParts = [];
+        if (updatedCustomGroups.length > 0) {
+            detailsParts.push(`Configured custom API credentials for ${updatedCustomGroups.join(', ')}`);
+        }
+        if (apiModes && typeof apiModes === 'object') {
+            const modeDesc = Object.keys(apiModes)
+                .filter((g) => apiModes[g] === 'custom' || apiModes[g] === 'default')
+                .map((g) => `${SERVICE_LABELS[g] || g}: ${apiModes[g]}`);
+            if (modeDesc.length > 0) detailsParts.push(`Updated API modes (${modeDesc.join(', ')})`);
+        }
+        if (isToggleOnly) {
+            if (changedToggles.length === 1) {
+                const t = changedToggles[0];
+                detailsParts.push(`${t.enabled ? 'Enabled' : 'Disabled'} ${t.label} integration`);
+            } else if (updatedToggles.length > 0) {
+                detailsParts.push(`Updated API toggles (${updatedToggles.join(', ')})`);
+            } else {
+                detailsParts.push('Updated API service toggles');
+            }
+        }
+
+        await logSettingAudit({
+            req,
+            action: isToggleOnly ? ACTION.INTEGRATION_TOGGLE : ACTION.SETTING_UPDATE,
+            targetLabel,
+            details: detailsParts.join('; ') || 'Updated System & API Settings',
             meta: {
                 hasTogglesUpdated: Boolean(settings),
-                hasCustomCredentialsUpdated: Boolean(customCredentials || credentials),
+                changedToggles,
+                hasCustomCredentialsUpdated: updatedCustomGroups.length > 0,
+                updatedCustomGroups,
                 hasDefaultCredentialsUpdated: Boolean(defaultCredentials),
             },
-            req,
         });
 
         res.json({ success: true, message: 'Settings and API credentials updated successfully.' });
@@ -538,6 +675,13 @@ exports.verifyAdminPassword = async (req, res) => {
 
         const match = await bcrypt.compare(password, user.password);
         if (!match) {
+            await logSettingAudit({
+                req,
+                action: ACTION.SETTING_PASSWORD_VERIFY,
+                outcome: 'failure',
+                targetLabel: 'API Settings Password Verification',
+                details: 'Failed administrator password verification for API Settings',
+            });
             return res.status(401).json({ message: 'Incorrect password. Please try again.' });
         }
 
@@ -562,14 +706,17 @@ exports.verifyAdminPassword = async (req, res) => {
             const envVal = dbDefault || process.env[config.env] || '';
 
             unmaskedCustomCredentials[key] = effectiveCustom;
-            if (ALLOW_DEFAULT_API_EDIT) {
-                unmaskedDefaultCredentials[key] = envVal;
-            } else {
-                unmaskedDefaultCredentials[key] = config.isEmail ? censorEmail(envVal) : (config.sensitive ? MASK_PLACEHOLDER : envVal);
-            }
+            unmaskedDefaultCredentials[key] = ALLOW_DEFAULT_API_EDIT ? envVal : formatDefaultCredential(envVal, config);
 
             // Fallback unmasked
             unmaskedCredentials[key] = effectiveCustom && effectiveCustom.trim() !== '' ? effectiveCustom : envVal;
+        });
+
+        await logSettingAudit({
+            req,
+            action: ACTION.SETTING_PASSWORD_VERIFY,
+            targetLabel: 'API Settings Password Verification',
+            details: 'Verified administrator password to access API credentials',
         });
 
         res.json({
@@ -619,9 +766,12 @@ exports.sendSettingsOtp = async (req, res) => {
         });
 
         // Send email asynchronously so the administrator receives an instant UI response
+        // Always bypass googleMailEnabled toggle and fall back to default .env SMTP if needed
         sendEmail({
             to: admin.email,
             subject: 'COT Portfolio - API Settings Security Verification Code',
+            bypassToggle: true,
+            fallbackToDefault: true,
             html: `
                 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
                     <div style="text-align: center; margin-bottom: 24px;">
@@ -659,6 +809,13 @@ exports.sendSettingsOtp = async (req, res) => {
             `,
         }).catch((err) => {
             console.error('sendSettingsOtp background email error:', err);
+        });
+
+        await logSettingAudit({
+            req,
+            action: ACTION.SETTING_OTP_SEND,
+            targetLabel: 'API Settings OTP Request',
+            details: `Sent 6-digit API Settings verification OTP to ${censorEmail(admin.email)}`,
         });
 
         res.json({
@@ -707,11 +864,25 @@ exports.verifySettingsOtp = async (req, res) => {
             admin.apiSettingsOtp = undefined;
             admin.apiSettingsOtpExpires = undefined;
             await admin.save();
+            await logSettingAudit({
+                req,
+                action: ACTION.SETTING_OTP_VERIFY,
+                outcome: 'failure',
+                targetLabel: 'API Settings OTP Verification',
+                details: 'Failed OTP verification to unlock API Settings (expired code)',
+            });
             return res.status(400).json({ message: 'Verification code has expired. Please request a new code.' });
         }
 
         const hashedInput = crypto.createHash('sha256').update(otp.trim()).digest('hex');
         if (hashedInput !== admin.apiSettingsOtp) {
+            await logSettingAudit({
+                req,
+                action: ACTION.SETTING_OTP_VERIFY,
+                outcome: 'failure',
+                targetLabel: 'API Settings OTP Verification',
+                details: 'Failed OTP verification to unlock API Settings (incorrect code)',
+            });
             return res.status(401).json({ message: 'Incorrect verification code. Please check your email and try again.' });
         }
 
@@ -741,13 +912,16 @@ exports.verifySettingsOtp = async (req, res) => {
             const envVal = dbDefault || process.env[config.env] || '';
 
             unmaskedCustomCredentials[key] = effectiveCustom;
-            if (ALLOW_DEFAULT_API_EDIT) {
-                unmaskedDefaultCredentials[key] = envVal;
-            } else {
-                unmaskedDefaultCredentials[key] = config.isEmail ? censorEmail(envVal) : (config.sensitive ? MASK_PLACEHOLDER : envVal);
-            }
+            unmaskedDefaultCredentials[key] = ALLOW_DEFAULT_API_EDIT ? envVal : formatDefaultCredential(envVal, config);
 
             unmaskedCredentials[key] = effectiveCustom && effectiveCustom.trim() !== '' ? effectiveCustom : envVal;
+        });
+
+        await logSettingAudit({
+            req,
+            action: ACTION.SETTING_OTP_VERIFY,
+            targetLabel: 'API Settings OTP Verification',
+            details: 'Verified OTP and unlocked API & Integration Settings',
         });
 
         res.json({
@@ -771,7 +945,18 @@ exports.updateApiModes = async (req, res) => {
         const userId = req.user?.id;
         const updates = [];
 
+        const allRecords = await Setting.find({
+            key: { $in: [...Object.keys(CREDENTIAL_CONFIG), ...SERVICE_GROUPS.map((g) => `MODE_${g}`)] },
+        }).lean();
+        const existingMap = {};
+        allRecords.forEach((doc) => { existingMap[doc.key] = doc.value; });
+
         if (group && (mode === 'custom' || mode === 'default')) {
+            if (mode === 'custom' && !isGroupCustomConfigured(group, existingMap)) {
+                return res.status(400).json({
+                    message: `Cannot switch ${SERVICE_LABELS[group] || group} to Custom API because no custom credentials are configured.`,
+                });
+            }
             updates.push(
                 Setting.findOneAndUpdate(
                     { key: `MODE_${group}` },
@@ -780,8 +965,13 @@ exports.updateApiModes = async (req, res) => {
                 )
             );
         } else if (modes && typeof modes === 'object') {
-            Object.keys(modes).forEach((g) => {
+            for (const g of Object.keys(modes)) {
                 const m = modes[g];
+                if (m === 'custom' && !isGroupCustomConfigured(g, existingMap)) {
+                    return res.status(400).json({
+                        message: `Cannot switch ${SERVICE_LABELS[g] || g} to Custom API because no custom credentials are configured.`,
+                    });
+                }
                 if (m === 'custom' || m === 'default') {
                     updates.push(
                         Setting.findOneAndUpdate(
@@ -791,7 +981,7 @@ exports.updateApiModes = async (req, res) => {
                         )
                     );
                 }
-            });
+            }
         }
 
         await Promise.all(updates);
@@ -805,6 +995,24 @@ exports.updateApiModes = async (req, res) => {
         const apiModes = {};
         SERVICE_GROUPS.forEach((g) => {
             apiModes[g] = recordMap[`MODE_${g}`] || 'default';
+        });
+
+        const changedModeDesc = group && (mode === 'custom' || mode === 'default')
+            ? [`${SERVICE_LABELS[group] || group}: ${mode}`]
+            : modes && typeof modes === 'object'
+                ? Object.keys(modes)
+                    .filter((g) => modes[g] === 'custom' || modes[g] === 'default')
+                    .map((g) => `${SERVICE_LABELS[g] || g}: ${modes[g]}`)
+                : [];
+
+        await logSettingAudit({
+            req,
+            action: ACTION.SETTING_MODE_CHANGE,
+            targetLabel: group ? (SERVICE_LABELS[group] || group) : 'API Service Modes',
+            details: changedModeDesc.length > 0
+                ? `Changed API mode (${changedModeDesc.join(', ')})`
+                : 'Updated active API mode',
+            meta: { group, mode, modes },
         });
 
         res.json({
@@ -836,6 +1044,13 @@ exports.restoreDefaults = async (req, res) => {
         const apiModes = {};
         SERVICE_GROUPS.forEach((g) => { apiModes[g] = 'default'; });
 
+        await logSettingAudit({
+            req,
+            action: ACTION.SETTING_RESTORE_DEFAULTS,
+            targetLabel: 'All API Integrations',
+            details: 'Restored all APIs to system defaults (custom configurations preserved)',
+        });
+
         res.json({
             success: true,
             message: 'All APIs have been restored to system defaults. Custom configurations remain preserved.',
@@ -852,48 +1067,48 @@ function formatConnectionError(err, service) {
     const msg = err?.message || String(err || '');
     if (service === 'googleMail') {
         if (msg.includes('534-5.7.9') || msg.includes('WebLoginRequired') || msg.includes('Application-specific password required')) {
-            return 'Gmail Authentication Failed: Google requires a 16-character App Password. Your regular Gmail password will not work if 2-Step Verification is enabled. Please generate an App Password in your Google Account Security settings and paste it into the App Password field.';
+            return 'Gmail authentication failed. Please use a valid Google App Password.';
         }
         if (msg.includes('535-5.7.8') || msg.includes('Username and Password not accepted') || msg.includes('BadCredentials')) {
-            return 'Gmail Authentication Failed: Invalid email address or App Password. Please verify your Gmail address and ensure the 16-character password has no typos or spaces.';
+            return 'Gmail authentication failed. Invalid email address or App Password.';
         }
         if (msg.includes('ETIMEDOUT') || msg.includes('ESOCKET') || msg.includes('ECONNREFUSED') || msg.includes('timed out')) {
-            return 'Connection Timed Out: Could not connect to Google SMTP servers (smtp.gmail.com). Please check server internet connectivity.';
+            return 'Connection timed out. Unable to reach Google Mail.';
         }
-        return `Gmail Connection Error: ${msg}`;
+        return 'Gmail connection failed. Please check your credentials.';
     }
 
     if (service === 'googleDrive') {
         if (msg.includes('invalid_grant')) {
-            return 'Google Drive Error: Invalid or expired Refresh Token. Please generate a fresh OAuth2 refresh token from Google Cloud Console.';
+            return 'Google Drive connection failed. Invalid or expired Refresh Token.';
         }
         if (msg.includes('invalid_client')) {
-            return 'Google Drive Error: Invalid OAuth Client ID or Client Secret.';
+            return 'Google Drive connection failed. Invalid Client ID or Client Secret.';
         }
         if (msg.includes('404') || msg.includes('File not found')) {
-            return 'Google Drive Warning: OAuth credentials are valid, but the specified Root Folder ID was not found or lacks permissions.';
+            return 'Google Drive warning: Credentials are valid, but the Root Folder was not found or is inaccessible.';
         }
-        return `Google Drive Connection Error: ${msg}`;
+        return 'Google Drive connection failed. Please check your credentials.';
     }
 
     if (service === 'recaptcha') {
         if (msg.includes('invalid-input-secret')) {
-            return 'Google reCAPTCHA Error: The Secret Key entered was rejected by Google servers as invalid.';
+            return 'Google reCAPTCHA connection failed. Invalid Secret Key.';
         }
-        return `Google reCAPTCHA Connection Error: ${msg}`;
+        return 'Google reCAPTCHA connection failed. Please check your credentials.';
     }
 
     if (service === 'googleSheets') {
         if (msg.includes('invalid_grant') || msg.includes('error:0909006C') || msg.includes('PEM') || msg.includes('key')) {
-            return 'Google Sheets Error: Invalid Private Key format. Ensure you pasted the complete PEM key including "-----BEGIN PRIVATE KEY-----" and "-----END PRIVATE KEY-----".';
+            return 'Google Sheets connection failed. Invalid Private Key.';
         }
         if (msg.includes('invalid_client')) {
-            return 'Google Sheets Error: Service Account email was rejected by Google Cloud.';
+            return 'Google Sheets connection failed. Invalid Service Account email.';
         }
-        return `Google Sheets Connection Error: ${msg}`;
+        return 'Google Sheets connection failed. Please check your credentials.';
     }
 
-    return msg || 'Connection test failed. Please verify credentials.';
+    return 'Connection test failed. Please verify your credentials.';
 }
 
 const withTimeout = (promise, ms = 5000, errorMsg = 'Connection check timed out after 5 seconds.') => {
@@ -907,17 +1122,34 @@ const withTimeout = (promise, ms = 5000, errorMsg = 'Connection check timed out 
 // Tests whether the API credentials for a given service work properly
 exports.testConnection = async (req, res) => {
     const { service, credentials = {} } = req.body;
+    const sendTestResult = async (statusCode, success, message) => {
+        await logSettingAudit({
+            req,
+            action: ACTION.SETTING_TEST_CONNECTION,
+            outcome: success ? 'success' : 'failure',
+            targetLabel: SERVICE_LABELS[service] || service || 'API Connection Test',
+            details: message,
+            meta: { service },
+        });
+        return res.status(statusCode).json({ success, message });
+    };
+
     try {
         if (!service) {
-            return res.status(400).json({ message: 'Service name is required for testing connection.' });
+            return sendTestResult(400, false, 'Service name is required for testing connection.');
         }
 
-        // Helper to resolve credential: provided in body (if not masked) > DB > process.env
+        const isTestingCustomPayload = credentials && typeof credentials === 'object' && Object.keys(credentials).length > 0;
+
+        // Helper to resolve credential: provided in body (if not masked) > custom DB/env > (default only when not testing custom form)
         const resolveVal = async (key) => {
             const config = CREDENTIAL_CONFIG[key];
             const raw = credentials[key];
             if (raw && typeof raw === 'string' && raw.trim() !== '' && raw !== MASK_PLACEHOLDER) {
                 return raw.trim();
+            }
+            if (isTestingCustomPayload && raw !== MASK_PLACEHOLDER) {
+                return '';
             }
             // Fallback to custom in DB or .env
             const dbDoc = await Setting.findOne({ key });
@@ -926,6 +1158,9 @@ exports.testConnection = async (req, res) => {
             }
             if (config?.customEnv && process.env[config.customEnv]) {
                 return process.env[config.customEnv].trim();
+            }
+            if (isTestingCustomPayload) {
+                return '';
             }
             // Fallback to default in DB or .env
             const defaultDoc = await Setting.findOne({ key: `DEFAULT_${key}` });
@@ -942,10 +1177,11 @@ exports.testConnection = async (req, res) => {
             const user = await resolveVal('emailUser');
             const pass = await resolveVal('emailPass');
             if (!user || !pass) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Missing Gmail address or App Password. Please provide both to test connection.',
-                });
+                return sendTestResult(
+                    400,
+                    false,
+                    'Missing Gmail address or App Password. Please provide both to test connection.'
+                );
             }
             const nodemailer = require('nodemailer');
             const transporter = nodemailer.createTransport({
@@ -956,10 +1192,7 @@ exports.testConnection = async (req, res) => {
                 socketTimeout: 4500,
             });
             await withTimeout(transporter.verify(), 5000, 'Gmail SMTP connection timed out after 5 seconds.');
-            return res.json({
-                success: true,
-                message: `Connection successful! Authenticated with Google Mail (${user}).`,
-            });
+            return sendTestResult(200, true, `Connection successful! Authenticated with Google Mail (${user}).`);
         }
 
         if (service === 'googleDrive') {
@@ -969,10 +1202,11 @@ exports.testConnection = async (req, res) => {
             const rootFolderId = await resolveVal('googleDriveRootFolderId');
 
             if (!clientId || !clientSecret || !refreshToken) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Missing Google Drive Client ID, Client Secret, or Refresh Token.',
-                });
+                return sendTestResult(
+                    400,
+                    false,
+                    'Missing Google Drive Client ID, Client Secret, or Refresh Token.'
+                );
             }
 
             const { google } = require('googleapis');
@@ -1002,22 +1236,32 @@ exports.testConnection = async (req, res) => {
                 }
             }
 
-            return res.json({
-                success: true,
-                message: `Connection successful! Google Drive OAuth credentials verified.${folderDetails}`,
-            });
+            return sendTestResult(
+                200,
+                true,
+                `Connection successful! Google Drive OAuth credentials verified.${folderDetails}`
+            );
         }
 
         if (service === 'recaptcha') {
+            const siteKey = await resolveVal('recaptchaSiteKey');
             const secret = await resolveVal('recaptchaSecret');
-            if (!secret) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Missing Google reCAPTCHA Secret Key.',
-                });
+            if (!siteKey || !secret) {
+                return sendTestResult(400, false, 'Both Google reCAPTCHA Site Key and Secret Key are required.');
             }
 
-            // Ping Google siteverify with a dummy test response token and 4s timeout
+            const recaptchaKeyPattern = /^6L[a-zA-Z0-9_-]{38}$/;
+            if (!recaptchaKeyPattern.test(siteKey)) {
+                return sendTestResult(400, false, 'Invalid Google reCAPTCHA Site Key.');
+            }
+            if (!recaptchaKeyPattern.test(secret)) {
+                return sendTestResult(400, false, 'Invalid Google reCAPTCHA Secret Key.');
+            }
+            if (siteKey === secret) {
+                return sendTestResult(400, false, 'Site Key and Secret Key cannot be the same.');
+            }
+
+            // Ping Google siteverify with a dummy test response token and 4.5s timeout
             const url = `https://www.google.com/recaptcha/api/siteverify?secret=${encodeURIComponent(secret)}&response=test_dummy_verification_token`;
             const gRes = await fetch(url, {
                 method: 'POST',
@@ -1027,28 +1271,22 @@ exports.testConnection = async (req, res) => {
 
             // If secret is INVALID, Google returns error code "invalid-input-secret"
             if (gData['error-codes'] && gData['error-codes'].includes('invalid-input-secret')) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Google reCAPTCHA Secret Key was rejected by Google as invalid.',
-                });
+                return sendTestResult(400, false, 'Google reCAPTCHA Secret Key is invalid.');
             }
 
-            return res.json({
-                success: true,
-                message: 'Connection successful! Google reCAPTCHA secret key verified with Google servers.',
-            });
+            return sendTestResult(
+                200,
+                true,
+                'Connection successful! Google reCAPTCHA Site Key and Secret Key verified.'
+            );
         }
 
         if (service === 'googleSheets') {
             const clientEmail = await resolveVal('googleSheetsClientEmail');
             const rawKey = await resolveVal('googleSheetsPrivateKey');
-            const projectId = await resolveVal('googleSheetsProjectId');
 
             if (!clientEmail || !rawKey) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Missing Google Sheets Service Account email or private key.',
-                });
+                return sendTestResult(400, false, 'Missing Google Sheets Service Account email or private key.');
             }
 
             const { google } = require('googleapis');
@@ -1065,57 +1303,49 @@ exports.testConnection = async (req, res) => {
                 'Google Sheets authorization timed out.'
             );
 
-            return res.json({
-                success: true,
-                message: `Connection successful! Service Account (${clientEmail}) authorized for project "${projectId || 'default'}".`,
-            });
+            return sendTestResult(
+                200,
+                true,
+                `Connection successful! Google Sheets Service Account (${clientEmail}) authorized.`
+            );
         }
 
         if (service === 'googleAuth') {
             const clientId = await resolveVal('googleClientId');
             if (!clientId) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Missing Google OAuth Client ID.',
-                });
-            }
-            if (!clientId.endsWith('.apps.googleusercontent.com')) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid Google Client ID format. It must end with ".apps.googleusercontent.com".',
-                });
+                return sendTestResult(400, false, 'Missing Google Sign-In Client ID.');
             }
 
-            // Verify Google OAuth discovery service with 4s timeout
-            const discoRes = await fetch('https://accounts.google.com/.well-known/openid-configuration', {
-                signal: AbortSignal.timeout(4000),
-            });
-            if (!discoRes.ok) {
-                throw new Error('Google OpenID discovery service is currently unreachable.');
+            const googleClientIdPattern = /^\d{10,25}-[a-zA-Z0-9_-]{16,64}\.apps\.googleusercontent\.com$/;
+            if (!googleClientIdPattern.test(clientId)) {
+                return sendTestResult(400, false, 'Invalid Google Sign-In Client ID.');
             }
 
-            return res.json({
-                success: true,
-                message: 'Connection successful! Google OAuth 2.0 configuration and discovery verified.',
+            // Verify Client ID with Google's OAuth 2.0 authorization endpoint (4.5s timeout)
+            const authCheckUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent('https://localhost')}&response_type=code&scope=openid`;
+            const authRes = await fetch(authCheckUrl, {
+                method: 'GET',
+                redirect: 'follow',
+                signal: AbortSignal.timeout(4500),
             });
+            const authBody = await authRes.text();
+            if (
+                authRes.status >= 400 ||
+                /invalid_client|OAuth client was not found|deleted_client/i.test(authBody)
+            ) {
+                return sendTestResult(400, false, 'Google Sign-In Client ID is invalid or not found.');
+            }
+
+            return sendTestResult(
+                200,
+                true,
+                'Connection successful! Google Sign-In Client ID verified.'
+            );
         }
 
-        if (service === 'excelJs') {
-            const ExcelJS = require('exceljs');
-            const wb = new ExcelJS.Workbook();
-            wb.addWorksheet('HealthCheck');
-            return res.json({
-                success: true,
-                message: 'ExcelJS workbook generator is active and operational.',
-            });
-        }
-
-        return res.status(400).json({ message: `Unknown service: "${service}".` });
+        return sendTestResult(400, false, `Unknown service: "${service}".`);
     } catch (err) {
         console.error('Test connection error:', err);
-        return res.status(400).json({
-            success: false,
-            message: formatConnectionError(err, service),
-        });
+        return sendTestResult(400, false, formatConnectionError(err, service));
     }
 };

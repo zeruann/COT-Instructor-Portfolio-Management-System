@@ -6,6 +6,23 @@ const { getSettingOrEnv } = require("../controllers/settingController");
 let cachedTransporter = null;
 let cachedCredentials = null;
 
+async function createTransporter(user, pass) {
+  return nodemailer.createTransport({
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 100,
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    family: 4,
+    connectionTimeout: 8000,
+    tls: {
+      rejectUnauthorized: process.env.NODE_ENV === "production",
+    },
+    auth: { user, pass },
+  });
+}
+
 /**
  * Creates a transporter with connection pooling or reuses cached transporter
  */
@@ -26,20 +43,7 @@ async function getTransporter() {
     return { transporter: cachedTransporter, user };
   }
 
-  const transporter = nodemailer.createTransport({
-    pool: true,
-    maxConnections: 3,
-    maxMessages: 100,
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    family: 4,
-    connectionTimeout: 8000,
-    tls: {
-      rejectUnauthorized: process.env.NODE_ENV === "production",
-    },
-    auth: { user, pass },
-  });
+  const transporter = await createTransporter(user, pass);
 
   cachedTransporter = transporter;
   cachedCredentials = { user, pass };
@@ -49,27 +53,44 @@ async function getTransporter() {
 
 /**
  * Sends an email unless the "googleMailEnabled" setting is false.
+ * Critical admin/system emails (e.g., API Settings OTP) can pass bypassToggle: true
+ * and fallbackToDefault: true so admins are never locked out.
  * Returns true if sent, false if skipped.
  */
-async function sendEmail({ to, subject, html }) {
-  const setting = await Setting.findOne({ key: "googleMailEnabled" });
-  if (setting && setting.value === false) {
-    console.log(
-      `[Google Mail DISABLED] Skipped email to: ${to} | Subject: ${subject}`
-    );
-    return false; // Don't throw, just skip sending
+async function sendEmail({ to, subject, html, bypassToggle = false, fallbackToDefault = false }) {
+  if (!bypassToggle) {
+    const setting = await Setting.findOne({ key: "googleMailEnabled" });
+    if (setting && setting.value === false) {
+      console.log(
+        `[Google Mail DISABLED] Skipped email to: ${to} | Subject: ${subject}`
+      );
+      return false; // Don't throw, just skip sending
+    }
   }
 
-  const { transporter, user } = await getTransporter();
-
-  await transporter.sendMail({
-    from: `"COT Instructor Portfolio" <${user}>`,
-    to,
-    subject,
-    html,
-  });
-
-  return true;
+  try {
+    const { transporter, user } = await getTransporter();
+    await transporter.sendMail({
+      from: `"COT Instructor Portfolio" <${user}>`,
+      to,
+      subject,
+      html,
+    });
+    return true;
+  } catch (err) {
+    if (fallbackToDefault && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      console.warn("[Google Mail] Primary SMTP failed, falling back to default .env SMTP:", err.message);
+      const fallbackTransporter = await createTransporter(process.env.EMAIL_USER, process.env.EMAIL_PASS);
+      await fallbackTransporter.sendMail({
+        from: `"COT Instructor Portfolio" <${process.env.EMAIL_USER}>`,
+        to,
+        subject,
+        html,
+      });
+      return true;
+    }
+    throw err;
+  }
 }
 
 const sendInvitationEmail = async (to, fullName, token) => {

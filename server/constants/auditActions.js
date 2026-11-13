@@ -44,6 +44,13 @@ const ACTION = Object.freeze({
   PERIOD_CLOSE: 'period.close',
   PERIOD_ARCHIVE: 'period.archive',
   SETTING_UPDATE: 'settings.update',
+  SETTING_ACCESS: 'settings.access',
+  SETTING_OTP_SEND: 'settings.otp_send',
+  SETTING_OTP_VERIFY: 'settings.otp_verify',
+  SETTING_PASSWORD_VERIFY: 'settings.password_verify',
+  SETTING_MODE_CHANGE: 'settings.mode_change',
+  SETTING_TEST_CONNECTION: 'settings.test_connection',
+  SETTING_RESTORE_DEFAULTS: 'settings.restore_defaults',
   // future System Administrator features (not confirmed with the client)
   ROLE_ASSIGN: 'account.role_assign',
   INTEGRATION_TOGGLE: 'settings.integration_toggle',

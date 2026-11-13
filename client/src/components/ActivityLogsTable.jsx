@@ -43,6 +43,13 @@ const ACTION_LABELS = {
   'document.archive': 'Archived document',
   'settings.update': 'Updated system settings',
   'settings.integration_toggle': 'Toggled API integration',
+  'settings.access': 'Opened API settings',
+  'settings.otp_send': 'Requested settings OTP',
+  'settings.otp_verify': 'Verified settings OTP',
+  'settings.password_verify': 'Verified admin password',
+  'settings.mode_change': 'Changed API mode',
+  'settings.test_connection': 'Tested API connection',
+  'settings.restore_defaults': 'Restored default APIs',
   'invitation.send': 'Sent invitation',
   'invitation.resend': 'Resent invitation',
   'invitation.cancel': 'Cancelled invitation',
@@ -56,17 +63,9 @@ const ACTION_LABELS = {
   'period.archive': 'Archived academic period',
 };
 
-const getActionBadgeColor = (action = '') => {
+const getActionBadgeColor = (action = '', outcome = 'success', meta = null) => {
   if (
-    action.includes('login') ||
-    action.includes('approve') ||
-    action.includes('upload') ||
-    action.includes('reactivate') ||
-    action.includes('accept')
-  ) {
-    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-  }
-  if (
+    outcome === 'failure' ||
     action.includes('delete') ||
     action.includes('reject') ||
     action.includes('failed') ||
@@ -75,18 +74,58 @@ const getActionBadgeColor = (action = '') => {
   ) {
     return 'bg-red-50 text-red-700 border-red-200';
   }
+  if (action === 'settings.integration_toggle' && meta?.changedToggles?.length === 1) {
+    return meta.changedToggles[0].enabled
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+      : 'bg-amber-50 text-amber-700 border-amber-200';
+  }
+  if (
+    action.includes('login') ||
+    action.includes('approve') ||
+    action.includes('upload') ||
+    action.includes('reactivate') ||
+    action.includes('accept') ||
+    action.includes('verify') ||
+    action.includes('test_connection')
+  ) {
+    return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  }
   if (
     action.includes('logout') ||
     action.includes('password') ||
-    action.includes('resend')
+    action.includes('resend') ||
+    action.includes('otp') ||
+    action.includes('restore')
   ) {
     return 'bg-amber-50 text-amber-700 border-amber-200';
   }
   return 'bg-blue-50 text-blue-700 border-blue-200';
 };
 
-const formatAction = (action) => {
+const formatAction = (itemOrAction) => {
+  const item = typeof itemOrAction === 'object' && itemOrAction !== null ? itemOrAction : { action: itemOrAction };
+  const { action, targetLabel, meta } = item;
   if (!action) return 'Activity';
+
+  if (action === 'settings.integration_toggle') {
+    if (meta?.changedToggles?.length === 1) {
+      const t = meta.changedToggles[0];
+      return `${t.enabled ? 'Enabled' : 'Disabled'} ${t.label}`;
+    }
+    if (targetLabel && targetLabel !== 'API Service Toggles' && targetLabel !== 'API & Integration Settings') {
+      return `Toggled ${targetLabel}`;
+    }
+  }
+  if (action === 'settings.update' && meta?.updatedCustomGroups?.length === 1) {
+    return `Configured ${meta.updatedCustomGroups[0]}`;
+  }
+  if (action === 'settings.mode_change' && targetLabel && targetLabel !== 'API Service Modes') {
+    return `Changed ${targetLabel} mode`;
+  }
+  if (action === 'settings.test_connection' && targetLabel && targetLabel !== 'API Connection Test') {
+    return `Tested ${targetLabel}`;
+  }
+
   return ACTION_LABELS[action] || action.replace(/^[a-z]+\./, '').replace(/_/g, ' ');
 };
 
@@ -552,10 +591,12 @@ export default function ActivityLogsTable({ role = 'admin' }) {
                     <td className="py-4 pr-4 whitespace-nowrap">
                       <span
                         className={`inline-flex items-center px-3 py-1 rounded-full text-[13px] font-medium border ${getActionBadgeColor(
-                          item.action
+                          item.action,
+                          item.outcome,
+                          item.meta
                         )}`}
                       >
-                        {formatAction(item.action)}
+                        {formatAction(item)}
                       </span>
                     </td>
 
