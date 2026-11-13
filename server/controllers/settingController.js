@@ -1290,13 +1290,12 @@ exports.testConnection = async (req, res) => {
             }
 
             const { google } = require('googleapis');
-            const privateKey = rawKey.replace(/\\n/g, '\n');
-            const jwtClient = new google.auth.JWT(
-                clientEmail,
-                null,
-                privateKey,
-                ['https://www.googleapis.com/auth/spreadsheets']
-            );
+            const privateKey = rawKey.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
+            const jwtClient = new google.auth.JWT({
+                email: clientEmail,
+                key: privateKey,
+                scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+            });
             await withTimeout(
                 jwtClient.authorize(),
                 5000,

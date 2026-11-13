@@ -13,12 +13,12 @@ exports.getClasses = async (req, res) => {
   try {
     const isAdmin = req.user.accountType === 'Administrator';
     const ownerId = isAdmin && req.query.instructorId ? req.query.instructorId : req.user.id;
-    const { academicPeriodId, archived } = req.query;
+    const { academicPeriodId, archived, includeArchived } = req.query;
 
     const filter = isAdmin && !req.query.instructorId ? {} : { ownerId };
     if (archived === 'true') {
       filter.archivedAt = { $ne: null };
-    } else {
+    } else if (includeArchived !== 'true') {
       filter.archivedAt = null;
     }
 
@@ -32,14 +32,19 @@ exports.getClasses = async (req, res) => {
 
     // Compute document counts per class
     const classIds = classes.map((c) => c._id);
+    const classALoadBranch = {
+      requirementKey: 'CLASS_A_LOAD_REPORT',
+      ownerId: !isAdmin || req.query.instructorId ? ownerId : { $in: classes.map((c) => c.ownerId) },
+    };
+    if (archived === 'true') {
+      classALoadBranch.archivedAt = { $ne: null };
+    } else if (includeArchived !== 'true') {
+      classALoadBranch.archivedAt = null;
+    }
     const docFilter = {
       $or: [
         { classIds: { $in: classIds } },
-        {
-          requirementKey: 'CLASS_A_LOAD_REPORT',
-          ownerId: !isAdmin || req.query.instructorId ? ownerId : { $in: classes.map((c) => c.ownerId) },
-          archivedAt: null,
-        },
+        classALoadBranch,
       ],
     };
     if (!isAdmin || req.query.instructorId) {
@@ -105,6 +110,7 @@ exports.getClasses = async (req, res) => {
       return {
         _id: cls._id,
         id: cls._id,
+        ownerId: cls.ownerId,
         subject: cls.subject,
         section: cls.section,
         academicPeriod: cls.academicPeriodId,
@@ -112,6 +118,9 @@ exports.getClasses = async (req, res) => {
         pendingCount: stats.pendingCount,
         rejectedCount: stats.rejectedCount,
         totalRequired,
+        completionPercent:
+          totalRequired > 0 ? Math.round((stats.approvedCount / totalRequired) * 100) : 0,
+        archivedAt: cls.archivedAt || null,
         createdAt: cls.createdAt,
       };
     });
@@ -224,9 +233,11 @@ exports.getClassById = async (req, res) => {
       class: {
         _id: classDoc._id,
         id: classDoc._id,
+        ownerId: classDoc.ownerId,
         subject: classDoc.subject,
         section: classDoc.section,
         academicPeriod: classDoc.academicPeriodId,
+        archivedAt: classDoc.archivedAt || null,
       },
       counts: {
         approved,

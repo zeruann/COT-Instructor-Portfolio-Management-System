@@ -123,6 +123,7 @@ export const NAV = {
         items: [
           { to: '/admin/reports', label: 'Reports', icon: FileSpreadsheet },
           { to: '/admin/archive', label: 'Archive', icon: Archive },
+          { to: '/admin/archive-records', label: 'Archive Records', icon: Archive },
           { to: '/admin/academic-period', label: 'Academic Period', icon: Calendar },
           { to: '/admin/activity-logs', label: 'Activity Logs', icon: History },
         ],

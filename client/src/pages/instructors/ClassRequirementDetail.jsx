@@ -177,10 +177,18 @@ function getCurrentFileName(doc) {
   return current ? current.originalName : versions[versions.length - 1].originalName;
 }
 
-export default function ClassRequirementPage() {
-  const { id: classId, reqPath } = useParams();
+export default function ClassRequirementPage({
+  classId: propClassId,
+  reqPath: propReqPath,
+  isAdminOverride,
+  embedded = false,
+  onBack,
+} = {}) {
+  const { id: paramClassId, reqPath: paramReqPath } = useParams();
   const { pathname } = useLocation();
-  const isAdmin = pathname.startsWith('/admin');
+  const classId = propClassId || paramClassId;
+  const reqPath = propReqPath || paramReqPath;
+  const isAdmin = isAdminOverride ?? pathname.startsWith('/admin');
 
   const reqConfig = CLASS_REQUIREMENT_CARDS.find((r) => r.path === reqPath) || {
     key: `CLASS_${reqPath.toUpperCase().replace(/-/g, '_')}`,
@@ -427,7 +435,18 @@ export default function ClassRequirementPage() {
 
   // If this requirement is single-document only, render the drag-and-drop single document upload UI
   if (isSingle) {
-    return <ClassRequirementUpload reqConfig={reqConfig} classData={classData} onDone={loadData} />;
+    return (
+      <ClassRequirementUpload
+        reqConfig={reqConfig}
+        classData={classData}
+        onDone={loadData}
+        classId={classId}
+        reqPath={reqPath}
+        isAdminOverride={isAdmin}
+        embedded={embedded}
+        onBack={onBack}
+      />
+    );
   }
 
   return (
@@ -435,6 +454,8 @@ export default function ClassRequirementPage() {
       <SharedRequirementHeader
         title={reqConfig.title}
         backTo={isAdmin ? `/admin/class-portfolio/${classId}` : `/instructors/class-portfolio/${classId}`}
+        embedded={embedded}
+        onBack={onBack}
         onAddClick={
           isArchived || isAdmin || isFixedTerm || isCheckedActivities || isClassRecord || isConsultation
             ? null // Admin, archived, or fixed rows: no generic add button

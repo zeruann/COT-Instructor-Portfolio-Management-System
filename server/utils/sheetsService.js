@@ -16,7 +16,7 @@ async function getGoogleClients() {
     throw new Error('Google Sheets API Service Account credentials are missing in Settings or .env.');
   }
 
-  const privateKey = rawPrivateKey.replace(/\\n/g, '\n');
+  const privateKey = rawPrivateKey.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
 
   const sheetsAuth = new google.auth.JWT({
     email: clientEmail,

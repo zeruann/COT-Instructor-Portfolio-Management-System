@@ -187,6 +187,14 @@ function censorEmail(email) {
   return `${visibleStart}${maskedPart}${visibleEnd}${domain}`;
 }
 
+function censorIdentifier(val) {
+  if (!val || typeof val !== "string") return "";
+  const trimmed = val.trim();
+  if (!trimmed) return "";
+  if (trimmed.length <= 10) return "••••••••";
+  return `${trimmed.slice(0, 4)}••••••••••••${trimmed.slice(-4)}`;
+}
+
 function getInitials(name) {
   return (name || "")
     .split(" ")
@@ -1114,7 +1122,7 @@ export default function AdminSettings() {
                                     } else if (field.sensitive) {
                                       displayVal = isRevealed && unmasked ? unmasked : MASK;
                                     } else {
-                                      displayVal = unmasked || val;
+                                      displayVal = censorIdentifier(unmasked || val);
                                     }
                                   }
 

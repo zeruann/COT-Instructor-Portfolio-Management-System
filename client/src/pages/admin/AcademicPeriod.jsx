@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 
 // Set to true to bring back the full set of row actions
-const SHOW_LEGACY_ACTIONS = false;
+const SHOW_LEGACY_ACTIONS = true;
 
 const STATUS_BADGE = {
   Active: {
