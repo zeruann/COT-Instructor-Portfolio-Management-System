@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, ChevronRight, X, Search, BookOpen, AlertCircle, Loader2, MoreVertical, Archive, Edit3 } from 'lucide-react';
+import { Plus, ChevronRight, X, Search, BookOpen, AlertCircle, Loader2, MoreVertical, Archive, Edit3, ChevronUp, ChevronDown } from 'lucide-react';
 import PlaceholderPage from '../../components/layout/PlaceholderPage';
 import ConfirmationModal from '../../components/common/ConfirmationModal';
 import { fetchClasses, createClass, updateClass, archiveClass } from '../../api/classes';
@@ -278,19 +278,19 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
   const isEdit = Boolean(initialData);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl transition-all">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 sm:p-6 backdrop-blur-xs">
+      <div className="relative w-full max-w-2xl rounded-2xl bg-white p-7 sm:p-8 shadow-2xl transition-all">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-brand-orange">
-              <BookOpen size={20} />
+        <div className="flex items-center justify-between border-b border-gray-100 pb-5">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-100 text-brand-orange">
+              <BookOpen size={24} />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-900">
+              <h3 className="text-xl font-bold text-gray-900">
                 {isEdit ? 'Edit Class' : 'Add New Class'}
               </h3>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm text-gray-500 mt-0.5">
                 {isEdit ? 'Update details for this class load' : 'Enter your course, section, and program assignments'}
               </p>
             </div>
@@ -299,25 +299,25 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
           >
-            <X size={18} />
+            <X size={20} />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        <form onSubmit={handleSubmit} className="mt-6 space-y-5">
           {error && (
-            <div className="flex items-start gap-2.5 rounded-xl bg-red-50 p-3.5 text-xs sm:text-sm text-red-600 border border-red-200">
-              <AlertCircle size={17} className="shrink-0 mt-0.5" />
+            <div className="flex items-start gap-2.5 rounded-xl bg-red-50 p-4 text-sm text-red-600 border border-red-200">
+              <AlertCircle size={18} className="shrink-0 mt-0.5" />
               <span className="leading-snug">{error}</span>
             </div>
           )}
 
           {/* Subject Code and Section Code */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold text-gray-700">
+              <label className="block text-sm font-semibold text-gray-700">
                 Subject / Course Code <span className="text-red-500">*</span>
               </label>
               <input
@@ -328,13 +328,13 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
                   setError('');
                   setFormData({ ...formData, subjectCode: e.target.value });
                 }}
-                className="mt-1 w-full rounded-xl border border-gray-300 px-3.5 py-2 text-sm uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+                className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700">
+              <label className="block text-sm font-semibold text-gray-700">
                 Section Code <span className="text-red-500">*</span>
               </label>
               <input
@@ -345,16 +345,16 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
                   setError('');
                   setFormData({ ...formData, sectionCode: e.target.value });
                 }}
-                className="mt-1 w-full rounded-xl border border-gray-300 px-3.5 py-2 text-sm uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+                className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
                 required
               />
-              <span className="mt-1 block text-[11px] text-gray-400">Unique schedule / class code</span>
+              <span className="mt-1.5 block text-xs text-gray-400">Unique schedule / class code</span>
             </div>
           </div>
 
           {/* Subject / Course Description */}
           <div>
-            <label className="block text-xs font-semibold text-gray-700">
+            <label className="block text-sm font-semibold text-gray-700">
               Subject / Course Description <span className="text-red-500">*</span>
             </label>
             <input
@@ -365,15 +365,15 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
                 setError('');
                 setFormData({ ...formData, subjectName: e.target.value });
               }}
-              className="mt-1 w-full rounded-xl border border-gray-300 px-3.5 py-2 text-sm focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+              className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
               required
             />
           </div>
 
           {/* Program, Year Level, and Section Group (Same Row) */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-gray-700">
+              <label className="block text-sm font-semibold text-gray-700">
                 Program <span className="text-red-500">*</span>
               </label>
               <select
@@ -382,7 +382,7 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
                   setError('');
                   setFormData({ ...formData, program: e.target.value });
                 }}
-                className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple cursor-pointer"
+                className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-base font-medium text-gray-700 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple cursor-pointer"
                 required
               >
                 {PROGRAMS.map((prog) => (
@@ -394,7 +394,7 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700">
+              <label className="block text-sm font-semibold text-gray-700">
                 Year Level <span className="text-red-500">*</span>
               </label>
               <select
@@ -403,7 +403,7 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
                   setError('');
                   setFormData({ ...formData, yearLevel: e.target.value });
                 }}
-                className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple cursor-pointer"
+                className="mt-1.5 w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-base font-medium text-gray-700 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple cursor-pointer"
                 required
               >
                 {YEAR_LEVELS.map((yl) => (
@@ -415,7 +415,7 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700">
+              <label className="block text-sm font-semibold text-gray-700">
                 Section Group / Suffix
               </label>
               <input
@@ -427,34 +427,34 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
                   setFormData({ ...formData, sectionGroup: e.target.value });
                 }}
                 maxLength={4}
-                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
+                className="mt-1.5 w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-base uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
               />
             </div>
           </div>
 
           {/* Section Name Live Preview */}
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 pt-0.5">
+          <div className="flex items-center gap-2 text-sm text-gray-500 pt-1">
             <span>Generated Section Name:</span>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-orange-50 border border-orange-200 text-brand-orange font-bold text-xs tracking-wide">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-brand-orange font-bold text-sm tracking-wide">
               {formData.program}-{formData.yearLevel}{formData.sectionGroup.toUpperCase()}
             </span>
           </div>
 
-          <div className="mt-6 flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+          <div className="mt-8 flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition cursor-pointer"
+              className="rounded-xl border border-gray-300 px-5 py-2.5 text-base font-semibold text-gray-600 hover:bg-gray-50 transition cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-brand-orange px-5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-orange-600 transition cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-2 rounded-xl bg-brand-orange px-6 py-2.5 text-base font-semibold text-white shadow-xs hover:bg-orange-600 transition cursor-pointer disabled:opacity-50"
             >
-              {loading && <Loader2 size={16} className="animate-spin" />}
+              {loading && <Loader2 size={18} className="animate-spin" />}
               <span>{loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Class'}</span>
             </button>
           </div>
@@ -481,6 +481,7 @@ function ClassPortfolio() {
 
   const [editingClass, setEditingClass] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
+  const [showStatusCards, setShowStatusCards] = useState(true);
 
   // Close card menu on document click
   useEffect(() => {
@@ -571,76 +572,111 @@ function ClassPortfolio() {
 
   return (
     <div className="space-y-6">
-      <PlaceholderPage title="Class Portfolio" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <PlaceholderPage title="Class Portfolio" />
 
-      {/* TOP SUMMARY STATS ROW */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Needs Action */}
-        <div className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-xs">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#ef4444]" />
-            <span className="text-sm font-medium text-gray-600 sm:text-base">Needs action</span>
-          </div>
-          <div className="mt-3">
-            <span className="text-4xl font-extrabold tracking-tight text-gray-800 sm:text-5xl">
-              {summary.needsAction}
-            </span>
-            <p className="mt-2 text-xs font-normal text-gray-500 sm:text-sm">
-              Resubmission of documents
-            </p>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowStatusCards((prev) => !prev)}
+          aria-expanded={showStatusCards}
+          className={`inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${
+            showStatusCards
+              ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+              : 'bg-brand-orange text-white hover:bg-orange-600 shadow-sm'
+          }`}
+        >
+          {showStatusCards ? (
+            <>
+              <ChevronUp size={16} className="text-gray-500 transition-transform duration-300" />
+              <span>Hide Completion Status</span>
+            </>
+          ) : (
+            <>
+              <ChevronDown size={16} />
+              <span>Show Completion Status</span>
+            </>
+          )}
+        </button>
+      </div>
 
-        {/* Awaiting Review */}
-        <div className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-xs">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#f5a30f]" />
-            <span className="text-sm font-medium text-gray-600 sm:text-base">Awaiting review</span>
-          </div>
-          <div className="mt-3">
-            <span className="text-4xl font-extrabold tracking-tight text-gray-800 sm:text-5xl">
-              {summary.awaitingReview}
-            </span>
-            <p className="mt-2 text-xs font-normal text-gray-500 sm:text-sm">
-              With the administrator
-            </p>
-          </div>
-        </div>
+      {/* TOP SUMMARY STATS COLLAPSIBLE WRAPPER */}
+      <div
+        className={`grid transition-all duration-300 ease-in-out ${
+          showStatusCards
+            ? 'grid-rows-[1fr] opacity-100'
+            : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Needs Action */}
+            <div className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-xs">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#ef4444]" />
+                <span className="text-sm font-medium text-gray-600 sm:text-base">Needs action</span>
+              </div>
+              <div className="mt-3">
+                <span className="text-4xl font-extrabold tracking-tight text-gray-800 sm:text-5xl">
+                  {summary.needsAction}
+                </span>
+                <p className="mt-2 text-xs font-normal text-gray-500 sm:text-sm">
+                  Resubmission of documents
+                </p>
+              </div>
+            </div>
 
-        {/* Approved */}
-        <div className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-xs">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#22c55e]" />
-            <span className="text-sm font-medium text-gray-600 sm:text-base">Approved</span>
-          </div>
-          <div className="mt-3">
-            <span className="text-4xl font-extrabold tracking-tight text-gray-800 sm:text-5xl">
-              {summary.approved}
-            </span>
-            <p className="mt-2 text-xs font-normal text-gray-500 sm:text-sm">
-              Across all your classes
-            </p>
-          </div>
-        </div>
+            {/* Awaiting Review */}
+            <div className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-xs">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#f5a30f]" />
+                <span className="text-sm font-medium text-gray-600 sm:text-base">Awaiting review</span>
+              </div>
+              <div className="mt-3">
+                <span className="text-4xl font-extrabold tracking-tight text-gray-800 sm:text-5xl">
+                  {summary.awaitingReview}
+                </span>
+                <p className="mt-2 text-xs font-normal text-gray-500 sm:text-sm">
+                  With the administrator
+                </p>
+              </div>
+            </div>
 
-        {/* Completion Status */}
-        <div className="flex flex-col justify-between items-center text-center rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-xs">
-          <span className="text-sm font-semibold text-brand-purple sm:text-base">
-            Completion Status
-          </span>
-          <div className="mt-1">
-            <span className="text-4xl font-extrabold tracking-tight text-[#5cab5f] sm:text-5xl">
-              {summary.completion}%
-            </span>
-            <p className="mt-2 text-xs font-normal text-gray-500 sm:text-sm">
-              {summary.completion >= 100
-                ? 'All class portfolios completed!'
-                : summary.completion >= 50
-                  ? 'You are halfway through completing it.'
-                  : summary.completion > 0
-                    ? `${summary.completion}% completed.`
-                    : 'Start submitting class documents.'}
-            </p>
+            {/* Approved */}
+            <div className="flex flex-col justify-between rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-xs">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#22c55e]" />
+                <span className="text-sm font-medium text-gray-600 sm:text-base">Approved</span>
+              </div>
+              <div className="mt-3">
+                <span className="text-4xl font-extrabold tracking-tight text-gray-800 sm:text-5xl">
+                  {summary.approved}
+                </span>
+                <p className="mt-2 text-xs font-normal text-gray-500 sm:text-sm">
+                  Across all your classes
+                </p>
+              </div>
+            </div>
+
+            {/* Completion Status */}
+            <div className="flex flex-col justify-between items-center text-center rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-xs">
+              <span className="text-sm font-semibold text-brand-purple sm:text-base">
+                Completion Status
+              </span>
+              <div className="mt-1">
+                <span className="text-4xl font-extrabold tracking-tight text-[#5cab5f] sm:text-5xl">
+                  {summary.completion}%
+                </span>
+                <p className="mt-2 text-xs font-normal text-gray-500 sm:text-sm">
+                  {summary.completion >= 100
+                    ? 'All class portfolios completed!'
+                    : summary.completion >= 50
+                      ? 'You are halfway through completing it.'
+                      : summary.completion > 0
+                        ? `${summary.completion}% completed.`
+                        : 'Start submitting class documents.'}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

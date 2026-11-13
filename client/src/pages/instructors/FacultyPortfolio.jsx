@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Folder, MoreVertical, MessageSquare, FileText, Eye } from 'lucide-react';
+import { Folder, MoreVertical, MessageSquare, FileText, Eye, ChevronUp, ChevronDown } from 'lucide-react';
 import PlaceholderPage from '../../components/layout/PlaceholderPage';
 import UploadModal from '../../components/documentActions/UploadModal';
 import PreviewModal from '../../components/documentActions/PreviewModal';
@@ -259,6 +259,7 @@ function FacultyPortfolio() {
   const [pdsDoc, setPdsDoc] = useState(null);
   const [pdsOpen, setPdsOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [showOverview, setShowOverview] = useState(true);
 
   // Loads the instructor's PDS from the server
   const loadPds = async () => {
@@ -343,130 +344,165 @@ function FacultyPortfolio() {
 
   return (
     <div className="space-y-5">
-      <PlaceholderPage title="Faculty Portfolio" />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <PlaceholderPage title="Faculty Portfolio" />
 
-      {/* TOP CARDS */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">
-        {/* Left Column: Faculty Profile Summary Card */}
-        <section className="@container min-w-0">
-          <div className="flex h-full min-w-0 flex-col gap-6 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 @xl:flex-row @xl:items-start">
-            {/* Avatar and Basic Role */}
-            <div className="flex w-full shrink-0 flex-col items-center text-center @xl:w-44">
-              <div className="mb-3 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-amber-300 sm:h-28 sm:w-28">
-                {profile.photoUrl ? (
-                  <img src={profile.photoUrl} alt={fullName} className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-3xl font-bold text-amber-800">
-                    {fullName
-                      .split(' ')
-                      .map((n) => n[0])
-                      .join('')
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </span>
-                )}
+        <button
+          type="button"
+          onClick={() => setShowOverview((prev) => !prev)}
+          aria-expanded={showOverview}
+          className={`inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${
+            showOverview
+              ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+              : 'bg-brand-orange text-white hover:bg-orange-600 shadow-sm'
+          }`}
+        >
+          {showOverview ? (
+            <>
+              <ChevronUp size={16} className="text-gray-500 transition-transform duration-300" />
+              <span>Hide Profile & Status</span>
+            </>
+          ) : (
+            <>
+              <ChevronDown size={16} />
+              <span>Show Profile & Status</span>
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* TOP CARDS COLLAPSIBLE WRAPPER */}
+      <div
+        className={`grid transition-all duration-300 ease-in-out ${
+          showOverview
+            ? 'grid-rows-[1fr] opacity-100'
+            : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">
+            {/* Left Column: Faculty Profile Summary Card */}
+            <section className="@container min-w-0">
+              <div className="flex h-full min-w-0 flex-col gap-6 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 @xl:flex-row @xl:items-start">
+                {/* Avatar and Basic Role */}
+                <div className="flex w-full shrink-0 flex-col items-center text-center @xl:w-44">
+                  <div className="mb-3 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-amber-300 sm:h-28 sm:w-28">
+                    {profile.photoUrl ? (
+                      <img src={profile.photoUrl} alt={fullName} className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-3xl font-bold text-amber-800">
+                        {fullName
+                          .split(' ')
+                          .map((n) => n[0])
+                          .join('')
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <h2 className="text-base font-semibold text-gray-900 sm:text-lg">{fullName}</h2>
+                  <p className="text-xs text-gray-500 sm:text-sm">{department}</p>
+                  <p className="text-xs text-gray-500 sm:text-sm">{position}</p>
+                </div>
+
+                {/* Profile Details (divided) */}
+                <div className="flex min-w-0 flex-1 flex-col justify-between self-stretch border-t border-gray-100 pt-4 @xl:border-t-0 @xl:border-l @xl:border-gray-200 @xl:pl-6 @xl:pt-0">
+                  <div>
+                    <InfoRow label="Email">{email}</InfoRow>
+                    <InfoRow label="Phone">{phone}</InfoRow>
+                    <InfoRow label="Address">{address}</InfoRow>
+                  </div>
+
+                  {/* Educational Attainment block */}
+                  <div className="mt-4 border-t border-gray-200 pt-3">
+                    <span className="block text-xs font-semibold uppercase tracking-wider text-gray-400">
+                      Educational Attainment
+                    </span>
+                    {educationList.length > 0 ? (
+                      <ul className="mt-2 divide-y divide-gray-100 text-sm">
+                        {educationList.map((item, idx) => (
+                          <li key={idx} className="py-2.5 first:pt-1 last:pb-0">
+                            <div className="flex items-baseline justify-between gap-2">
+                              <span className="font-semibold text-gray-900">{item.degree || 'Degree'}</span>
+                              <span className="text-xs text-gray-400">{item.year || ''}</span>
+                            </div>
+                            <div className="text-xs text-gray-500">{item.institution || ''}</div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="py-2.5 text-sm italic text-gray-400">No education details recorded yet.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Actions: Edit Profile & PDS */}
+                <div className="flex w-full shrink-0 flex-col justify-start gap-2.5 border-t border-gray-100 pt-4 sm:flex-row @xl:w-36 @xl:flex-col @xl:border-t-0 @xl:pt-0">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/instructors/profile')}
+                    className="w-full cursor-pointer rounded-lg bg-brand-orange px-4 py-2 text-center text-xs font-semibold text-white transition hover:bg-orange-600 sm:text-sm"
+                  >
+                    Edit Profile
+                  </button>
+                  {pdsDoc && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewOpen(true)}
+                      className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-center text-xs font-semibold text-brand-purple shadow-xs transition hover:bg-purple-100 sm:text-sm"
+                    >
+                      <Eye size={14} />
+                      View PDS
+                    </button>
+                  )}
+                  {/* PDS button: "Upload PDS" when none, "Replace PDS" after. Always enabled, so the
+                      instructor can reupload at any time (the server keeps the old file as a version). */}
+                  <button
+                    type="button"
+                    onClick={() => setPdsOpen(true)}
+                    className="w-full cursor-pointer rounded-lg bg-brand-purple px-4 py-2 text-center text-xs font-semibold text-white transition hover:bg-[#494673] sm:text-sm"
+                  >
+                    {pdsDoc ? 'Replace PDS' : 'Upload PDS'}
+                  </button>
+                </div>
               </div>
-              <h2 className="text-base font-semibold text-gray-900 sm:text-lg">{fullName}</h2>
-              <p className="text-xs text-gray-500 sm:text-sm">{department}</p>
-              <p className="text-xs text-gray-500 sm:text-sm">{position}</p>
-            </div>
+            </section>
 
-            {/* Profile Details (divided) */}
-            <div className="flex min-w-0 flex-1 flex-col justify-between self-stretch border-t border-gray-100 pt-4 @xl:border-t-0 @xl:border-l @xl:border-gray-200 @xl:pl-6 @xl:pt-0">
-              <div>
-                <InfoRow label="Email">{email}</InfoRow>
-                <InfoRow label="Phone">{phone}</InfoRow>
-                <InfoRow label="Address">{address}</InfoRow>
-              </div>
+            {/* Right Column: Completion Status Progress Card matching ReviewFacultyPortfolio */}
+            <section className="@container min-w-0">
+              <div className="flex h-full min-w-0 flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
+                <h2 className="text-lg font-medium text-brand-purple sm:text-2xl">Completion Status</h2>
 
-              {/* Educational Attainment block */}
-              <div className="mt-4 border-t border-gray-200 pt-3">
-                <span className="block text-xs font-semibold uppercase tracking-wider text-gray-400">
-                  Educational Attainment
-                </span>
-                {educationList.length > 0 ? (
-                  <ul className="mt-2 divide-y divide-gray-100 text-sm">
-                    {educationList.map((item, idx) => (
-                      <li key={idx} className="py-2.5 first:pt-1 last:pb-0">
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="font-semibold text-gray-900">{item.degree || 'Degree'}</span>
-                          <span className="text-xs text-gray-400">{item.year || ''}</span>
-                        </div>
-                        <div className="text-xs text-gray-500">{item.institution || ''}</div>
+                <div className="flex flex-1 flex-col gap-5 @md:flex-row @md:items-center">
+                  <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+                    <p className="text-5xl font-extrabold leading-none text-[#6aaa64] sm:text-6xl @md:text-7xl">
+                      {completionPercent}%
+                    </p>
+                    <p className="mt-4 text-sm leading-snug text-gray-400">{completionMessage}</p>
+                  </div>
+
+                  <ul className="w-full shrink-0 divide-y divide-gray-100 border-t border-gray-200 pt-2 @md:flex @md:w-56 @md:flex-col @md:justify-center @md:self-stretch @md:border-l @md:border-t-0 @md:pl-6 @md:pt-0">
+                    {legend.map((item) => (
+                      <li
+                        key={item.label}
+                        className="flex items-center justify-between gap-3 py-2.5 text-sm text-gray-500"
+                      >
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <span
+                            className="h-3 w-3 shrink-0 rounded-full"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span className="truncate">{item.label}</span>
+                        </span>
+                        <span className="font-semibold tabular-nums text-gray-800">{item.value ?? '—'}</span>
                       </li>
                     ))}
                   </ul>
-                ) : (
-                  <p className="py-2.5 text-sm italic text-gray-400">No education details recorded yet.</p>
-                )}
+                </div>
               </div>
-            </div>
-
-            {/* Actions: Edit Profile & PDS */}
-            <div className="flex w-full shrink-0 flex-col justify-start gap-2.5 border-t border-gray-100 pt-4 sm:flex-row @xl:w-36 @xl:flex-col @xl:border-t-0 @xl:pt-0">
-              <button
-                type="button"
-                onClick={() => navigate('/instructors/profile')}
-                className="w-full cursor-pointer rounded-lg bg-brand-orange px-4 py-2 text-center text-xs font-semibold text-white transition hover:bg-orange-600 sm:text-sm"
-              >
-                Edit Profile
-              </button>
-              {pdsDoc && (
-                <button
-                  type="button"
-                  onClick={() => setPreviewOpen(true)}
-                  className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-center text-xs font-semibold text-brand-purple shadow-xs transition hover:bg-purple-100 sm:text-sm"
-                >
-                  <Eye size={14} />
-                  View PDS
-                </button>
-              )}
-              {/* PDS button: "Upload PDS" when none, "Replace PDS" after. Always enabled, so the
-                  instructor can reupload at any time (the server keeps the old file as a version). */}
-              <button
-                type="button"
-                onClick={() => setPdsOpen(true)}
-                className="w-full cursor-pointer rounded-lg bg-brand-purple px-4 py-2 text-center text-xs font-semibold text-white transition hover:bg-[#494673] sm:text-sm"
-              >
-                {pdsDoc ? 'Replace PDS' : 'Upload PDS'}
-              </button>
-            </div>
+            </section>
           </div>
-        </section>
-
-        {/* Right Column: Completion Status Progress Card matching ReviewFacultyPortfolio */}
-        <section className="@container min-w-0">
-          <div className="flex h-full min-w-0 flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
-            <h2 className="text-lg font-medium text-brand-purple sm:text-2xl">Completion Status</h2>
-
-            <div className="flex flex-1 flex-col gap-5 @md:flex-row @md:items-center">
-              <div className="flex min-w-0 flex-1 flex-col items-center text-center">
-                <p className="text-5xl font-extrabold leading-none text-[#6aaa64] sm:text-6xl @md:text-7xl">
-                  {completionPercent}%
-                </p>
-                <p className="mt-4 text-sm leading-snug text-gray-400">{completionMessage}</p>
-              </div>
-
-              <ul className="w-full shrink-0 divide-y divide-gray-100 border-t border-gray-200 pt-2 @md:flex @md:w-56 @md:flex-col @md:justify-center @md:self-stretch @md:border-l @md:border-t-0 @md:pl-6 @md:pt-0">
-                {legend.map((item) => (
-                  <li
-                    key={item.label}
-                    className="flex items-center justify-between gap-3 py-2.5 text-sm text-gray-500"
-                  >
-                    <span className="flex min-w-0 items-center gap-2.5">
-                      <span
-                        className="h-3 w-3 shrink-0 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="truncate">{item.label}</span>
-                    </span>
-                    <span className="font-semibold tabular-nums text-gray-800">{item.value ?? '—'}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
+        </div>
       </div>
 
       {/* BOTTOM CARDS */}

@@ -107,14 +107,46 @@ function Dashboard() {
   useEffect(() => { loadDashboard(); }, []);
 
   const periods = useMemo(() => {
+    const semesterOrder = {
+      Summer: 3,
+      '2nd': 2,
+      '1st': 1,
+    };
+
+    const parseSchoolYearStart = (sy) => {
+      if (!sy) return 0;
+      const match = String(sy).match(/^(\d{4})/);
+      return match ? parseInt(match[1], 10) : 0;
+    };
+
     const unique = new Map();
     classes.forEach((item) => {
       const period = item.academicPeriod;
       if (!period) return;
       const id = period._id || `${period.schoolYear}-${period.semester}`;
-      unique.set(id, { id, label: periodName(item), current: period.isCurrent });
+      unique.set(id, {
+        id,
+        label: periodName(item),
+        current: period.isCurrent,
+        schoolYear: period.schoolYear,
+        semester: period.semester,
+        syStart: parseSchoolYearStart(period.schoolYear),
+        semRank: semesterOrder[period.semester] || 0,
+      });
     });
-    return [...unique.values()].sort((a, b) => Number(b.current) - Number(a.current));
+
+    return [...unique.values()].sort((a, b) => {
+      // Sort strictly descending by school year start
+      if (b.syStart !== a.syStart) {
+        return b.syStart - a.syStart;
+      }
+      // If same school year, sort descending by semester (Summer > 2nd > 1st)
+      if (b.semRank !== a.semRank) {
+        return b.semRank - a.semRank;
+      }
+      // Fallback
+      return String(b.label).localeCompare(String(a.label));
+    });
   }, [classes]);
 
   const visibleClasses = useMemo(() => selectedPeriod === 'all'
