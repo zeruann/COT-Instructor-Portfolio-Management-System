@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import AppModal, { useAppModal } from "../../components/common/AppModal";
 
 // ---------- helpers ----------
 const show = (value) =>
@@ -71,6 +72,7 @@ function AdminInstructorProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const { modal, close: closeModal, notify, confirm: showConfirm } = useAppModal();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -118,37 +120,45 @@ function AdminInstructorProfile() {
   }, [id]);
 
   // Handle Deactivate / Reactivate status toggle
-  const handleToggleStatus = async () => {
+  const handleToggleStatus = () => {
     if (!instructor) return;
     const isActive = (instructor.accountStatus || "").toLowerCase() === "active";
     const newStatus = isActive ? "Deactivated" : "Active";
     const verb = isActive ? "deactivate" : "reactivate";
-
     const name = displayName;
-    if (!confirm(`Are you sure you want to ${verb} ${name}?`)) return;
 
-    try {
-      setUpdatingStatus(true);
-      const token = localStorage.getItem("token");
-      const res = await fetch(`/api/instructors/${id}/status`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ accountStatus: newStatus }),
-      });
-      if (!res.ok) throw new Error(`Failed to ${verb} instructor.`);
-      const updated = await res.json();
-      setInstructor((prev) => ({
-        ...prev,
-        accountStatus: updated.accountStatus ?? newStatus,
-      }));
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setUpdatingStatus(false);
-    }
+    showConfirm({
+      title: `${isActive ? 'Deactivate' : 'Reactivate'} Instructor?`,
+      message: `Are you sure you want to ${verb} ${name}?`,
+      confirmLabel: isActive ? 'Deactivate' : 'Reactivate',
+      cancelLabel: 'Cancel',
+      tone: isActive ? 'warning' : 'info',
+      onConfirm: async () => {
+        try {
+          setUpdatingStatus(true);
+          const token = localStorage.getItem("token");
+          const res = await fetch(`/api/instructors/${id}/status`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ accountStatus: newStatus }),
+          });
+          if (!res.ok) throw new Error(`Failed to ${verb} instructor.`);
+          const updated = await res.json();
+          setInstructor((prev) => ({
+            ...prev,
+            accountStatus: updated.accountStatus ?? newStatus,
+          }));
+          notify('success', 'Status Updated', `Instructor account has been ${verb}d successfully.`);
+        } catch (err) {
+          notify('error', 'Update Failed', err.message);
+        } finally {
+          setUpdatingStatus(false);
+        }
+      },
+    });
   };
 
   if (loading) {
@@ -341,6 +351,8 @@ function AdminInstructorProfile() {
           <Info label="Password" value="••••••••" />
         </div>
       </Section>
+
+      <AppModal modal={modal} onClose={closeModal} />
     </div>
   );
 }

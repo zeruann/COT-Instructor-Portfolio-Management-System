@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Archive, ChevronRight, Search, X, Loader2, RotateCcw, BookOpen } from 'lucide-react';
 import PlaceholderPage from '../../components/layout/PlaceholderPage';
 import ConfirmationModal from '../../components/common/ConfirmationModal';
+import AppModal, { useAppModal } from '../../components/common/AppModal';
 import { fetchClasses, unarchiveClass } from '../../api/classes';
 
 function ArchivedClassCard({ classItem, onOpen, onUnarchive }) {
@@ -131,6 +132,7 @@ function InstructorArchive() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [confirmModal, setConfirmModal] = useState({ open: false, classId: null, loading: false });
+  const { modal, close: closeModal, notify } = useAppModal();
 
   const loadArchivedClasses = async () => {
     try {
@@ -161,10 +163,11 @@ function InstructorArchive() {
       await unarchiveClass(confirmModal.classId);
       await loadArchivedClasses();
       setConfirmModal({ open: false, classId: null, loading: false });
+      notify('success', 'Class Restored', 'The class portfolio has been restored back to your active classes.');
     } catch (err) {
       console.error('Error unarchiving class:', err);
-      alert(err.response?.data?.message || 'Failed to restore class.');
-      setConfirmModal((prev) => ({ ...prev, loading: false }));
+      setConfirmModal({ open: false, classId: null, loading: false });
+      notify('error', 'Restore Failed', err.response?.data?.message || 'Failed to restore class.');
     }
   };
 
@@ -263,6 +266,8 @@ function InstructorArchive() {
         onConfirm={handleConfirmRestore}
         onCancel={() => !confirmModal.loading && setConfirmModal({ open: false, classId: null, loading: false })}
       />
+
+      <AppModal modal={modal} onClose={closeModal} />
     </div>
   );
 }

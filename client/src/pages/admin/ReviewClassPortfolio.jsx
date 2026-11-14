@@ -7,6 +7,7 @@ import {
   BookOpen,
   Calendar,
   Users,
+  ChevronLeft,
   ChevronRight,
   Loader2,
   Folder,
@@ -26,6 +27,13 @@ export default function ReviewClassPortfolio() {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [viewBy, setViewBy] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, departmentFilter, viewBy]);
 
   // Load instructor list
   useEffect(() => {
@@ -134,6 +142,12 @@ export default function ReviewClassPortfolio() {
 
   const instructorGridClass =
     'grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-4 sm:gap-6';
+
+  const totalPages = Math.ceil(filteredInstructors.length / pageSize) || 1;
+  const paginatedInstructors = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredInstructors.slice(start, start + pageSize);
+  }, [filteredInstructors, currentPage, pageSize]);
 
   // ================= VIEW 2: INSTRUCTOR'S CLASSES =================
   if (selectedInstructor) {
@@ -348,7 +362,7 @@ export default function ReviewClassPortfolio() {
         </div>
       ) : (
         <div className={instructorGridClass}>
-          {filteredInstructors.map((inst) => {
+          {paginatedInstructors.map((inst) => {
             const id = inst._id || inst.id;
             const name = getDisplayName(inst) || 'Instructor';
             const rank =
@@ -411,6 +425,56 @@ export default function ReviewClassPortfolio() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination Footer */}
+      {!loadingInstructors && filteredInstructors.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gray-100 text-[13px] text-gray-500">
+          <span>
+            Showing {(currentPage - 1) * pageSize + 1}–
+            {Math.min(currentPage * pageSize, filteredInstructors.length)} of{' '}
+            {filteredInstructors.length} instructors
+          </span>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                aria-label="Previous page"
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4 inline" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setCurrentPage(p)}
+                  className={`w-8 h-8 rounded-lg text-xs font-medium border transition cursor-pointer ${
+                    p === currentPage
+                      ? 'bg-orange-500 text-white border-orange-500'
+                      : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="Next page"
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4 inline" />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

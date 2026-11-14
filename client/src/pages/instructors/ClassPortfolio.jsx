@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, ChevronRight, X, Search, BookOpen, AlertCircle, Loader2, MoreVertical, Archive, Edit3, ChevronUp, ChevronDown } from 'lucide-react';
 import PlaceholderPage from '../../components/layout/PlaceholderPage';
 import ConfirmationModal from '../../components/common/ConfirmationModal';
+import AppModal, { useAppModal } from '../../components/common/AppModal';
 import { fetchClasses, createClass, updateClass, archiveClass } from '../../api/classes';
 
 function ClassCard({ classItem, onOpen, onArchive, onEdit, menuOpen, onToggleMenu, onCloseMenu }) {
@@ -478,6 +479,7 @@ function ClassPortfolio() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [archiveModal, setArchiveModal] = useState({ open: false, classId: null, loading: false });
+  const { modal, close: closeModal, notify } = useAppModal();
 
   const [editingClass, setEditingClass] = useState(null);
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -533,7 +535,7 @@ function ClassPortfolio() {
       if (setModalError) {
         setModalError(msg);
       } else {
-        alert(msg);
+        notify('error', 'Error Saving Class', msg);
       }
     } finally {
       setIsSubmitting(false);
@@ -551,10 +553,11 @@ function ClassPortfolio() {
       await archiveClass(archiveModal.classId);
       await loadClasses();
       setArchiveModal({ open: false, classId: null, loading: false });
+      notify('success', 'Class Archived', 'The class has been moved to Archive successfully.');
     } catch (err) {
       console.error('Error archiving class:', err);
-      alert(err.response?.data?.message || 'Failed to archive class.');
-      setArchiveModal((prev) => ({ ...prev, loading: false }));
+      setArchiveModal({ open: false, classId: null, loading: false });
+      notify('error', 'Archive Failed', err.response?.data?.message || 'Failed to archive class.');
     }
   };
 
@@ -787,6 +790,8 @@ function ClassPortfolio() {
         onConfirm={handleConfirmArchive}
         onCancel={() => !archiveModal.loading && setArchiveModal({ open: false, classId: null, loading: false })}
       />
+
+      <AppModal modal={modal} onClose={closeModal} />
     </div>
   );
 }

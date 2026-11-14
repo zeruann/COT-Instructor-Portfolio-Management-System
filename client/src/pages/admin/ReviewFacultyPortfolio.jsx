@@ -31,20 +31,20 @@ const requirementCards = [
     title: 'Service Records',
     description: 'Upload your service records.',
     path: 'service-records',
-    accent: '#f0a93b',
+    accent: '#6aaa64',
   },
   {
     title: 'Seminars and Workshops',
     description:
       'List of seminars and workshops with certificates, from August 2019 to present. Add new ones as you attend.',
     path: 'seminars-and-workshops',
-    accent: '#4b4687',
+    accent: '#6aaa64',
   },
   {
     title: 'Achievements',
     description: 'Grants, Awards, Certification of Commendation.',
     path: 'achievements',
-    accent: '#ef6c35',
+    accent: '#6aaa64',
   },
   {
     title: 'Research',
