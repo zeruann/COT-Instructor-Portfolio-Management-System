@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, ChevronRight, ChevronLeft, Menu } from 'lucide-react';
+import { Bell, Menu } from 'lucide-react';
 import { NAV } from '../../config/navigation';
 import UserBadge from './UserBadge';
 import ProfileMenu from './ProfileMenu';
@@ -64,7 +64,7 @@ function TopBar({
           <Menu size={24} />
         </button>
 
-        {/* Chevron collapse toggle button placed between sidebar and header content on desktop */}
+        {/* Sidebar collapse/expand hamburger button on desktop */}
         <button
           type="button"
           onClick={onToggleCollapse}
@@ -72,7 +72,7 @@ function TopBar({
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           className="hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-gray-50/80 text-gray-500 hover:bg-orange-50 hover:text-brand-orange hover:border-orange-200 transition-all cursor-pointer shadow-2xs mr-1"
         >
-          {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          <Menu size={18} />
         </button>
 
         <div>
