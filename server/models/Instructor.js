@@ -20,29 +20,30 @@ const instructorSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, default: null },
   googleId: { type: String },
+  googlePhotoUrl: { type: String },
 
   // profile fields (add or rename to match your setup form)
   department: { type: String },
 
   profile: {
-  firstName: { type: String, trim: true },
-  middleName: { type: String, trim: true },
-  lastName: { type: String, trim: true },
-  gender: { type: String, enum: ['Male', 'Female', 'Prefer not to say', ''] },
-  civilStatus: { type: String, enum: ['Single', 'Married', 'Widowed', 'Separated', ''] },
-  birthdate: Date,
+    firstName: { type: String, trim: true },
+    middleName: { type: String, trim: true },
+    lastName: { type: String, trim: true },
+    gender: { type: String, enum: ['Male', 'Female', 'Prefer not to say', ''] },
+    civilStatus: { type: String, enum: ['Single', 'Married', 'Widowed', 'Separated', ''] },
+    birthdate: Date,
 
-  contactNumber: { type: String, trim: true },
-  alternateEmail: { type: String, trim: true, lowercase: true },
-  address: { type: String, trim: true },
+    contactNumber: { type: String, trim: true },
+    alternateEmail: { type: String, trim: true, lowercase: true },
+    address: { type: String, trim: true },
 
-  education: [educationSchema],
+    education: [educationSchema],
 
-  position: { type: String, trim: true },
-  rank: { type: String, enum: [...RANKS, ''] },
+    position: { type: String, trim: true },
+    rank: { type: String, enum: [...RANKS, ''] },
 
-  photoUrl: String,
-},
+    photoUrl: String,
+  },
 
   accountType: {
     type: String,
@@ -75,6 +76,10 @@ const instructorSchema = new mongoose.Schema({
 
   resetPasswordToken: String,
   resetPasswordExpires: Date,
+  resetPasswordOtp: String,
+  resetPasswordOtpExpires: Date,
+  apiSettingsOtp: String,
+  apiSettingsOtpExpires: Date,
   createdAt: { type: Date, default: Date.now },
 });
 

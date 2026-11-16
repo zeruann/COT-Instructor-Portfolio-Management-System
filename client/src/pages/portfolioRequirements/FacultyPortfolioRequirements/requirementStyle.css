@@ -1,0 +1,252 @@
+/* Reusable styles for RequiredDocumentsTable.
+   Plain CSS (no Tailwind @apply) so it works on any Tailwind version.
+   --color-brand-purple is used if your theme defines it, otherwise the fallback. */
+
+.doc-table-card {
+  --doc-purple: var(--color-brand-purple, #4a3f8f);
+  --doc-orange: #f56a14;
+  --doc-green: #5cab5f;
+  --doc-amber: #f5a30f;
+  --doc-red: #e5332d;
+  --doc-line: #e4e4ea;
+  --doc-muted: #9a9aa6;
+  --doc-ink: #3d3d4a;
+
+  overflow: hidden;
+  padding-bottom: 28px;
+  background: #fff;
+  border: 1px solid var(--doc-line);
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(40, 30, 90, 0.06);
+}
+
+.doc-table-scroll {
+  overflow-x: auto;
+}
+
+.doc-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+}
+
+/* ---------- header ---------- */
+.doc-table th {
+  padding: 18px 28px;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--doc-purple);
+  border-bottom: 1px solid var(--doc-line);
+}
+.doc-table__col-type {
+  width: 52%;
+}
+.doc-table__col-status {
+  width: 20%;
+}
+.doc-table__col-action {
+  width: 28%;
+}
+.doc-table th.doc-table__status,
+.doc-table td.doc-table__status {
+  text-align: center;
+}
+
+/* ---------- rows ---------- */
+.doc-table td {
+  padding: 12px 28px;
+  vertical-align: middle;
+  border-bottom: 2px solid var(--doc-line);
+}
+
+.doc-table__type {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.doc-table__icon {
+  flex: none;
+  color: var(--doc-purple);
+}
+
+.doc-table__name-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.doc-table__name {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--doc-purple);
+}
+.doc-table__required {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--doc-red);
+}
+.doc-table__hint {
+  margin: 2px 0 0;
+  font-size: 10px;
+  color: var(--doc-muted);
+}
+
+/* ---------- status pill ---------- */
+.doc-status {
+  display: inline-block;
+  min-width: 96px;
+  padding: 6px 20px;
+  border-radius: 999px;
+  font-size: 13px;
+  text-align: center;
+}
+.doc-status--completed {
+  background: #e3f1e4;
+  color: var(--doc-green);
+}
+.doc-status--pending {
+  background: #fdf1cf;
+  color: var(--doc-amber);
+}
+.doc-status--rejected {
+  background: #fde4dc;
+  color: var(--doc-red);
+}
+
+/* ---------- action buttons ---------- */
+.doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--doc-ink);
+  border-radius: 4px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  color: var(--doc-ink);
+  cursor: pointer;
+}
+.doc-btn:hover {
+  filter: brightness(0.96);
+}
+.doc-btn:focus-visible {
+  outline: 3px solid var(--doc-purple);
+  outline-offset: 2px;
+}
+.doc-btn--view {
+  border-color: var(--doc-purple);
+  color: var(--doc-purple);
+}
+.doc-btn--upload {
+  border-color: var(--doc-orange);
+  background: #fff6ee;
+  color: var(--doc-orange);
+}
+
+/* Disabled action buttons: gray, with the red "not allowed" cursor on hover */
+button.doc-btn:disabled {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  color: #9ca3af; /* the icons use currentColor, so they turn gray too */
+  box-shadow: none;
+  cursor: not-allowed; /* fallback: the browser's own circle-with-slash cursor */
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23dc2626' stroke-width='2.5' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M5.6 5.6l12.8 12.8'/%3E%3C/svg%3E")
+      12 12,
+    not-allowed;
+}
+
+/* ---------- empty state ---------- */
+.doc-table__empty {
+  padding: 40px 28px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--doc-muted);
+}
+
+@media (max-width: 600px) {
+  .doc-table th,
+  .doc-table td {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+/* Phones: stack the action buttons vertically */
+@media (max-width: 640px) {
+  .doc-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .doc-actions .doc-btn {
+    width: 100%;
+    justify-content: center; /* centers the icon + label */
+  }
+}
+
+.doc-btn--review {
+  border: none !important;
+  outline: none !important;
+  background: #f97316;
+  color: #ffffff !important;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.doc-btn--review:hover:not(:disabled) {
+  background: #ea580c;
+  color: #ffffff !important;
+  box-shadow: 0 3px 6px -1px rgba(234, 88, 12, 0.35), 0 2px 4px -2px rgba(234, 88, 12, 0.2);
+  transform: translateY(-1px);
+}
+
+.doc-btn--review:active:not(:disabled) {
+  transform: translateY(0);
+  background: #c2410c;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+button.doc-btn--review:disabled {
+  background: #e5e7eb !important;
+  border: none !important;
+  color: #9ca3af !important;
+  box-shadow: none !important;
+  transform: none !important;
+  cursor: not-allowed;
+}
+
+/* Badge shown in Action column when document has already been reviewed (Approved / Rejected) */
+.doc-badge--reviewed {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  line-height: 1.25;
+  white-space: nowrap;
+}

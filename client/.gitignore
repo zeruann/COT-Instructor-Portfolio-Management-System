@@ -23,5 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 
-node_modules
+# Environment variables (secrets)
 .env
+.env.*
+!.env.example
