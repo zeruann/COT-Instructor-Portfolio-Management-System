@@ -103,14 +103,12 @@ export function useRequirementDocuments({ requirementKey }) {
   }, []);
 
   const handleDelete = async (docId) => {
-    if (!window.confirm('Are you sure you want to delete this document entry?')) {
-      return;
-    }
     try {
       await apiDeleteDocument(docId);
       setDocuments((prev) => prev.filter((d) => d._id !== docId));
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete document.');
+      console.error('Failed to delete document:', err);
+      throw err;
     }
   };
 

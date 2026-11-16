@@ -8,6 +8,7 @@ import UploadModal from '../../../components/documentActions/UploadModal';
 import PreviewModal from '../../../components/documentActions/PreviewModal';
 import { fetchDocuments, deleteDocument } from '../../../api/documents';
 import { Eye, RefreshCw, Upload, CheckSquare, Trash2 } from 'lucide-react';
+import AppModal, { useAppModal } from '../../../components/common/AppModal';
 
 import './requirementStyle.css';
 import './listEntries.css';
@@ -38,6 +39,7 @@ export default function EducationalAttainment() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState(null);
+  const { modal, close: closeModal, notify, confirm: showConfirm } = useAppModal();
 
   const loadRecords = async () => {
     try {
@@ -111,18 +113,24 @@ export default function EducationalAttainment() {
     setPreviewOpen(true);
   };
 
-  const handleDelete = async (doc) => {
+  const handleDelete = (doc) => {
     if (!doc) return;
     const name = doc.versions?.[0]?.originalName || 'this file';
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) {
-      return;
-    }
-    try {
-      await deleteDocument(doc._id);
-      loadRecords();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete document.');
-    }
+    showConfirm({
+      title: 'Delete Document?',
+      message: `Are you sure you want to delete "${name}"? This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      onConfirm: async () => {
+        try {
+          await deleteDocument(doc._id);
+          loadRecords();
+          notify('success', 'Document Deleted', 'The document has been removed successfully.');
+        } catch (err) {
+          notify('error', 'Delete Failed', err.response?.data?.message || 'Failed to delete document.');
+        }
+      },
+    });
   };
   return (
     <div className="space-y-5">
@@ -192,16 +200,23 @@ export default function EducationalAttainment() {
                   <td>
                     <div className="doc-actions flex items-center gap-2">
                       {isAdmin ? (
-                        <button
-                          type="button"
-                          className="doc-btn doc-btn--review"
-                          disabled={!row.hasRecord}
-                          title={row.hasRecord ? 'Review document' : 'No document submitted yet'}
-                          onClick={() => openPreview(row.attachedDoc)}
-                        >
-                          <CheckSquare className="w-4 h-4" />
-                          Review
-                        </button>
+                        row.status === 'approved' || row.status === 'rejected' ? (
+                          <span className="doc-badge--reviewed">
+                            <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
+                            Reviewed
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            className="doc-btn doc-btn--review"
+                            disabled={!row.hasRecord}
+                            title={row.hasRecord ? 'Review document' : 'No document submitted yet'}
+                            onClick={() => openPreview(row.attachedDoc)}
+                          >
+                            <CheckSquare className="w-4 h-4" />
+                            Review
+                          </button>
+                        )
                       ) : (
                         <>
                           <button
@@ -288,6 +303,8 @@ export default function EducationalAttainment() {
           if (slot) openUpload(slot);
         }}
       />
+
+      <AppModal modal={modal} onClose={closeModal} />
     </div>
   );
 }

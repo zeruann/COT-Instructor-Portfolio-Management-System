@@ -287,10 +287,10 @@ export default function InstructorActivityLogs() {
     <>
       {/* PAGE HEADER */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">System & Activity Logs</h1>
-        </div>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-2xl font-medium tracking-tight text-brand-purple">
+          System & Activity Logs
+        </h1>
+        <p className="mt-1 text-sm text-brand-gray">
           Track and review all account operations and document management activities.
         </p>
       </div>

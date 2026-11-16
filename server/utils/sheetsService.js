@@ -9,22 +9,18 @@ const { getSettingOrEnv } = require('../controllers/settingController');
  * and the system's Drive OAuth2 storage client.
  */
 async function getGoogleClients() {
-  const projectId = await getSettingOrEnv('googleSheetsProjectId', 'GOOGLE_SHEETS_PROJECT_ID');
   const clientEmail = await getSettingOrEnv('googleSheetsClientEmail', 'GOOGLE_SHEETS_CLIENT_EMAIL');
-  const sheetsClientId = await getSettingOrEnv('googleSheetsClientId', 'GOOGLE_SHEETS_CLIENT_ID');
-  const privateKeyId = await getSettingOrEnv('googleSheetsPrivateKeyId', 'GOOGLE_SHEETS_PRIVATE_KEY_ID');
   const rawPrivateKey = await getSettingOrEnv('googleSheetsPrivateKey', 'GOOGLE_SHEETS_PRIVATE_KEY');
 
   if (!clientEmail || !rawPrivateKey) {
     throw new Error('Google Sheets API Service Account credentials are missing in Settings or .env.');
   }
 
-  const privateKey = rawPrivateKey.replace(/\\n/g, '\n');
+  const privateKey = rawPrivateKey.trim().replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
 
   const sheetsAuth = new google.auth.JWT({
     email: clientEmail,
     key: privateKey,
-    keyId: privateKeyId || undefined,
     scopes: [
       'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/drive',

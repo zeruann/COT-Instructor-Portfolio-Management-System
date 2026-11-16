@@ -39,6 +39,8 @@ import ReviewFacultyPortfolio from "./pages/admin/ReviewFacultyPortfolio";
 import ReviewClassPortfolio from "./pages/admin/ReviewClassPortfolio";
 import AdminViewClassPortfolio from "./pages/admin/AdminViewClassPortfolio";
 import AdminArchive from "./pages/admin/AdminArchive";
+import AdminArchiveRecords from "./pages/admin/AdminArchiveRecords";
+import AdminArchiveRecordDetail from "./pages/admin/AdminArchiveRecordDetail";
 import AcademicPeriod from "./pages/admin/AcademicPeriod";
 import AdminNotifications from "./pages/admin/AdminNotifications";
 import AdminProfile from "./pages/admin/AdminProfile";
@@ -148,6 +150,8 @@ function App() {
 
             <Route path="/admin/reports" element={<AdminReports />} />
             <Route path="/admin/archive" element={<AdminArchive />} />
+            <Route path="/admin/archive-records" element={<AdminArchiveRecords />} />
+            <Route path="/admin/archive-records/:periodId" element={<AdminArchiveRecordDetail />} />
             <Route path="/admin/academic-period" element={<AcademicPeriod />} />
             <Route path="/admin/activity-logs" element={<AdminActivityLogs />} />
             <Route path="/admin/notifications" element={<AdminNotifications />} />

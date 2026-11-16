@@ -28,7 +28,7 @@ import {
 } from 'lucide-react';
 
 // Set to true to bring back the full set of row actions
-const SHOW_LEGACY_ACTIONS = false;
+const SHOW_LEGACY_ACTIONS = true;
 
 const STATUS_BADGE = {
   Active: {
@@ -626,7 +626,7 @@ export default function AcademicPeriod() {
 
           {activePeriod ? (
             <div>
-              <h3 className="text-xl font-bold text-gray-900">
+              <h3 className="text-xl font-bold text-emerald-600">
                 AY {activePeriod.schoolYear} · {formatSemName(activePeriod.semester)}
               </h3>
               <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
@@ -885,19 +885,11 @@ export default function AcademicPeriod() {
                                 onClick={() => handleDeactivate(item)}
                               />
                             ) : item.status !== 'Archived' ? (
-                              <>
-                                <LabelButton
-                                  label="Activate"
-                                  hover="hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200"
-                                  onClick={() => handleActivate(item)}
-                                />
-                                <LabelButton
-                                  label="Archive"
-                                  icon={Archive}
-                                  hover="hover:text-purple-600 hover:bg-purple-50 hover:border-purple-200"
-                                  onClick={() => handleArchive(item)}
-                                />
-                              </>
+                              <LabelButton
+                                label="Activate"
+                                hover="hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200"
+                                onClick={() => handleActivate(item)}
+                              />
                             ) : (
                               <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg border border-purple-200">
                                 Archived

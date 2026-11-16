@@ -20,13 +20,23 @@ import { CLASS_REQUIREMENT_CARDS } from './ViewClassPortfolio';
 import { fetchClassById } from '../../api/classes';
 import { fetchDocuments, uploadDocument, deleteDocument } from '../../api/documents';
 
-export default function ClassRequirementUpload({ reqConfig, classData: propClassData, onDone }) {
+export default function ClassRequirementUpload({
+  reqConfig,
+  classData: propClassData,
+  onDone,
+  classId: propClassId,
+  reqPath: propReqPath,
+  isAdminOverride,
+  embedded = false,
+  onBack,
+}) {
+  const isCompact = embedded || Boolean(onBack);
   const params = useParams();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const isAdmin = pathname.startsWith('/admin');
-  const classId = params.id;
-  const reqPath = params.reqPath;
+  const isAdmin = isAdminOverride ?? pathname.startsWith('/admin');
+  const classId = propClassId || params.id;
+  const reqPath = propReqPath || params.reqPath;
 
   // Use props if embedded, otherwise find from route
   const resolvedReq = reqConfig || CLASS_REQUIREMENT_CARDS.find((r) => r.path === reqPath) || {
@@ -193,13 +203,24 @@ export default function ClassRequirementUpload({ reqConfig, classData: propClass
       <div className="space-y-6 w-full">
         {/* Top Title Bar with Back Arrow */}
         <div className="flex flex-wrap items-center gap-3">
-          <Link
-            to={backPath}
-            className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition cursor-pointer"
-            aria-label="Back to Class Portfolio"
-          >
-            <ArrowLeft size={18} />
-          </Link>
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition cursor-pointer"
+              aria-label="Back to Class Portfolio"
+            >
+              <ArrowLeft size={18} />
+            </button>
+          ) : (
+            <Link
+              to={backPath}
+              className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition cursor-pointer"
+              aria-label="Back to Class Portfolio"
+            >
+              <ArrowLeft size={18} />
+            </Link>
+          )}
           <h1 className="text-xl sm:text-2xl font-bold text-brand-purple tracking-tight">
             {resolvedReq.title}
           </h1>
@@ -278,17 +299,31 @@ export default function ClassRequirementUpload({ reqConfig, classData: propClass
   // If Admin, show review-only UI
   if (isAdmin) {
     return (
-      <div className="space-y-6 w-full">
+      <div className={`${isCompact ? 'space-y-4' : 'space-y-6'} w-full`}>
         {/* Top Title Bar with Back Arrow */}
         <div className="flex flex-wrap items-center gap-3">
-          <Link
-            to={backPath}
-            className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition cursor-pointer"
-            aria-label="Back to Class Portfolio"
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className={`flex ${isCompact ? 'h-7 w-7' : 'h-8 w-8'} items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition cursor-pointer`}
+              aria-label="Back to Class Portfolio"
+            >
+              <ArrowLeft size={isCompact ? 15 : 18} />
+            </button>
+          ) : (
+            <Link
+              to={backPath}
+              className={`flex ${isCompact ? 'h-7 w-7' : 'h-8 w-8'} items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition cursor-pointer`}
+              aria-label="Back to Class Portfolio"
+            >
+              <ArrowLeft size={isCompact ? 15 : 18} />
+            </Link>
+          )}
+          <h1
+            className={`${isCompact ? 'text-base sm:text-lg' : 'text-xl sm:text-2xl'
+              } font-bold text-brand-purple tracking-tight`}
           >
-            <ArrowLeft size={18} />
-          </Link>
-          <h1 className="text-xl sm:text-2xl font-bold text-brand-purple tracking-tight">
             {resolvedReq.title}
           </h1>
           <span className="rounded-full bg-gray-100 px-3 py-0.5 text-xs font-medium text-gray-500">
@@ -297,27 +332,47 @@ export default function ClassRequirementUpload({ reqConfig, classData: propClass
         </div>
 
         {/* Review Card */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-xs">
-          <div className="border-b border-gray-100 pb-5">
-            <h2 className="text-xl font-bold text-brand-purple">Requirement Evidence</h2>
-            <p className="mt-1 text-sm text-gray-400">
+        <div
+          className={`rounded-2xl border border-gray-200 bg-white ${isCompact ? 'p-4 sm:p-5' : 'p-6 sm:p-8'
+            } shadow-xs`}
+        >
+          <div className={`border-b border-gray-100 ${isCompact ? 'pb-3.5' : 'pb-5'}`}>
+            <h2
+              className={`${isCompact ? 'text-sm sm:text-base' : 'text-xl'
+                } font-bold text-brand-purple`}
+            >
+              Requirement Evidence
+            </h2>
+            <p className={`mt-1 ${isCompact ? 'text-xs' : 'text-sm'} text-gray-400`}>
               Review submitted document evidence and provide feedback or approval.
             </p>
           </div>
 
-          <div className="mt-6">
+          <div className={isCompact ? 'mt-4' : 'mt-6'}>
             {existingDoc ? (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-xl border border-gray-200 bg-gray-50">
+              <div
+                className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${isCompact ? 'p-4' : 'p-5'
+                  } rounded-xl border border-gray-200 bg-gray-50`}
+              >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-100 text-brand-orange shrink-0">
-                    <FileText size={24} />
+                  <div
+                    className={`flex ${isCompact ? 'h-10 w-10' : 'h-12 w-12'
+                      } items-center justify-center rounded-lg bg-orange-100 text-brand-orange shrink-0`}
+                  >
+                    <FileText size={isCompact ? 20 : 24} />
                   </div>
                   <div>
-                    <h3 className="text-sm sm:text-base font-bold text-gray-900 break-all">
+                    <h3
+                      className={`${isCompact ? 'text-sm' : 'text-sm sm:text-base'
+                        } font-bold text-gray-900 break-all`}
+                    >
                       {currentFileName || 'Submitted Document'}
                     </h3>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      Status: <span className="font-semibold text-gray-700 capitalize">{existingDoc.status?.replace('_', ' ') || 'Submitted'}</span>
+                      Status:{' '}
+                      <span className="font-semibold text-gray-700 capitalize">
+                        {existingDoc.status?.replace('_', ' ') || 'Submitted'}
+                      </span>
                     </p>
                   </div>
                 </div>
@@ -326,18 +381,26 @@ export default function ClassRequirementUpload({ reqConfig, classData: propClass
                   <button
                     type="button"
                     onClick={() => setPreviewOpen(true)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-brand-orange px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-orange-600 transition cursor-pointer"
+                    className={`inline-flex items-center gap-2 rounded-xl bg-brand-orange ${isCompact ? 'px-4 py-2 text-xs' : 'px-5 py-2.5 text-sm'
+                      } font-semibold text-white shadow-xs hover:bg-orange-600 transition cursor-pointer`}
                   >
-                    <CheckSquare size={16} />
+                    <CheckSquare size={isCompact ? 14 : 16} />
                     <span>Review Document</span>
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center text-gray-400">
-                <AlertCircle size={36} className="mb-2 text-gray-300" />
-                <p className="text-base font-semibold text-gray-600">No document submitted yet</p>
-                <p className="text-xs mt-1 text-gray-400">The instructor has not uploaded any evidence for this requirement.</p>
+              <div
+                className={`flex flex-col items-center justify-center ${isCompact ? 'py-10' : 'py-12'
+                  } text-center text-gray-400`}
+              >
+                <AlertCircle size={isCompact ? 30 : 36} className="mb-2 text-gray-300" />
+                <p className={`${isCompact ? 'text-sm' : 'text-base'} font-semibold text-gray-600`}>
+                  No document submitted yet
+                </p>
+                <p className="text-xs mt-1 text-gray-400">
+                  The instructor has not uploaded any evidence for this requirement.
+                </p>
               </div>
             )}
           </div>
@@ -363,13 +426,24 @@ export default function ClassRequirementUpload({ reqConfig, classData: propClass
     <div className="space-y-6 w-full">
       {/* Top Title Bar with Back Arrow */}
       <div className="flex flex-wrap items-center gap-3">
-        <Link
-          to={`/instructors/class-portfolio/${classId}`}
-          className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition cursor-pointer"
-          aria-label="Back to Class Portfolio"
-        >
-          <ArrowLeft size={18} />
-        </Link>
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition cursor-pointer"
+            aria-label="Back to Class Portfolio"
+          >
+            <ArrowLeft size={18} />
+          </button>
+        ) : (
+          <Link
+            to={`/instructors/class-portfolio/${classId}`}
+            className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:bg-brand-purple/10 transition cursor-pointer"
+            aria-label="Back to Class Portfolio"
+          >
+            <ArrowLeft size={18} />
+          </Link>
+        )}
         <h1 className="text-xl sm:text-2xl font-bold text-brand-purple tracking-tight">
           {resolvedReq.title}
         </h1>
@@ -400,13 +474,12 @@ export default function ClassRequirementUpload({ reqConfig, classData: propClass
                 <div className="flex flex-wrap items-center gap-2 mt-0.5 text-xs text-gray-500">
                   <span>Status:</span>
                   <span
-                    className={`font-semibold capitalize ${
-                      existingDoc.status === 'approved'
+                    className={`font-semibold capitalize ${existingDoc.status === 'approved'
                         ? 'text-emerald-600'
                         : existingDoc.status === 'rejected'
-                        ? 'text-red-600'
-                        : 'text-amber-600'
-                    }`}
+                          ? 'text-red-600'
+                          : 'text-amber-600'
+                      }`}
                   >
                     {existingDoc.status?.replace('_', ' ') || 'Submitted'}
                   </span>
@@ -485,11 +558,10 @@ export default function ClassRequirementUpload({ reqConfig, classData: propClass
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-12 px-6 text-center transition cursor-pointer ${
-                  isDragging
+                className={`flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-12 px-6 text-center transition cursor-pointer ${isDragging
                     ? 'border-brand-purple bg-purple-50/50'
                     : 'border-purple-200 bg-white hover:border-brand-purple/50'
-                }`}
+                  }`}
               >
                 <input
                   ref={fileInputRef}
@@ -566,8 +638,8 @@ export default function ClassRequirementUpload({ reqConfig, classData: propClass
                 {file
                   ? `Ready to upload: ${file.name}`
                   : existingDoc
-                  ? 'Select a file to replace existing evidence.'
-                  : 'Select a file to enable upload. Nothing has been submitted yet.'}
+                    ? 'Select a file to replace existing evidence.'
+                    : 'Select a file to enable upload. Nothing has been submitted yet.'}
               </span>
 
               <div className="flex items-center gap-3">

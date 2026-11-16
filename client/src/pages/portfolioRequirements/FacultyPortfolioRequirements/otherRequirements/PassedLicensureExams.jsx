@@ -11,6 +11,7 @@ import { usePortfolio } from '../../../../context/usePortfolio';
 
 import '../requirementStyle.css';
 import '../listEntries.css';
+import AppModal, { useAppModal } from "../../../../components/common/AppModal";
 
 // Tab page of Other Requirements. The title, back arrow, tabs and the "Add Document" button
 // are drawn by the parent (OtherRequirements.jsx). The parent's button bumps `addTrigger`,
@@ -152,6 +153,7 @@ function IconButton({ variant, label, title, disabled, onClick, children }) {
 
 // ► CHANGE 3: rename the function (must match the export at the bottom)
 function PassedLicensureExams() {
+  const { modal, close: closeModal, notify, confirm: showConfirm } = useAppModal();
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
   const outletContext = useOutletContext() || {};
@@ -177,17 +179,23 @@ function PassedLicensureExams() {
     setPreviewOpen(true);
   };
 
-  const handleDelete = async (doc) => {
-    const title = doc.meta?.name || 'this record';
-    if (!window.confirm(`Are you sure you want to delete "${title}"?`)) {
-      return;
-    }
-    try {
-      await deleteDocument(doc._id);
-      loadRecords();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to delete document.');
-    }
+  const handleDelete = (doc) => {
+    const title = doc.meta?.name || doc.meta?.title || 'this record';
+    showConfirm({
+      title: 'Delete Document?',
+      message: `Are you sure you want to delete "${title}"? This action cannot be undone.`,
+      confirmLabel: 'Delete',
+      cancelLabel: 'Cancel',
+      onConfirm: async () => {
+        try {
+          await deleteDocument(doc._id);
+          loadRecords();
+          notify('success', 'Document Deleted', 'The document has been removed successfully.');
+        } catch (err) {
+          notify('error', 'Delete Failed', err.response?.data?.message || 'Failed to delete document.');
+        }
+      },
+    });
   };
 
   // Loads this requirement's documents from the server
@@ -341,16 +349,23 @@ function PassedLicensureExams() {
 
                       <td className="whitespace-nowrap">
                         {isAdmin ? (
-                          <button
-                            type="button"
-                            className="doc-btn doc-btn--review"
-                            disabled={!doc}
-                            title="Review document"
-                            onClick={() => handleView(doc)}
-                          >
-                            <CheckSquare className="w-4 h-4" />
-                            Review
-                          </button>
+                          doc.status === 'approved' || doc.status === 'rejected' ? (
+                            <span className="doc-badge--reviewed">
+                              <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
+                              Reviewed
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="doc-btn doc-btn--review"
+                              disabled={!doc}
+                              title="Review document"
+                              onClick={() => handleView(doc)}
+                            >
+                              <CheckSquare className="w-4 h-4" />
+                              Review
+                            </button>
+                          )
                         ) : (
                           <div className="doc-icon-actions">
                             <IconButton
@@ -424,6 +439,7 @@ function PassedLicensureExams() {
         }}
         onEdit={(doc) => openModal(doc)}
       />
+      <AppModal modal={modal} onClose={closeModal} />
     </div>
   );
 }

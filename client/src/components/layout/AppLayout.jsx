@@ -44,8 +44,19 @@ function readStoredUser(role) {
 // The frame around every signed-in page: sidebar, top bar, breadcrumb, and the page itself.
 function AppLayout({ role }) {
   const [menuOpen, setMenuOpen] = useState(false); // the sidebar on phones and tablets
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return localStorage.getItem('sidebar_collapsed') === 'true';
+  });
   const [user, setUser] = useState(() => readStoredUser(role));
   const [unreadCount, setUnreadCount] = useState(0);
+
+  const toggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   // Poll unread notification count every 60 seconds
   useEffect(() => {
@@ -127,10 +138,23 @@ function AppLayout({ role }) {
 
   return (
     <div className="flex h-dvh bg-brand-bg">
-      <Sidebar role={role} isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+      <Sidebar
+        role={role}
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={toggleCollapse}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar role={role} user={user} onMenuClick={() => setMenuOpen(true)} unreadCount={unreadCount} />
+        <TopBar
+          role={role}
+          user={user}
+          onMenuClick={() => setMenuOpen(true)}
+          unreadCount={unreadCount}
+          isCollapsed={isCollapsed}
+          onToggleCollapse={toggleCollapse}
+        />
         <Breadcrumb role={role} />
         <main className="flex-1 overflow-y-auto p-5">
           <Outlet />

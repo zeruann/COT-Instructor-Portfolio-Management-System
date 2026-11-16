@@ -9,6 +9,8 @@ export default function SharedRequirementHeader({
   onAddClick,
   addLabel = 'Add Document',
   backTo,
+  onBack,
+  embedded = false,
 }) {
   const { selectedInstructor } = usePortfolio();
   const { pathname } = useLocation();
@@ -50,15 +52,34 @@ export default function SharedRequirementHeader({
       <div className="flex flex-wrap items-center justify-between gap-3">
         {/* Title & Back button */}
         <div className="flex items-center gap-3">
-          <Link
-            to={backDestination}
-            aria-label="Back"
-            className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:opacity-70 transition"
-          >
-            <ArrowLeft size={16} />
-          </Link>
+          {onBack ? (
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Back"
+              className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:opacity-70 transition cursor-pointer"
+            >
+              <ArrowLeft size={16} />
+            </button>
+          ) : (
+            <Link
+              to={backDestination}
+              aria-label="Back"
+              className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:opacity-70 transition"
+            >
+              <ArrowLeft size={16} />
+            </Link>
+          )}
           <div>
-            <h1 className="text-[23px] font-medium text-brand-purple">{title}</h1>
+            <h1
+              className={
+                embedded
+                  ? 'text-base sm:text-lg font-bold text-brand-purple tracking-tight'
+                  : 'text-[23px] font-medium text-brand-purple'
+              }
+            >
+              {title}
+            </h1>
             {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
           </div>
         </div>

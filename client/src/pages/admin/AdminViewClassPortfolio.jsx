@@ -21,7 +21,7 @@ const statusStyles = {
   empty: { label: 'No documents', className: 'bg-gray-200 text-gray-500' },
 };
 
-function RequirementCard({ card, basePath, summary = {} }) {
+function RequirementCard({ card, basePath, summary = {}, onSelectRequirement, compact = false }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const comments = summary.comments ?? 0;
   const files = summary.totalFiles ?? 0;
@@ -36,16 +36,39 @@ function RequirementCard({ card, basePath, summary = {} }) {
   }
 
   const href = `${basePath}/${card.path}`;
+  const titleCls = compact
+    ? 'min-w-0 break-words text-sm font-bold leading-snug text-gray-900 group-hover:text-brand-orange transition'
+    : 'min-w-0 break-words text-base font-bold leading-snug text-gray-900 group-hover:text-brand-orange transition sm:text-[17px]';
+  const descCls = compact
+    ? 'break-words text-xs leading-relaxed text-gray-400'
+    : 'break-words text-xs leading-relaxed text-gray-400 sm:text-sm';
 
   return (
-    <div className="relative flex h-full min-w-0 flex-col rounded-xl bg-[#f5f5f5] px-4 pt-5 pb-4 sm:px-5 sm:pt-6 sm:pb-5 min-h-[220px]">
+    <div
+      className={`relative flex h-full min-w-0 flex-col rounded-xl bg-[#f5f5f5] ${
+        compact ? 'px-4 pt-4 pb-3.5 min-h-[165px]' : 'px-4 pt-5 pb-4 sm:px-5 sm:pt-6 sm:pb-5 min-h-[220px]'
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
-        <Link to={href} className="group flex min-w-0 items-start gap-2.5">
-          <span className="mt-1 h-3 w-3 shrink-0 rounded-full bg-[#5cab5f]" />
-          <h3 className="min-w-0 break-words text-base font-bold leading-snug text-gray-900 group-hover:text-brand-orange transition sm:text-[17px]">
-            {card.title}
-          </h3>
-        </Link>
+        {onSelectRequirement ? (
+          <button
+            type="button"
+            onClick={() => onSelectRequirement(card)}
+            className="group flex min-w-0 items-start gap-2.5 text-left cursor-pointer"
+          >
+            <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-[#5cab5f]" />
+            <h3 className={titleCls}>
+              {card.title}
+            </h3>
+          </button>
+        ) : (
+          <Link to={href} className="group flex min-w-0 items-start gap-2.5">
+            <span className="mt-1 h-3 w-3 shrink-0 rounded-full bg-[#5cab5f]" />
+            <h3 className={titleCls}>
+              {card.title}
+            </h3>
+          </Link>
+        )}
 
         <div className="relative shrink-0">
           <button
@@ -57,13 +80,26 @@ function RequirementCard({ card, basePath, summary = {} }) {
           </button>
           {menuOpen && (
             <div className="absolute right-0 top-8 z-10 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-              <Link
-                to={href}
-                onClick={() => setMenuOpen(false)}
-                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 font-medium"
-              >
-                Review requirement
-              </Link>
+              {onSelectRequirement ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onSelectRequirement(card);
+                  }}
+                  className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 font-medium cursor-pointer"
+                >
+                  Review requirement
+                </button>
+              ) : (
+                <Link
+                  to={href}
+                  onClick={() => setMenuOpen(false)}
+                  className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 font-medium"
+                >
+                  Review requirement
+                </Link>
+              )}
             </div>
           )}
         </div>
@@ -71,11 +107,23 @@ function RequirementCard({ card, basePath, summary = {} }) {
 
       <div className="mt-3 h-[2px] w-full rounded-full bg-[#5cab5f]" />
 
-      <Link to={href} className="mt-4 flex-1">
-        <p className="break-words text-xs leading-relaxed text-gray-400 sm:text-sm">
-          {card.description}
-        </p>
-      </Link>
+      {onSelectRequirement ? (
+        <button
+          type="button"
+          onClick={() => onSelectRequirement(card)}
+          className="mt-3 flex-1 text-left cursor-pointer"
+        >
+          <p className={descCls}>
+            {card.description}
+          </p>
+        </button>
+      ) : (
+        <Link to={href} className="mt-4 flex-1">
+          <p className={descCls}>
+            {card.description}
+          </p>
+        </Link>
+      )}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 pt-2">
         <span className={`whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold ${status.className}`}>
@@ -96,8 +144,13 @@ function RequirementCard({ card, basePath, summary = {} }) {
   );
 }
 
-export default function AdminViewClassPortfolio() {
-  const { id } = useParams();
+export default function AdminViewClassPortfolio({
+  classId: propClassId,
+  onSelectRequirement,
+  embedded = false,
+} = {}) {
+  const { id: paramId } = useParams();
+  const id = propClassId || paramId;
   const [viewMode, setViewMode] = useState('grid');
   const [classData, setClassData] = useState(null);
   const [requirementSummary, setRequirementSummary] = useState({});
@@ -149,8 +202,8 @@ export default function AdminViewClassPortfolio() {
   const backToReviewUrl = isFromArchive
     ? '/admin/archive'
     : instructorId
-    ? `/admin/review/class-portfolio?instructorId=${instructorId}`
-    : '/admin/review/class-portfolio';
+      ? `/admin/review/class-portfolio?instructorId=${instructorId}`
+      : '/admin/review/class-portfolio';
 
   const subjectCode = classData?.subject?.code || 'Subject';
   const sectionCode = classData?.section?.code || classData?.section?.name || 'Section';
@@ -172,25 +225,27 @@ export default function AdminViewClassPortfolio() {
   return (
     <div className="space-y-6">
       {/* Top Breadcrumb & Heading */}
-      <div>
-        <div className="flex items-center gap-3">
-          <Link
-            to={backToReviewUrl}
-            className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:opacity-70 transition cursor-pointer"
-            aria-label="Back to Classes"
-          >
-            <ArrowLeft size={16} />
-          </Link>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-[#2e2a72] tracking-tight">
-              {headingTitle}
-            </h1>
-            <p className="mt-0.5 text-xs sm:text-sm font-medium text-gray-500">
-              {headingSubtitle}
-            </p>
+      {!embedded && (
+        <div>
+          <div className="flex items-center gap-3">
+            <Link
+              to={backToReviewUrl}
+              className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple hover:opacity-70 transition cursor-pointer"
+              aria-label="Back to Classes"
+            >
+              <ArrowLeft size={16} />
+            </Link>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-[#2e2a72] tracking-tight">
+                {headingTitle}
+              </h1>
+              <p className="mt-0.5 text-xs sm:text-sm font-medium text-gray-500">
+                {headingSubtitle}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ARCHIVE READ-ONLY BANNER */}
       {Boolean(classData?.archivedAt) && (
@@ -203,13 +258,15 @@ export default function AdminViewClassPortfolio() {
       )}
 
       {/* TOP ROW: COMPLIANCE & COMPLETION STATUS */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
+      <div className={`grid grid-cols-1 ${embedded ? 'gap-4 lg:grid-cols-[minmax(0,1fr)_220px]' : 'gap-5 lg:grid-cols-[minmax(0,1fr)_260px]'}`}>
         {/* Compliance Card */}
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-xs">
-          <h2 className="text-lg font-bold text-gray-800">Compliance Summary</h2>
+        <section className={`rounded-2xl border border-gray-200 bg-white ${embedded ? 'p-4 sm:p-5' : 'p-5 sm:p-6'} shadow-xs`}>
+          <h2 className={`${embedded ? 'text-sm sm:text-base' : 'text-lg'} font-bold text-gray-800`}>
+            Compliance Summary
+          </h2>
 
           {/* Segmented Progress Bar */}
-          <div className="mt-4 h-3.5 w-full overflow-hidden rounded-full bg-gray-200 flex">
+          <div className={`${embedded ? 'mt-3 h-3' : 'mt-4 h-3.5'} w-full overflow-hidden rounded-full bg-gray-200 flex`}>
             {approvedPct > 0 && (
               <div style={{ width: `${approvedPct}%` }} className="h-full bg-[#5cab5f]" />
             )}
@@ -222,7 +279,7 @@ export default function AdminViewClassPortfolio() {
           </div>
 
           {/* Legend */}
-          <div className="mt-4 flex flex-wrap items-center gap-4 text-xs sm:text-sm text-gray-500">
+          <div className={`${embedded ? 'mt-3 gap-3 text-xs' : 'mt-4 gap-4 text-xs sm:text-sm'} flex flex-wrap items-center text-gray-500`}>
             <span className="flex items-center gap-1.5 font-medium">
               <span className="h-2.5 w-2.5 rounded-full bg-[#5cab5f]" />
               ({counts.approved}) Approved
@@ -241,21 +298,21 @@ export default function AdminViewClassPortfolio() {
             </span>
           </div>
 
-          <p className="mt-3 text-xs text-gray-400">
+          <p className="mt-2.5 text-xs text-gray-400">
             {counts.approved} of {counts.approved + counts.pendingReview + counts.rejected} submitted documents are currently approved.
           </p>
         </section>
 
         {/* Completion Status Card */}
-        <section className="flex flex-col justify-between items-center text-center rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-xs">
-          <span className="text-sm font-semibold text-brand-purple sm:text-base">
+        <section className={`flex flex-col justify-between items-center text-center rounded-2xl border border-gray-200 bg-white ${embedded ? 'p-4 sm:p-5' : 'p-5 sm:p-6'} shadow-xs`}>
+          <span className={`${embedded ? 'text-xs sm:text-sm' : 'text-sm sm:text-base'} font-semibold text-brand-purple`}>
             Portfolio Completion
           </span>
-          <div className="my-auto py-2">
-            <span className={`text-5xl font-extrabold tracking-tight ${completionPercent > 0 ? 'text-[#5cab5f]' : 'text-gray-400'}`}>
+          <div className="my-auto py-1.5">
+            <span className={`${embedded ? 'text-3xl sm:text-4xl' : 'text-5xl'} font-extrabold tracking-tight ${completionPercent > 0 ? 'text-[#5cab5f]' : 'text-gray-400'}`}>
               {completionPercent}%
             </span>
-            <p className="mt-2 text-xs font-normal text-gray-400">
+            <p className="mt-1.5 text-xs font-normal text-gray-400">
               {completionPercent >= 100
                 ? 'Portfolio fully verified and completed.'
                 : completionPercent > 0
@@ -267,13 +324,13 @@ export default function AdminViewClassPortfolio() {
       </div>
 
       {/* BOTTOM SECTION: CLASS PORTFOLIO CONTENT */}
-      <section className="min-w-0 rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-xs">
-        <div className="mb-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#efeef8] text-brand-purple">
-              <Folder size={20} />
+      <section className={`min-w-0 rounded-2xl border border-gray-200 bg-white ${embedded ? 'p-4 sm:p-5' : 'p-5 sm:p-6'} shadow-xs`}>
+        <div className={`${embedded ? 'mb-4' : 'mb-5'} flex items-center justify-between`}>
+          <div className="flex items-center gap-2.5">
+            <span className={`flex ${embedded ? 'h-8 w-8' : 'h-10 w-10'} shrink-0 items-center justify-center rounded-lg bg-[#efeef8] text-brand-purple`}>
+              <Folder size={embedded ? 17 : 20} />
             </span>
-            <h2 className="text-xl font-bold text-brand-purple tracking-tight sm:text-2xl">
+            <h2 className={`${embedded ? 'text-base sm:text-lg' : 'text-xl sm:text-2xl'} font-bold text-brand-purple tracking-tight`}>
               Class Requirements Checklist
             </h2>
           </div>
@@ -282,11 +339,10 @@ export default function AdminViewClassPortfolio() {
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              className={`flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer ${
-                viewMode === 'grid'
+              className={`flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer ${viewMode === 'grid'
                   ? 'bg-brand-purple/10 text-brand-purple'
                   : 'text-gray-400 hover:text-gray-700'
-              }`}
+                }`}
               title="Grid View"
             >
               <LayoutGrid size={18} />
@@ -294,11 +350,10 @@ export default function AdminViewClassPortfolio() {
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer ${
-                viewMode === 'list'
+              className={`flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer ${viewMode === 'list'
                   ? 'bg-brand-purple/10 text-brand-purple'
                   : 'text-gray-400 hover:text-gray-700'
-              }`}
+                }`}
               title="List View"
             >
               <List size={18} />
@@ -325,6 +380,8 @@ export default function AdminViewClassPortfolio() {
                 card={card}
                 basePath={basePath}
                 summary={requirementSummary[card.key] || {}}
+                onSelectRequirement={onSelectRequirement}
+                compact={embedded}
               />
             ))}
           </div>
