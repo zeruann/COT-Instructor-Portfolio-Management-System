@@ -19,7 +19,9 @@ import {
   X,
 } from 'lucide-react';
 
-const API_PERIODS_URL = 'http://localhost:5000/api/academic-periods';
+import { API_BASE } from '../../api/config';
+
+const API_PERIODS_URL = `${API_BASE}/academic-periods`;
 
 const STATUS_BADGE = {
   Closed: { label: 'Inactive/Closed', bg: 'bg-amber-50 text-amber-700 border-amber-200' },

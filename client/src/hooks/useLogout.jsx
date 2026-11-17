@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import ConfirmLogoutModal from '../components/ConfirmLogoutModal';
+import { API_BASE as API_URL } from '../api/config';
 
-const API_BASE = 'http://localhost:5000/api/auth';
+const API_BASE = `${API_URL}/auth`;
 
 // What logout does for each role.
 const LOGOUT = {

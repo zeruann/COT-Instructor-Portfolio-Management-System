@@ -186,10 +186,10 @@ function AuthLayout({ children }) {
             Bukidnon State University
           </p>
           <h1
-            className="text-[26px] sm:text-4xl lg:text-[42px] font-bold tracking-tight text-white leading-[1.18] drop-shadow-sm max-w-md"
+            className="text-[26px] sm:text-4xl lg:text-[34px] font-bold tracking-tight text-white leading-[1.18] drop-shadow-sm max-w-lg"
             style={{ animation: "authFadeUp 0.8s ease-out 0.2s both" }}
           >
-            COT Faculty Portfolio
+            COT Instructor E-Portfolio
             <br />
             <span className="bg-gradient-to-r from-white via-white to-[#ffd9bd] bg-clip-text text-transparent">
               Management System

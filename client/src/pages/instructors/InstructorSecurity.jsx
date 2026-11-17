@@ -137,7 +137,7 @@ export default function InstructorSecurity() {
       {/* PAGE HEADER */}
       <div className="mb-6">
         <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
-          Security & Password
+          Security &amp; Password
         </h1>
         <p className="mt-1 text-sm font-medium text-gray-500">
           Manage your account credentials and security preferences.
