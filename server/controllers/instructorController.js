@@ -5,7 +5,15 @@ const SAFE_FIELDS = '-password -resetPasswordToken -resetPasswordExpires';
 // GET /api/instructors
 exports.getInstructors = async (req, res) => {
   try {
-    const instructors = await Instructor.find({ accountType: { $ne: 'Administrator' } })
+    const instructors = await Instructor.find({
+      accountType: { $ne: 'Administrator' },
+      $or: [
+        { status: 'Accepted' },
+        { status: { $exists: false } },
+        { status: null },
+        { status: '' },
+      ],
+    })
       .select(SAFE_FIELDS)
       .sort({ createdAt: -1 });
     res.json(instructors);
