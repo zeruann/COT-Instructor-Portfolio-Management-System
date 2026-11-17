@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 import {
   Archive,
   RotateCcw,
@@ -99,6 +100,7 @@ export default function AdminArchiveRecords() {
     loading: false,
     onConfirm: null,
   });
+  const confirmAnim = useAnimatedModal(confirmModal.isOpen);
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
@@ -269,8 +271,8 @@ export default function AdminArchiveRecords() {
         <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-200">
           <div
             className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold ${toast.type === 'error'
-                ? 'bg-red-50 text-red-800 border-red-200'
-                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              ? 'bg-red-50 text-red-800 border-red-200'
+              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
               }`}
           >
             {toast.type === 'error' ? (
@@ -294,14 +296,14 @@ export default function AdminArchiveRecords() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+            <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
               Archive Records
             </h1>
-            <span className="rounded-lg bg-purple-50 border border-purple-200/80 px-2.5 py-0.5 text-xs font-bold text-brand-purple">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200">
               Read-Only
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+          <p className="mt-1 text-sm font-medium text-gray-500">
             Closed and archived academic years with preserved course portfolios and compliance records.
           </p>
         </div>
@@ -565,8 +567,8 @@ export default function AdminArchiveRecords() {
                       onClick={() => setPage(p)}
                       aria-current={p === currentPage ? 'page' : undefined}
                       className={`w-9 h-9 inline-flex items-center justify-center rounded-lg text-[13px] font-medium border transition cursor-pointer ${p === currentPage
-                          ? 'bg-orange-500 border-orange-500 text-white'
-                          : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                        ? 'bg-orange-500 border-orange-500 text-white'
+                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                         }`}
                     >
                       {p}
@@ -600,17 +602,32 @@ export default function AdminArchiveRecords() {
       </div>
 
       {/* ── CONFIRMATION MODAL ── */}
-      {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-gray-100 space-y-4">
-            <h3 className="text-lg font-bold text-gray-900">{confirmModal.title}</h3>
-            <p className="text-sm text-gray-600 leading-relaxed">{confirmModal.message}</p>
-            <div className="flex items-center justify-end gap-2.5 pt-2">
+      {confirmAnim.rendered && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className={`absolute inset-0 bg-gray-900/40 ${confirmAnim.backdropAnim}`}
+            onClick={() => !confirmModal.loading && setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+          />
+          <div className={`relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ring-purple-100 p-6 ${confirmAnim.panelAnim}`}>
+            <div className="absolute inset-x-6 top-0 h-1 rounded-full bg-brand-purple" />
+
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-purple-50 text-brand-purple">
+              <RotateCcw size={24} strokeWidth={2} />
+            </div>
+
+            <h3 className="text-base font-semibold text-gray-900 mb-1.5">{confirmModal.title}</h3>
+            <p className="text-sm leading-relaxed text-gray-500 mb-6">{confirmModal.message}</p>
+
+            <div className="flex gap-2.5">
               <button
                 type="button"
                 disabled={confirmModal.loading}
                 onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
-                className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition cursor-pointer disabled:opacity-50"
+                className="flex-1 rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -618,7 +635,7 @@ export default function AdminArchiveRecords() {
                 type="button"
                 disabled={confirmModal.loading}
                 onClick={confirmModal.onConfirm}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold text-white transition cursor-pointer disabled:opacity-50 ${confirmModal.confirmColor}`}
+                className={`flex-1 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-colors cursor-pointer disabled:opacity-50 ${confirmModal.confirmColor}`}
               >
                 {confirmModal.loading ? 'Processing…' : confirmModal.confirmText}
               </button>

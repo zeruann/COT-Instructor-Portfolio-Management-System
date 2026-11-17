@@ -186,7 +186,10 @@ function AdminNotifications() {
 
   return (
     <div className="mx-auto w-full space-y-6">
-      <PlaceholderPage title="Notifications" />
+      <PlaceholderPage
+        title="Notifications"
+        subtitle="Stay updated on faculty submissions, reviews, and system announcements."
+      />
 
       {/* Top Filter Buttons and Mark all as read */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -198,11 +201,10 @@ function AdminNotifications() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`rounded-full px-5 py-2 text-sm font-medium transition-colors cursor-pointer ${
-                  isActive
+                className={`rounded-full px-5 py-2 text-sm font-medium transition-colors cursor-pointer ${isActive
                     ? 'bg-brand-orange text-white shadow-xs'
                     : 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
@@ -250,9 +252,8 @@ function AdminNotifications() {
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => e.key === 'Enter' && handleNotificationClick(notif, false)}
-                  className={`flex flex-col gap-4 py-5 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between transition cursor-pointer ${
-                    isUnread ? 'bg-purple-50/20 -mx-4 px-4 sm:-mx-6 sm:px-6 rounded-xl' : ''
-                  }`}
+                  className={`flex flex-col gap-4 py-5 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between transition cursor-pointer ${isUnread ? 'bg-purple-50/20 -mx-4 px-4 sm:-mx-6 sm:px-6 rounded-xl' : ''
+                    }`}
                 >
                   {/* Left: Avatar/Icon badge, Title, Timestamp, Message */}
                   <div className="flex items-start gap-4">

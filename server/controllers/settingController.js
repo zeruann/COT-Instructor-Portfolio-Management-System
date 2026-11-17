@@ -388,7 +388,10 @@ exports.updateSettings = async (req, res) => {
             customToUpdate &&
             typeof customToUpdate === 'object' &&
             Object.keys(customToUpdate).some(
-                (k) => customToUpdate[k] !== undefined && customToUpdate[k] !== MASK_PLACEHOLDER
+                (k) =>
+                    typeof customToUpdate[k] === 'string' &&
+                    customToUpdate[k].trim() !== '' &&
+                    customToUpdate[k] !== MASK_PLACEHOLDER
             );
 
         if (isUpdatingCustom) {
@@ -528,6 +531,33 @@ exports.updateSettings = async (req, res) => {
         }
 
         await Promise.all(updates);
+
+        // If custom credentials were cleared for a group, revert its mode to 'default'
+        if (customToUpdate && typeof customToUpdate === 'object') {
+            const remainingRecords = await Setting.find({
+                key: { $in: Object.keys(CREDENTIAL_CONFIG) },
+            }).lean();
+            const remainingMap = {};
+            remainingRecords.forEach((r) => {
+                remainingMap[r.key] = r.value;
+            });
+            const touchedGroups = new Set(
+                Object.keys(customToUpdate)
+                    .map((k) => CREDENTIAL_CONFIG[k]?.group)
+                    .filter(Boolean)
+            );
+            await Promise.all(
+                Array.from(touchedGroups).map(async (g) => {
+                    if (!isGroupCustomConfigured(g, remainingMap)) {
+                        await Setting.findOneAndUpdate(
+                            { key: `MODE_${g}` },
+                            { value: 'default', updatedBy: userId },
+                            { upsert: true }
+                        );
+                    }
+                })
+            );
+        }
 
         // If Google Drive credentials were saved, reset the storage client
         try {

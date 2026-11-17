@@ -1,7 +1,7 @@
 import PasswordChecklist from '../../components/PasswordChecklist';
 import { isPasswordValid } from '../../utils/passwordRules';
 import { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 
 function PasswordInput({ name, value, onChange, placeholder, className }) {
   const [show, setShow] = useState(false);
@@ -111,10 +111,11 @@ function SetupProfile() {
   const inputClass =
     'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff6900] focus:border-transparent transition-all';
 
+  const { pathname } = useLocation();
   return (
-    <div className="min-h-screen bg-[#fbfbfb] flex items-center justify-center p-4 sm:p-8 font-sans text-gray-800 relative overflow-hidden">
+    <div key={pathname} className="min-h-screen bg-[#fbfbfb] flex items-center justify-center p-4 sm:p-8 font-sans text-gray-800 relative overflow-hidden motion-safe:animate-page-fade-in">
       {/* Landing Page Campus Image & Warm Gradient Overlays */}
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center pointer-events-none"
         style={{ backgroundImage: "url('/buksu_bg.png')" }}
       />

@@ -214,8 +214,9 @@ export default function PreviewModal({
   const maxCols = sheetRows.reduce((max, r) => Math.max(max, Array.isArray(r) ? r.length : 0), 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs">
-      <div className="relative w-full max-w-5xl h-[92vh] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+      <div className="absolute inset-0 bg-black/60 animate-[modalBackdropIn_150ms_ease-out_forwards]" />
+      <div className="relative w-full max-w-5xl h-[92vh] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]">
         {/* Header
             Row 1: Document Preview + Status ............ X
             Row 2: File Name: ...   Date Uploaded: ... */}

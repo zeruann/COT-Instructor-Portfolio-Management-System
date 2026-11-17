@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 import {
   Calendar,
   Plus,
@@ -155,6 +156,9 @@ export default function AcademicPeriod() {
     confirmColor: 'bg-orange-500',
     onConfirm: null,
   });
+  const formAnim = useAnimatedModal(isFormOpen);
+  const confirmAnim = useAnimatedModal(confirmModal.isOpen);
+  const detailsAnim = useAnimatedModal(Boolean(detailsPeriodId));
 
   // Toast message
   const [toast, setToast] = useState(null);
@@ -205,22 +209,37 @@ export default function AcademicPeriod() {
 
   // Open Create Modal
   const handleOpenCreate = () => {
-    // Default to the school year after the latest one that already exists
-    const latestStartYear = periods.reduce((max, p) => {
-      const m = p.schoolYear?.match(/^(\d{4})-(\d{4})$/);
-      return m ? Math.max(max, parseInt(m[1], 10)) : max;
-    }, 0);
+    const activeFirstSem = periods.find(
+      (p) => p.isCurrent && !p.isArchived && p.semester === '1st'
+    );
 
-    const yearFrom = latestStartYear ? latestStartYear + 1 : new Date().getFullYear();
+    if (activeFirstSem) {
+      setFormData({
+        schoolYear: activeFirstSem.schoolYear,
+        semester: '2nd',
+        startDate: '',
+        endDate: '',
+        status: 'Upcoming',
+        setActive: false,
+      });
+    } else {
+      // Default to the school year after the latest one that already exists
+      const latestStartYear = periods.reduce((max, p) => {
+        const m = p.schoolYear?.match(/^(\d{4})-(\d{4})$/);
+        return m ? Math.max(max, parseInt(m[1], 10)) : max;
+      }, 0);
 
-    setFormData({
-      schoolYear: `${yearFrom}-${yearFrom + 1}`,
-      semester: '1st',
-      startDate: '',
-      endDate: '',
-      status: 'Upcoming',
-      setActive: false,
-    });
+      const yearFrom = latestStartYear ? latestStartYear + 1 : new Date().getFullYear();
+
+      setFormData({
+        schoolYear: `${yearFrom}-${yearFrom + 1}`,
+        semester: '1st',
+        startDate: '',
+        endDate: '',
+        status: 'Upcoming',
+        setActive: false,
+      });
+    }
     setEditingPeriod(null);
     setFormError('');
     setIsFormOpen(true);
@@ -257,6 +276,18 @@ export default function AcademicPeriod() {
     if (endY !== startY + 1) {
       setFormError('End year must be the next consecutive year (e.g., 2026-2027).');
       return;
+    }
+
+    if (!editingPeriod) {
+      const activeFirstSem = periods.find(
+        (p) => p.isCurrent && !p.isArchived && p.semester === '1st'
+      );
+      if (activeFirstSem && formData.schoolYear !== activeFirstSem.schoolYear) {
+        setFormError(
+          `Cannot add a new academic year while AY ${activeFirstSem.schoolYear} is still in 1st Semester.`
+        );
+        return;
+      }
     }
 
     if (!formData.startDate || !formData.endDate) {
@@ -602,12 +633,10 @@ export default function AcademicPeriod() {
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-xl font-bold text-gray-900 tracking-tight">
-                Academic Period Management
-              </h1>
-            </div>
-            <p className="text-sm text-gray-500">
+            <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
+              Academic Period Management
+            </h1>
+            <p className="mt-1 text-sm font-medium text-gray-500">
               Set up school years, manage semester dates, activate submission terms, and archive completed periods.
             </p>
           </div>
@@ -988,12 +1017,13 @@ export default function AcademicPeriod() {
       </div>
 
       {/* CREATE / EDIT MODAL */}
-      {isFormOpen && (() => {
+      {formAnim.rendered && (() => {
         const [yearFrom = '', yearTo = ''] = (formData.schoolYear || '').split('-');
 
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-            <div className="bg-white rounded-2xl max-w-2xl w-full p-8 shadow-xl relative">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className={`absolute inset-0 bg-gray-900/40 ${formAnim.backdropAnim}`} />
+            <div className={`relative bg-white rounded-2xl max-w-2xl w-full p-8 shadow-xl ${formAnim.panelAnim}`}>
               {/* Header */}
               <div className="flex items-center justify-between pb-5 border-b border-gray-100 mb-6">
                 <div className="flex items-center gap-3">
@@ -1151,46 +1181,38 @@ export default function AcademicPeriod() {
       })()}
 
       {/* CONFIRMATION MODAL */}
-      {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-8 shadow-xl relative">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-5 border-b border-gray-100 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-orange-50 text-orange-600 rounded-xl">
-                  <AlertTriangle className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">{confirmModal.title}</h3>
-                  <p className="text-sm text-gray-400">Please confirm that you want to continue.</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
-                aria-label="Close"
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      {confirmAnim.rendered && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className={`absolute inset-0 bg-gray-900/40 ${confirmAnim.backdropAnim}`}
+            onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+          />
+          <div className={`relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ring-amber-100 p-6 ${confirmAnim.panelAnim}`}>
+            <div className="absolute inset-x-6 top-0 h-1 rounded-full bg-amber-500" />
+
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-amber-50 text-amber-500">
+              <AlertTriangle size={24} strokeWidth={2} />
             </div>
 
-            {/* Message */}
-            <p className="text-sm text-gray-600 leading-relaxed">{confirmModal.message}</p>
+            <h3 className="text-base font-semibold text-gray-900 mb-1.5">{confirmModal.title}</h3>
+            <p className="text-sm leading-relaxed text-gray-500 mb-6">{confirmModal.message}</p>
 
-            {/* Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-5 mt-6 border-t border-gray-100">
+            <div className="flex gap-2.5">
               <button
                 type="button"
                 onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
-                className="px-6 py-3 border border-gray-200 text-gray-600 rounded-lg text-[14px] font-semibold hover:bg-gray-50 transition cursor-pointer"
+                className="flex-1 rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmModal.onConfirm}
-                className={`px-8 py-3 text-white rounded-lg text-[14px] font-semibold transition cursor-pointer ${confirmModal.confirmColor}`}
+                className={`flex-1 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-colors cursor-pointer ${confirmModal.confirmColor}`}
               >
                 {confirmModal.confirmText}
               </button>
@@ -1200,9 +1222,10 @@ export default function AcademicPeriod() {
       )}
 
       {/* PERIOD DETAILS MODAL */}
-      {detailsPeriodId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl relative">
+      {detailsAnim.rendered && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className={`absolute inset-0 bg-gray-900/40 ${detailsAnim.backdropAnim}`} />
+          <div className={`relative bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl ${detailsAnim.panelAnim}`}>
             {/* Header */}
             <div className="flex items-center justify-between px-8 pt-8 pb-5 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-3">

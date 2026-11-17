@@ -286,6 +286,21 @@ exports.createAcademicPeriod = async (req, res) => {
       return res.status(400).json({ message: 'End date must be later than the start date.' });
     }
 
+    // Prevent adding a new school year while the current active period is still in 1st semester
+    const currentActive = await AcademicPeriod.findOne({
+      isCurrent: true,
+      isArchived: { $ne: true },
+    }).lean();
+    if (
+      currentActive &&
+      currentActive.semester === '1st' &&
+      schoolYear !== currentActive.schoolYear
+    ) {
+      return res.status(400).json({
+        message: `Cannot add a new academic year while AY ${currentActive.schoolYear} is still in 1st Semester.`,
+      });
+    }
+
     // Check for duplicate period
     const existing = await AcademicPeriod.findOne({ schoolYear, semester });
     if (existing) {

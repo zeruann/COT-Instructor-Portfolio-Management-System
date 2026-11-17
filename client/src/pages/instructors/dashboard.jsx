@@ -152,7 +152,7 @@ function Dashboard() {
   const visibleClasses = useMemo(() => selectedPeriod === 'all'
     ? classes
     : classes.filter((item) => (item.academicPeriod?._id || `${item.academicPeriod?.schoolYear}-${item.academicPeriod?.semester}`) === selectedPeriod),
-  [classes, selectedPeriod]);
+    [classes, selectedPeriod]);
 
   const totals = useMemo(() => visibleClasses.reduce((sum, item) => ({
     approved: sum.approved + (item.approvedCount || 0),
@@ -177,8 +177,8 @@ function Dashboard() {
           <div className="flex items-center gap-4">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-brand-purple"><BookOpen size={23} /></span>
             <div>
-              <h1 className="text-2xl font-semibold leading-8 text-gray-900 sm:text-3xl">Welcome, {greetingName}</h1>
-              <p className="mt-1 text-sm text-gray-600">Your classes and portfolio progress</p>
+              <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">Welcome, {greetingName}</h1>
+              <p className="mt-1 text-sm font-medium text-gray-500">Your classes and portfolio progress</p>
             </div>
           </div>
           <button onClick={() => navigate('/instructors/class-portfolio')} className="inline-flex w-fit items-center gap-2 rounded-lg bg-brand-purple px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-brand-purple focus:ring-offset-2">View classes <ArrowRight size={16} /></button>
@@ -228,24 +228,43 @@ function Dashboard() {
         </section>
 
         <section className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white">
-            <div className="flex items-center justify-between border-b border-gray-200 p-4"><div className="flex items-start gap-3"><span className="mt-0.5 rounded-lg bg-orange-50 p-2 text-brand-orange"><TriangleAlert size={18} /></span><div><h2 className="text-lg font-semibold text-gray-900">Needs attention</h2><p className="mt-1 text-sm text-gray-500">Items to review or update</p></div></div><span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">{totals.action + reviewQueue.length}</span></div>
-            <div className="flex flex-1 flex-col space-y-3 p-5">
-              {totals.action > 0 && <button onClick={() => navigate('/instructors/class-portfolio')} className="flex w-full items-start gap-3 rounded-xl border border-orange-100 bg-orange-50/70 p-3 text-left hover:bg-orange-50"><span className="mt-0.5 text-orange-700"><TriangleAlert size={18} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-800">Rejected portfolio items</span><span className="mt-0.5 block text-xs text-gray-600">{totals.action} item{totals.action === 1 ? '' : 's'} across your classes may need updates.</span></span><ArrowRight size={16} className="mt-1 shrink-0 text-orange-700" /></button>}
-              {reviewQueue.slice(0, 3).map((item, index) => <button key={item._id || item.id || index} onClick={() => item.actionLink ? navigate(item.actionLink) : navigate('/instructors/notifications')} className="flex w-full items-start gap-3 rounded-xl border border-gray-100 p-3 text-left hover:bg-gray-50"><span className="mt-0.5 text-brand-purple"><FileCheck2 size={18} /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-gray-800">{item.title || 'Portfolio update'}</span><span className="mt-0.5 block line-clamp-2 text-xs text-gray-500">{item.message || item.body || 'A portfolio notification needs your attention.'}</span></span><ArrowRight size={16} className="mt-1 shrink-0 text-gray-400" /></button>)}
-              {totals.action === 0 && reviewQueue.length === 0 && <div className="rounded-xl bg-emerald-50 p-4 text-center"><CheckCircle2 className="mx-auto text-emerald-700" size={22} /><p className="mt-2 text-sm font-semibold text-emerald-800">You’re all caught up</p><p className="mt-1 text-xs text-emerald-700">No outstanding portfolio actions right now.</p></div>}
-              <button onClick={() => navigate('/instructors/notifications')} className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-semibold text-brand-purple hover:underline">Open notifications <ArrowRight size={15} /></button>
+          <div className="flex items-center justify-between gap-3 border-b border-gray-200 p-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 rounded-lg bg-orange-50 p-2 text-brand-orange"><TriangleAlert size={18} /></span>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Needs attention</h2>
+                <p className="mt-1 text-sm text-gray-500">Items to review or update</p>
+              </div>
             </div>
+            <div className="flex shrink-0 items-center gap-2.5">
+              <button onClick={() => navigate('/instructors/notifications')} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-purple hover:underline cursor-pointer">Open notifications <ArrowRight size={15} /></button>
+              <span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">{totals.action + reviewQueue.length}</span>
+            </div>
+          </div>
+          <div className="flex flex-1 flex-col space-y-3 p-5">
+            {totals.action > 0 && <button onClick={() => navigate('/instructors/class-portfolio')} className="flex w-full items-start gap-3 rounded-xl border border-orange-100 bg-orange-50/70 p-3 text-left hover:bg-orange-50"><span className="mt-0.5 text-orange-700"><TriangleAlert size={18} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-800">Rejected portfolio items</span><span className="mt-0.5 block text-xs text-gray-600">{totals.action} item{totals.action === 1 ? '' : 's'} across your classes may need updates.</span></span><ArrowRight size={16} className="mt-1 shrink-0 text-orange-700" /></button>}
+            {reviewQueue.slice(0, 3).map((item, index) => <button key={item._id || item.id || index} onClick={() => item.actionLink ? navigate(item.actionLink) : navigate('/instructors/notifications')} className="flex w-full items-start gap-3 rounded-xl border border-gray-100 p-3 text-left hover:bg-gray-50"><span className="mt-0.5 text-brand-purple"><FileCheck2 size={18} /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-gray-800">{item.title || 'Portfolio update'}</span><span className="mt-0.5 block line-clamp-2 text-xs text-gray-500">{item.message || item.body || 'A portfolio notification needs your attention.'}</span></span><ArrowRight size={16} className="mt-1 shrink-0 text-gray-400" /></button>)}
+            {totals.action === 0 && reviewQueue.length === 0 && <div className="rounded-xl bg-emerald-50 p-4 text-center"><CheckCircle2 className="mx-auto text-emerald-700" size={22} /><p className="mt-2 text-sm font-semibold text-emerald-800">You’re all caught up</p><p className="mt-1 text-xs text-emerald-700">No outstanding portfolio actions right now.</p></div>}
+          </div>
         </section>
 
         <section className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white">
-            <div className="flex items-center justify-between border-b border-gray-200 p-4"><div className="flex items-start gap-3"><span className="mt-0.5 rounded-lg bg-purple-50 p-2 text-brand-purple"><Bell size={18} /></span><div><h2 className="text-lg font-semibold text-gray-900">Recent notifications</h2><p className="mt-1 text-sm text-gray-500">Latest updates about your portfolio</p></div></div></div>
-            <div className="flex-1 divide-y divide-gray-100">
-              {recent.length === 0 ? <div className="p-5 text-sm text-gray-500">No recent notifications.</div> : recent.map((item, index) => {
-                const notificationStyle = getNotificationStyle(item.type);
-                return <button key={item._id || item.id || index} onClick={() => item.actionLink ? navigate(item.actionLink) : navigate('/instructors/notifications')} className={`flex w-full flex-col items-start gap-4 rounded-xl p-4 text-left transition hover:bg-gray-50/60 sm:flex-row sm:items-center sm:justify-between ${!item.readAt ? 'bg-orange-50/20' : ''}`}><span className="flex min-w-0 items-start gap-4"><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${notificationStyle.background}`}>{notificationStyle.icon}</span><span className="min-w-0"><span className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className={`block truncate text-sm font-semibold ${notificationStyle.title}`}>{getNotificationTitle(item)}</span>{!item.readAt && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-orange" />}<span className="text-xs text-gray-400">{formatNotificationTimestamp(item.createdAt || item.timestamp)}</span></span><span className="mt-1 block line-clamp-2 text-xs text-gray-600 sm:text-sm">{item.message || item.body || ''}</span>{item.comment && item.type !== 'approved' && item.type !== 'document_approved' && <span className="mt-1.5 block rounded-lg border border-gray-200/80 bg-gray-50 px-3 py-1.5 text-xs text-gray-600"><span className="font-semibold text-gray-700">Admin Remarks:</span> {item.comment}</span>}</span></span>{item.actionLink && <span className="inline-flex shrink-0 items-center gap-1 self-start rounded-xl border border-brand-purple/40 bg-white px-4 py-2 text-sm font-medium text-brand-purple sm:self-auto">Open portfolio <ArrowRight size={16} /></span>}</button>;
-              })}
+          <div className="flex items-center justify-between gap-3 border-b border-gray-200 p-4">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 rounded-lg bg-purple-50 p-2 text-brand-purple"><Bell size={18} /></span>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Recent notifications</h2>
+                <p className="mt-1 text-sm text-gray-500">Latest updates about your portfolio</p>
+              </div>
             </div>
-            <div className="mt-auto border-t border-gray-100 p-4"><button onClick={() => navigate('/instructors/notifications')} className="text-sm font-semibold text-brand-purple hover:underline">See all notifications</button></div>
+            <button onClick={() => navigate('/instructors/notifications')} className="shrink-0 text-sm font-semibold text-brand-purple hover:underline cursor-pointer">See all notifications</button>
+          </div>
+          <div className="flex-1 divide-y divide-gray-100">
+            {recent.length === 0 ? <div className="p-5 text-sm text-gray-500">No recent notifications.</div> : recent.map((item, index) => {
+              const notificationStyle = getNotificationStyle(item.type);
+              return <button key={item._id || item.id || index} onClick={() => item.actionLink ? navigate(item.actionLink) : navigate('/instructors/notifications')} className={`flex w-full flex-col items-start gap-4 rounded-xl p-4 text-left transition hover:bg-gray-50/60 sm:flex-row sm:items-center sm:justify-between ${!item.readAt ? 'bg-orange-50/20' : ''}`}><span className="flex min-w-0 items-start gap-4"><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${notificationStyle.background}`}>{notificationStyle.icon}</span><span className="min-w-0"><span className="flex flex-wrap items-center gap-x-2 gap-y-1"><span className={`block truncate text-sm font-semibold ${notificationStyle.title}`}>{getNotificationTitle(item)}</span>{!item.readAt && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-orange" />}<span className="text-xs text-gray-400">{formatNotificationTimestamp(item.createdAt || item.timestamp)}</span></span><span className="mt-1 block line-clamp-2 text-xs text-gray-600 sm:text-sm">{item.message || item.body || ''}</span>{item.comment && item.type !== 'approved' && item.type !== 'document_approved' && <span className="mt-1.5 block rounded-lg border border-gray-200/80 bg-gray-50 px-3 py-1.5 text-xs text-gray-600"><span className="font-semibold text-gray-700">Admin Remarks:</span> {item.comment}</span>}</span></span>{item.actionLink && <span className="inline-flex shrink-0 items-center gap-1 self-start rounded-xl border border-brand-purple/40 bg-white px-4 py-2 text-sm font-medium text-brand-purple sm:self-auto">Open portfolio <ArrowRight size={16} /></span>}</button>;
+            })}
+          </div>
         </section>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 import {
   Mail,
   Ban,
@@ -21,11 +22,11 @@ import { formatDate } from '../../utils/formatDate';
 const INVITE_PAGE_SIZE = 8;
 
 const statusStyles = {
-  Pending: 'bg-yellow-100 text-yellow-700',
-  Accepted: 'bg-green-100 text-green-700',
-  Rejected: 'bg-red-100 text-red-700',
-  Expired: 'bg-gray-100 text-gray-600',
-  Cancelled: 'bg-slate-100 text-slate-500',
+  Pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  Accepted: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  Rejected: 'bg-red-50 text-red-700 border-red-200',
+  Expired: 'bg-gray-50 text-gray-600 border-gray-200',
+  Cancelled: 'bg-gray-50 text-gray-600 border-gray-200',
 };
 
 const DEPARTMENTS = [
@@ -76,6 +77,13 @@ const MODAL_STYLES = {
 };
 
 function AppModal({ modal, onClose }) {
+  const { rendered, backdropAnim, panelAnim } = useAnimatedModal(Boolean(modal));
+  const [lastModal, setLastModal] = useState(modal);
+
+  useEffect(() => {
+    if (modal) setLastModal(modal);
+  }, [modal]);
+
   useEffect(() => {
     if (!modal) return;
     const onKey = (e) => {
@@ -85,10 +93,11 @@ function AppModal({ modal, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [modal, onClose]);
 
-  if (!modal) return null;
+  const activeModal = modal || lastModal;
+  if (!rendered || !activeModal) return null;
 
-  const isConfirm = modal.kind === 'confirm';
-  const style = MODAL_STYLES[modal.tone] || MODAL_STYLES.error;
+  const isConfirm = activeModal.kind === 'confirm';
+  const style = MODAL_STYLES[activeModal.tone] || MODAL_STYLES.error;
   const Icon = style.icon;
 
   return (
@@ -100,13 +109,13 @@ function AppModal({ modal, onClose }) {
     >
       {/* Scrim */}
       <div
-        className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm animate-[fadeIn_.15s_ease-out]"
+        className={`absolute inset-0 bg-gray-900/40 ${backdropAnim}`}
         onClick={isConfirm ? undefined : onClose}
       />
 
       {/* Card */}
       <div
-        className={`relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ${style.ring} p-6 animate-[modalIn_.18s_cubic-bezier(0.16,1,0.3,1)]`}
+        className={`relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ${style.ring} p-6 ${panelAnim}`}
       >
         <div className={`absolute inset-x-6 top-0 h-1 rounded-full ${style.accent}`} />
 
@@ -125,9 +134,9 @@ function AppModal({ modal, onClose }) {
         </div>
 
         <h3 id="app-modal-title" className="text-base font-semibold text-gray-900 mb-1.5">
-          {modal.title}
+          {activeModal.title}
         </h3>
-        <p className="text-sm leading-relaxed text-gray-500 mb-6">{modal.message}</p>
+        <p className="text-sm leading-relaxed text-gray-500 mb-6">{activeModal.message}</p>
 
         {isConfirm ? (
           <div className="flex gap-2.5">
@@ -135,16 +144,16 @@ function AppModal({ modal, onClose }) {
               onClick={onClose}
               className="flex-1 rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
             >
-              {modal.cancelLabel || 'Cancel'}
+              {activeModal.cancelLabel || 'Cancel'}
             </button>
             <button
               onClick={() => {
-                modal.onConfirm?.();
+                activeModal.onConfirm?.();
                 onClose();
               }}
               className="flex-1 rounded-full bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-200 hover:bg-red-600 transition-colors"
             >
-              {modal.confirmLabel || 'Delete'}
+              {activeModal.confirmLabel || 'Delete'}
             </button>
           </div>
         ) : (
@@ -152,7 +161,7 @@ function AppModal({ modal, onClose }) {
             onClick={onClose}
             className={`w-full rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 ${style.accent}`}
           >
-            {modal.confirmLabel || 'Got it'}
+            {activeModal.confirmLabel || 'Got it'}
           </button>
         )}
       </div>
@@ -264,7 +273,7 @@ function InviteInstructor() {
           setAcademicPeriods(data.periods);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Build available School Year options from academic periods + invitations
@@ -500,10 +509,10 @@ function InviteInstructor() {
       {/* PAGE HEADER + TOGGLE INVITE CARD BUTTON */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
         <div>
-          <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
+          <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
             Invite Instructors
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="mt-1 text-sm font-medium text-gray-500">
             Send email invitations to new faculty members and track their onboarding status.
           </p>
         </div>
@@ -512,11 +521,10 @@ function InviteInstructor() {
           type="button"
           onClick={() => setShowInviteCard((prev) => !prev)}
           aria-expanded={showInviteCard}
-          className={`inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${
-            showInviteCard
-              ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-              : 'bg-brand-orange text-white hover:bg-orange-600 shadow-sm'
-          }`}
+          className={`inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${showInviteCard
+            ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            : 'bg-brand-orange text-white hover:bg-orange-600 shadow-sm'
+            }`}
         >
           {showInviteCard ? (
             <>
@@ -534,11 +542,10 @@ function InviteInstructor() {
 
       {/* Smooth Animated Collapsible Invite Card */}
       <div
-        className={`grid transition-all duration-300 ease-in-out ${
-          showInviteCard
-            ? 'grid-rows-[1fr] opacity-100 mb-6'
-            : 'grid-rows-[0fr] opacity-0 mb-0 pointer-events-none'
-        }`}
+        className={`grid transition-all duration-300 ease-in-out ${showInviteCard
+          ? 'grid-rows-[1fr] opacity-100 mb-6'
+          : 'grid-rows-[0fr] opacity-0 mb-0 pointer-events-none'
+          }`}
       >
         <div className="overflow-hidden">
           <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-6 border border-gray-100">
@@ -756,9 +763,8 @@ function InviteInstructor() {
               </tr>
             </thead>
             <tbody
-              className={`transition-opacity duration-300 ${
-                tableVisible ? 'opacity-100' : 'opacity-0'
-              }`}
+              className={`transition-opacity duration-300 ${tableVisible ? 'opacity-100' : 'opacity-0'
+                }`}
             >
               {filteredInvitations.length === 0 ? (
                 <tr>
@@ -792,9 +798,8 @@ function InviteInstructor() {
                         onClick={() => {
                           if (canViewProfile) navigate(`/admin/instructors/${inv._id}`);
                         }}
-                        className={`border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors duration-150 ${
-                          canViewProfile ? 'cursor-pointer' : ''
-                        }`}
+                        className={`border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors duration-150 ${canViewProfile ? 'cursor-pointer' : ''
+                          }`}
                       >
                         <td className="py-3.5 pr-4">
                           <div className="flex items-center gap-3">
@@ -829,11 +834,10 @@ function InviteInstructor() {
                         <td className="text-gray-600 pr-4">{formatDate(inv.dateSent)}</td>
                         <td className="pr-4">
                           <span
-                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              statusStyles[inv.status] || 'bg-gray-100 text-gray-600'
-                            }`}
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${statusStyles[inv.status] || 'bg-gray-50 text-gray-600 border-gray-200'
+                              }`}
                           >
-                            {inv.status?.toUpperCase()}
+                            {inv.status}
                           </span>
                         </td>
                         <td onClick={(e) => e.stopPropagation()}>
@@ -856,11 +860,10 @@ function InviteInstructor() {
                               <button
                                 onClick={() => handleResend(inv._id)}
                                 disabled={isResending}
-                                className={`flex items-center gap-1 text-xs font-medium transition-colors cursor-pointer ${
-                                  isResending
-                                    ? 'text-orange-300 cursor-wait'
-                                    : 'text-orange-500 hover:underline'
-                                }`}
+                                className={`flex items-center gap-1 text-xs font-medium transition-colors cursor-pointer ${isResending
+                                  ? 'text-orange-300 cursor-wait'
+                                  : 'text-orange-500 hover:underline'
+                                  }`}
                               >
                                 <RotateCcw
                                   size={13}
@@ -911,11 +914,10 @@ function InviteInstructor() {
                   key={p}
                   type="button"
                   onClick={() => setInvitePage(p)}
-                  className={`w-8 h-8 rounded-lg text-xs font-medium border transition ${
-                    p === invitePage
-                      ? 'bg-orange-500 text-white border-orange-500'
-                      : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-                  }`}
+                  className={`w-8 h-8 rounded-lg text-xs font-medium border transition ${p === invitePage
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                    }`}
                 >
                   {p}
                 </button>

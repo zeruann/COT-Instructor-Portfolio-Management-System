@@ -146,10 +146,10 @@ const computeCompletion = (summaries) => {
 
 // Status chip styles for each card
 const statusStyles = {
-  completed: { label: 'Completed', className: 'bg-[#dcefd6] text-[#5d9a54]' },
-  review: { label: 'For review', className: 'bg-amber-100 text-amber-700' },
-  rejected: { label: 'Needs revision', className: 'bg-red-100 text-red-600' },
-  empty: { label: 'No documents', className: 'bg-gray-200 text-gray-500' },
+  completed: { label: 'Completed', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  review: { label: 'For review', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  rejected: { label: 'Needs revision', className: 'bg-red-50 text-red-700 border-red-200' },
+  empty: { label: 'No documents', className: 'bg-gray-50 text-gray-600 border-gray-200' },
 };
 
 const getCardStatus = ({ approved, pending, rejected }) => {
@@ -223,7 +223,7 @@ function PortfolioCard({ card, summary, menuOpen, onToggleMenu, onCloseMenu }) {
       {/* Footer */}
       <div className="mt-5 flex items-center justify-between gap-2 pt-3 text-xs text-gray-500">
         <span
-          className={`whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium ${status.className}`}
+          className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium ${status.className}`}
         >
           {status.label}
         </span>
@@ -361,17 +361,19 @@ function FacultyPortfolio() {
   return (
     <div className="space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <PlaceholderPage title="Faculty Portfolio" />
+        <PlaceholderPage
+          title="Faculty Portfolio"
+          subtitle="Manage and upload your faculty portfolio requirement documents."
+        />
 
         <button
           type="button"
           onClick={() => setShowOverview((prev) => !prev)}
           aria-expanded={showOverview}
-          className={`inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${
-            showOverview
+          className={`inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${showOverview
               ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
               : 'bg-brand-orange text-white hover:bg-orange-600 shadow-sm'
-          }`}
+            }`}
         >
           {showOverview ? (
             <>
@@ -389,11 +391,10 @@ function FacultyPortfolio() {
 
       {/* TOP CARDS COLLAPSIBLE WRAPPER */}
       <div
-        className={`grid transition-all duration-300 ease-in-out ${
-          showOverview
+        className={`grid transition-all duration-300 ease-in-out ${showOverview
             ? 'grid-rows-[1fr] opacity-100'
             : 'grid-rows-[0fr] opacity-0 pointer-events-none'
-        }`}
+          }`}
       >
         <div className="overflow-hidden">
           <div className="grid grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">

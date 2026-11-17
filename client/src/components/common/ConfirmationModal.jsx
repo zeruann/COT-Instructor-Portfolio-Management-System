@@ -1,27 +1,36 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, Archive, RotateCcw, Trash2, HelpCircle } from 'lucide-react';
+import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 
 const VARIANT_CONFIGS = {
   danger: {
     icon: Trash2,
-    iconBg: 'bg-red-50 text-red-600',
-    confirmBtn: 'bg-red-600 text-white hover:bg-red-700',
+    ring: 'ring-red-100',
+    accent: 'bg-red-500',
+    iconBg: 'bg-red-50 text-red-500',
+    confirmBtn: 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200',
   },
   warning: {
     icon: Archive,
-    iconBg: 'bg-amber-50 text-amber-600',
-    confirmBtn: 'bg-brand-orange text-white hover:bg-opacity-95',
+    ring: 'ring-amber-100',
+    accent: 'bg-amber-500',
+    iconBg: 'bg-amber-50 text-amber-500',
+    confirmBtn: 'bg-brand-orange hover:bg-orange-600 text-white shadow-lg shadow-orange-200',
   },
   success: {
     icon: RotateCcw,
-    iconBg: 'bg-green-50 text-green-600',
-    confirmBtn: 'bg-brand-purple text-white hover:bg-opacity-95',
+    ring: 'ring-emerald-100',
+    accent: 'bg-emerald-500',
+    iconBg: 'bg-emerald-50 text-emerald-500',
+    confirmBtn: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200',
   },
   info: {
     icon: HelpCircle,
+    ring: 'ring-purple-100',
+    accent: 'bg-brand-purple',
     iconBg: 'bg-purple-50 text-brand-purple',
-    confirmBtn: 'bg-brand-purple text-white hover:bg-opacity-95',
+    confirmBtn: 'bg-brand-purple hover:opacity-95 text-white shadow-lg shadow-purple-200',
   },
 };
 
@@ -36,6 +45,8 @@ export default function ConfirmationModal({
   onConfirm,
   onCancel,
 }) {
+  const { rendered, backdropAnim, panelAnim } = useAnimatedModal(open);
+
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (e) => {
@@ -45,42 +56,47 @@ export default function ConfirmationModal({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, loading, onCancel]);
 
-  if (!open) return null;
+  if (!rendered) return null;
 
   const config = VARIANT_CONFIGS[variant] || VARIANT_CONFIGS.warning;
   const IconComponent = config.icon;
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4 transition-opacity animate-in fade-in"
-      onClick={() => !loading && onCancel()}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
     >
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="confirm-modal-title"
-        className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl animate-in zoom-in-95 duration-150"
+        className={`absolute inset-0 bg-gray-900/40 ${backdropAnim}`}
+        onClick={() => !loading && onCancel()}
+      />
+      <div
+        className={`relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ${config.ring} p-6 ${panelAnim}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className={`mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full ${config.iconBg}`}>
-          <IconComponent size={22} />
+        <div className={`absolute inset-x-6 top-0 h-1 rounded-full ${config.accent}`} />
+
+        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 ${config.iconBg}`}>
+          <IconComponent size={24} strokeWidth={2} />
         </div>
 
-        <h2 id="confirm-modal-title" className="text-center text-lg font-semibold text-gray-800">
+        <h3 id="confirm-modal-title" className="text-base font-semibold text-gray-900 mb-1.5">
           {title}
-        </h2>
+        </h3>
         {message && (
-          <p className="mt-1.5 text-center text-sm text-gray-500">
+          <p className="text-sm leading-relaxed text-gray-500 mb-6">
             {message}
           </p>
         )}
 
-        <div className="mt-6 flex gap-3">
+        <div className="flex gap-2.5">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="flex-1 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+            className="flex-1 rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-50 cursor-pointer disabled:opacity-50"
           >
             {cancelLabel}
           </button>
@@ -88,12 +104,20 @@ export default function ConfirmationModal({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors disabled:opacity-50 ${config.confirmBtn}`}
+            className={`flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 ${config.confirmBtn}`}
           >
             {loading ? 'Please wait...' : confirmLabel}
           </button>
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes modalIn {
+          from { opacity: 0; transform: translateY(8px) scale(.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </div>,
     document.body
   );

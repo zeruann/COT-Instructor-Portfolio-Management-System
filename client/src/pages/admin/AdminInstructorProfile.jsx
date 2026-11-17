@@ -56,10 +56,10 @@ function Section({ title, children }) {
 }
 
 const statusStyles = {
-  active: "bg-emerald-100 text-emerald-600",
-  deactivated: "bg-red-100 text-red-500",
-  inactive: "bg-gray-100 text-gray-500",
-  pending: "bg-amber-100 text-amber-600",
+  active: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  deactivated: "bg-red-50 text-red-700 border-red-200",
+  inactive: "bg-gray-50 text-gray-600 border-gray-200",
+  pending: "bg-amber-50 text-amber-700 border-amber-200",
 };
 
 function AdminInstructorProfile() {
@@ -230,10 +230,10 @@ function AdminInstructorProfile() {
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
               <span
-                className={`px-3 py-0.5 text-[11px] font-bold rounded-full tracking-wider ${statusStyles[statusKey] || statusStyles.inactive
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${statusStyles[statusKey] || statusStyles.inactive
                   }`}
               >
-                {(instructor.accountStatus || "ACTIVE").toUpperCase()}
+                {instructor.accountStatus ? instructor.accountStatus.charAt(0).toUpperCase() + instructor.accountStatus.slice(1).toLowerCase() : "Active"}
               </span>
             </div>
             <p className="text-sm text-gray-500 mt-1">
@@ -271,8 +271,8 @@ function AdminInstructorProfile() {
             onClick={handleToggleStatus}
             disabled={updatingStatus}
             className={`px-6 py-2 rounded-full text-sm font-semibold transition shadow-sm cursor-pointer disabled:opacity-50 ${isActive
-                ? "border border-red-200 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white"
-                : "border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white"
+              ? "border border-red-200 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white"
+              : "border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white"
               }`}
           >
             {updatingStatus

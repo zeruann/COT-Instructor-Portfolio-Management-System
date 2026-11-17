@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { LogOut } from 'lucide-react';
+import { useAnimatedModal } from '../hooks/useAnimatedModal';
 
 function ConfirmLogoutModal({ open, onConfirm, onCancel, loading = false }) {
+  const { rendered, backdropAnim, panelAnim } = useAnimatedModal(open);
+
   // Close on Escape
   useEffect(() => {
     if (!open) return;
@@ -13,7 +16,7 @@ function ConfirmLogoutModal({ open, onConfirm, onCancel, loading = false }) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, loading, onCancel]);
 
-  if (!open) return null;
+  if (!rendered) return null;
 
   return createPortal(
     <div
@@ -22,29 +25,29 @@ function ConfirmLogoutModal({ open, onConfirm, onCancel, loading = false }) {
       aria-modal="true"
       aria-labelledby="logout-title"
     >
-      {/* Scrim with backdrop blur matching delete modal */}
+      {/* Scrim */}
       <div
-        className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm animate-[fadeIn_.15s_ease-out]"
+        className={`absolute inset-0 bg-gray-900/40 ${backdropAnim}`}
         onClick={() => !loading && onCancel()}
       />
 
-      {/* Card styling identical to delete/AppModal */}
+      {/* Card styling identical to AppModal */}
       <div
-        className="relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ring-red-100 p-6 animate-[modalIn_.18s_cubic-bezier(0.16,1,0.3,1)]"
+        className={`relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ring-red-100 p-6 ${panelAnim}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top accent line */}
         <div className="absolute inset-x-6 top-0 h-1 rounded-full bg-red-500" />
 
         {/* Squircle icon container */}
-        <div className="mx-auto w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-red-50 text-red-500">
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-red-50 text-red-500">
           <LogOut size={24} strokeWidth={2} />
         </div>
 
-        <h3 id="logout-title" className="text-center text-base font-semibold text-gray-900 mb-1.5">
+        <h3 id="logout-title" className="text-base font-semibold text-gray-900 mb-1.5">
           Log out?
         </h3>
-        <p className="text-center text-sm leading-relaxed text-gray-500 mb-6">
+        <p className="text-sm leading-relaxed text-gray-500 mb-6">
           Are you sure you want to log out of your account?
         </p>
 

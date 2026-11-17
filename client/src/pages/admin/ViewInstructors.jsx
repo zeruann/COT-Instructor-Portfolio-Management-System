@@ -181,15 +181,18 @@ export default function ViewInstructors() {
   // Account status badge
   const renderStatusBadge = (item) => {
     const styles = {
-      active: 'bg-emerald-100 text-emerald-600',
-      deactivated: 'bg-red-100 text-red-500',
-      inactive: 'bg-gray-100 text-gray-500',
-      pending: 'bg-amber-100 text-amber-600',
+      active: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      deactivated: 'bg-red-50 text-red-700 border-red-200',
+      inactive: 'bg-gray-50 text-gray-600 border-gray-200',
+      pending: 'bg-amber-50 text-amber-700 border-amber-200',
     };
     const key = (item.accountStatus || '').toLowerCase();
+    const label = item.accountStatus
+      ? item.accountStatus.charAt(0).toUpperCase() + item.accountStatus.slice(1).toLowerCase()
+      : 'N/A';
     return (
-      <span className={`px-3 py-1 text-[11px] font-bold rounded-full tracking-wider ${styles[key] || styles.inactive}`}>
-        {(item.accountStatus || 'N/A').toUpperCase()}
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${styles[key] || styles.inactive}`}>
+        {label}
       </span>
     );
   };
@@ -271,11 +274,8 @@ export default function ViewInstructors() {
     <>
       {/* PAGE HEADER */}
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Instructors</h1>
-        </div>
-        <p className="text-sm text-gray-500">
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">Instructors</h1>
+        <p className="mt-1 text-sm font-medium text-gray-500">
           Manage and monitor all registered faculty members.
         </p>
       </div>

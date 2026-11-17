@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { 
-  FolderGit2, 
-  ShieldCheck, 
-  FileCheck2, 
-  ArrowRight, 
-  LogIn, 
+import {
+  FolderGit2,
+  ShieldCheck,
+  FileCheck2,
+  ArrowRight,
+  LogIn,
   Layers,
   Building2,
   Target,
@@ -41,9 +41,8 @@ function Reveal({ children, className = "", delay = 0 }) {
   return (
     <div
       ref={ref}
-      className={`${className} auth-anim transition-all duration-700 ease-out will-change-transform ${
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-      }`}
+      className={`${className} auth-anim transition-all duration-700 ease-out will-change-transform ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
@@ -101,7 +100,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fbfbfb] flex flex-col font-sans text-gray-800">
+    <div key={location.pathname} className="min-h-screen bg-[#fbfbfb] flex flex-col font-sans text-gray-800 motion-safe:animate-page-fade-in">
       {/* Navigation Header */}
       <header
         className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-orange-100/80 shadow-xs auth-anim"
@@ -109,10 +108,10 @@ export default function LandingPage() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-3">
           <Link to="/" className="flex items-center gap-2.5 sm:gap-3 group cursor-pointer shrink-0">
-            <img 
-              src={cotLogo} 
-              alt="COT Logo" 
-              className="w-9 h-9 sm:w-10 sm:h-10 object-contain drop-shadow-sm transition-transform duration-500 group-hover:rotate-[8deg] group-hover:scale-105" 
+            <img
+              src={cotLogo}
+              alt="COT Logo"
+              className="w-9 h-9 sm:w-10 sm:h-10 object-contain drop-shadow-sm transition-transform duration-500 group-hover:rotate-[8deg] group-hover:scale-105"
             />
             <div className="leading-tight">
               <span className="block font-bold text-base sm:text-lg tracking-tight text-gray-900 whitespace-nowrap">
@@ -225,7 +224,7 @@ export default function LandingPage() {
         {/* Hero Section */}
         <section id="home" className="relative overflow-hidden py-16 sm:py-24">
           {/* Background image & overlays */}
-          <div 
+          <div
             className="absolute inset-0 bg-cover bg-center pointer-events-none auth-anim"
             style={{
               backgroundImage: "url('/buksu_bg.png')",
@@ -271,7 +270,7 @@ export default function LandingPage() {
                 className="mt-6 text-base sm:text-lg text-gray-600 leading-relaxed max-w-2xl mx-auto auth-anim"
                 style={{ animation: "authFadeUp 0.8s ease-out 0.24s both" }}
               >
-                A centralized, secure platform for faculty and administrators to organize, 
+                A centralized, secure platform for faculty and administrators to organize,
                 submit, and review academic requirements, class portfolios, and professional achievements.
               </p>
 

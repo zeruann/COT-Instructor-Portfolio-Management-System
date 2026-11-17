@@ -375,6 +375,15 @@ function Profile() {
 
   return (
     <div className="space-y-6">
+      {/* PAGE HEADER */}
+      <div>
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
+          Profile
+        </h1>
+        <p className="mt-1 text-sm font-medium text-gray-500">
+          View and manage your personal information, academic rank, and educational background.
+        </p>
+      </div>
 
       {/* PROFILE CARD */}
       <div className="bg-white rounded-2xl shadow p-6 flex flex-wrap items-center justify-between gap-4">

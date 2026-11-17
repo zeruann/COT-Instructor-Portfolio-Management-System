@@ -206,7 +206,7 @@ export default function AdminReports() {
     <div className="min-w-0 space-y-4 sm:space-y-6">
       {/* Title & Subtitle */}
       <div>
-        <h1 className="text-xl font-medium text-brand-purple sm:text-2xl">Reports</h1>
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">Reports</h1>
         <p className="mt-1 text-sm font-medium text-gray-500">
           Select an instructor to view, print, or export their Faculty Compliance Checklist
         </p>

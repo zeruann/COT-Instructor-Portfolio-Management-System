@@ -350,17 +350,17 @@ export default function AdminArchiveRecordDetail() {
 
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+              <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
                 {period
                   ? `AY ${period.schoolYear} · ${formatSemName(period.semester)}`
                   : 'Archived Period Records'}
               </h1>
-              <span className="rounded-lg bg-purple-50 border border-purple-200/80 px-2.5 py-0.5 text-xs font-bold text-brand-purple">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200">
                 Archived · Read-Only
               </span>
             </div>
             {period && (
-              <p className="text-xs sm:text-sm text-gray-500 mt-1 flex items-center gap-1.5">
+              <p className="mt-1 text-sm font-medium text-gray-500 flex items-center gap-1.5">
                 <CalendarDays size={14} className="text-gray-400" />
                 <span>
                   {formatDate(period.startDate)} – {formatDate(period.endDate)}
@@ -720,12 +720,16 @@ export default function AdminArchiveRecordDetail() {
       {/* ── ARCHIVED CLASS PORTFOLIO MODAL (Single Source of Truth) ── */}
       {selectedClassMeta && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-[1px] p-3 sm:p-5 transition-opacity duration-200 ${isClosingModal ? 'opacity-0' : 'animate-modal-backdrop'
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-5 ${isClosingModal
+            ? 'animate-[modalBackdropOut_150ms_ease-in_forwards]'
+            : 'animate-[modalBackdropIn_150ms_ease-out_forwards]'
             }`}
           onClick={handleCloseClassModal}
         >
           <div
-            className={`relative flex flex-col w-full max-w-7xl h-[90vh] rounded-2xl bg-[#f8f9fc] shadow-2xl border border-gray-200 overflow-hidden transition-all duration-200 ${isClosingModal ? 'opacity-0 scale-[0.985] translate-y-2' : 'animate-modal-panel'
+            className={`relative flex flex-col w-full max-w-7xl h-[90vh] rounded-2xl bg-[#f8f9fc] shadow-2xl border border-gray-200 overflow-hidden ${isClosingModal
+              ? 'animate-[modalPanelOut_150ms_ease-in_forwards]'
+              : 'animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]'
               }`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -819,14 +823,16 @@ export default function AdminArchiveRecordDetail() {
       {/* ── ARCHIVED FACULTY PORTFOLIO MODAL (Same Pattern as Class Portfolio Modal) ── */}
       {selectedFacultyInstructor && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-[1px] p-3 sm:p-5 transition-opacity duration-200 ${isClosingFacultyModal ? 'opacity-0' : 'animate-modal-backdrop'
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-5 ${isClosingFacultyModal
+            ? 'animate-[modalBackdropOut_150ms_ease-in_forwards]'
+            : 'animate-[modalBackdropIn_150ms_ease-out_forwards]'
             }`}
           onClick={handleCloseFacultyModal}
         >
           <div
-            className={`relative flex flex-col w-full max-w-7xl h-[90vh] rounded-2xl bg-[#f8f9fc] shadow-2xl border border-gray-200 overflow-hidden transition-all duration-200 ${isClosingFacultyModal
-              ? 'opacity-0 scale-[0.985] translate-y-2'
-              : 'animate-modal-panel'
+            className={`relative flex flex-col w-full max-w-7xl h-[90vh] rounded-2xl bg-[#f8f9fc] shadow-2xl border border-gray-200 overflow-hidden ${isClosingFacultyModal
+              ? 'animate-[modalPanelOut_150ms_ease-in_forwards]'
+              : 'animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]'
               }`}
             onClick={(e) => e.stopPropagation()}
           >

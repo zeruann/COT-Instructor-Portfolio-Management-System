@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react';
 import { X, UploadCloud, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { uploadDocument } from '../../api/documents';
+import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 
 // Biggest file allowed (MB). The server enforces the same limit in constants/uploadRules.js.
 const MAX_FILE_MB = 5;
@@ -20,6 +21,8 @@ function UploadModalContent({
   requirement,
   existingDoc,
   slot,
+  backdropAnim,
+  panelAnim,
 }) {
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -124,8 +127,9 @@ function UploadModalContent({
     : `Upload: ${requirement?.label || requirement?.card || 'Document'}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+      <div className={`absolute inset-0 bg-black/50 ${backdropAnim}`} />
+      <div className={`relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[92vh] ${panelAnim}`}>
         {/* Header */}
 
         {/* MODAL TITLE AND DESCRIPTION */}
@@ -367,6 +371,7 @@ function UploadModalContent({
 }
 
 export default function UploadModal(props) {
-  if (!props.isOpen) return null;
-  return <UploadModalContent {...props} />;
+  const { rendered, backdropAnim, panelAnim } = useAnimatedModal(props.isOpen);
+  if (!rendered) return null;
+  return <UploadModalContent {...props} backdropAnim={backdropAnim} panelAnim={panelAnim} />;
 }

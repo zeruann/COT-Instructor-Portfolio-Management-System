@@ -168,10 +168,10 @@ export default function ReviewClassPortfolio() {
               <ArrowLeft size={16} />
             </button>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-[#2e2a72] tracking-tight">
+              <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
                 {instName}&apos;s Class Portfolios
               </h1>
-              <p className="text-xs sm:text-sm text-gray-500">{dept} · Select a class to review documents</p>
+              <p className="mt-1 text-sm font-medium text-gray-500">{dept} · Select a class to review documents</p>
             </div>
           </div>
         </div>

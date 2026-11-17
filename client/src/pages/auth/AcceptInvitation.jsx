@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
@@ -58,10 +58,11 @@ function AcceptInvitation() {
 
   const isBusy = status === 'accepting' || status === 'rejecting';
 
+  const { pathname } = useLocation();
   return (
-    <div className="min-h-screen bg-[#fbfbfb] flex items-center justify-center p-4 sm:p-8 font-sans text-gray-800 relative overflow-hidden">
+    <div key={pathname} className="min-h-screen bg-[#fbfbfb] flex items-center justify-center p-4 sm:p-8 font-sans text-gray-800 relative overflow-hidden motion-safe:animate-page-fade-in">
       {/* Landing Page Campus Image & Warm Gradient Overlays */}
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center pointer-events-none"
         style={{ backgroundImage: "url('/buksu_bg.png')" }}
       />

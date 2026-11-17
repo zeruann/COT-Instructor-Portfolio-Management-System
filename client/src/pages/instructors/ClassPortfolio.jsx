@@ -279,8 +279,9 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
   const isEdit = Boolean(initialData);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 sm:p-6 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl rounded-2xl bg-white p-7 sm:p-8 shadow-2xl transition-all">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="absolute inset-0 bg-black/50 animate-[modalBackdropIn_150ms_ease-out_forwards]" />
+      <div className="relative w-full max-w-2xl rounded-2xl bg-white p-7 sm:p-8 shadow-2xl animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 pb-5">
           <div className="flex items-center gap-3.5">
@@ -576,17 +577,19 @@ function ClassPortfolio() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <PlaceholderPage title="Class Portfolio" />
+        <PlaceholderPage
+          title="Class Portfolio"
+          subtitle="Manage your assigned classes and submit course requirement documents."
+        />
 
         <button
           type="button"
           onClick={() => setShowStatusCards((prev) => !prev)}
           aria-expanded={showStatusCards}
-          className={`inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${
-            showStatusCards
-              ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-              : 'bg-brand-orange text-white hover:bg-orange-600 shadow-sm'
-          }`}
+          className={`inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${showStatusCards
+            ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            : 'bg-brand-orange text-white hover:bg-orange-600 shadow-sm'
+            }`}
         >
           {showStatusCards ? (
             <>
@@ -604,11 +607,10 @@ function ClassPortfolio() {
 
       {/* TOP SUMMARY STATS COLLAPSIBLE WRAPPER */}
       <div
-        className={`grid transition-all duration-300 ease-in-out ${
-          showStatusCards
-            ? 'grid-rows-[1fr] opacity-100'
-            : 'grid-rows-[0fr] opacity-0 pointer-events-none'
-        }`}
+        className={`grid transition-all duration-300 ease-in-out ${showStatusCards
+          ? 'grid-rows-[1fr] opacity-100'
+          : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+          }`}
       >
         <div className="overflow-hidden">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

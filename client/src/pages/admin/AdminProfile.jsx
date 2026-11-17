@@ -17,10 +17,10 @@ const show = (value) =>
 const formatDate = (value) =>
   value
     ? new Date(value).toLocaleDateString("en-PH", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
     : "—";
 
 function Info({ label, value, className = "" }) {
@@ -265,6 +265,16 @@ export default function AdminProfile() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-2 sm:p-6">
+      {/* PAGE HEADER */}
+      <div>
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
+          Profile
+        </h1>
+        <p className="mt-1 text-sm font-medium text-gray-500">
+          View and manage your administrator profile and contact details.
+        </p>
+      </div>
+
       {/* PROFILE HEADER CARD */}
       <div className="bg-white rounded-2xl shadow p-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">

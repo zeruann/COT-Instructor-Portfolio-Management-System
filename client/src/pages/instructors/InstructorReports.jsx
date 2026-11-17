@@ -778,12 +778,12 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
           </button>
         )}
         <div className="min-w-0">
-          <h1 className="text-2xl font-medium tracking-tight text-brand-purple">
+          <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
             {effectiveInstructorId && data?.instructorName
               ? `${data.instructorName}'s Reports`
               : 'Reports'}
           </h1>
-          <p className="mt-1 text-sm text-brand-gray">
+          <p className="mt-1 text-sm font-medium text-gray-500">
             Review the Faculty Compliance Checklist, then print it or download it as Excel.
           </p>
         </div>

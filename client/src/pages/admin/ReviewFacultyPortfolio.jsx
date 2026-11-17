@@ -17,7 +17,9 @@ import {
   Check,
   Minus,
 } from 'lucide-react';
-import { fetchFacultySummary } from '../../api/documents';
+import { fetchFacultySummary, fetchDocuments } from '../../api/documents';
+import PreviewModal from '../../components/documentActions/PreviewModal';
+import StatusBadge from '../../components/documentActions/StatusBadge';
 
 // accent = dot + underline color of the card (matches the design reference)
 const requirementCards = [
@@ -89,10 +91,10 @@ const requirementCards = [
 
 // Status chip styles for each card
 const statusStyles = {
-  completed: { label: 'Completed', className: 'bg-[#dcefd6] text-[#5d9a54]' },
-  review: { label: 'For review', className: 'bg-amber-100 text-amber-700' },
-  rejected: { label: 'Needs revision', className: 'bg-red-100 text-red-600' },
-  empty: { label: 'No documents', className: 'bg-gray-200 text-gray-500' },
+  completed: { label: 'Completed', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  review: { label: 'For review', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  rejected: { label: 'Needs revision', className: 'bg-red-50 text-red-700 border-red-200' },
+  empty: { label: 'No documents', className: 'bg-gray-50 text-gray-600 border-gray-200' },
 };
 
 const getCardStatus = ({ approved, pending, rejected }) => {
@@ -259,8 +261,7 @@ function PortfolioCard({
       {/* Footer */}
       <div className={`${compact ? 'mt-3 pt-2.5' : 'mt-5 pt-3'} flex items-center justify-between gap-2 text-xs text-gray-500`}>
         <span
-          className={`whitespace-nowrap rounded-md ${compact ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1 text-xs'
-            } font-medium ${status.className}`}
+          className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium ${status.className}`}
         >
           {status.label}
         </span>
@@ -312,6 +313,8 @@ export default function ReviewFacultyPortfolio({
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
   const [openMenu, setOpenMenu] = useState(null);
+  const [pdsDoc, setPdsDoc] = useState(null);
+  const [pdsPreviewOpen, setPdsPreviewOpen] = useState(false);
 
   const resetFilters = () => {
     setSearchQuery('');
@@ -342,7 +345,22 @@ export default function ReviewFacultyPortfolio({
     return instructors.find((inst) => (inst._id || inst.id) === instructorId) || null;
   }, [instructorId, instructors]);
 
-  // Load summary for selected instructor
+  // Load summary + PDS document for selected instructor
+  const loadPdsDoc = (targetId) => {
+    if (!targetId) {
+      setPdsDoc(null);
+      return Promise.resolve();
+    }
+    return fetchDocuments({ requirementKey: 'FAC_A_PDS', ownerId: targetId })
+      .then((docs) => {
+        setPdsDoc(Array.isArray(docs) ? docs[0] || null : null);
+      })
+      .catch((err) => {
+        console.error('Failed to load instructor PDS:', err);
+        setPdsDoc(null);
+      });
+  };
+
   useEffect(() => {
     let isCurrent = true;
     if (instructorId) {
@@ -351,6 +369,13 @@ export default function ReviewFacultyPortfolio({
           if (isCurrent) setSummariesById((prev) => ({ ...prev, [instructorId]: sum || {} }));
         })
         .catch((err) => console.error('Failed to load portfolio summaries:', err));
+      fetchDocuments({ requirementKey: 'FAC_A_PDS', ownerId: instructorId })
+        .then((docs) => {
+          if (isCurrent) setPdsDoc(Array.isArray(docs) ? docs[0] || null : null);
+        })
+        .catch((err) => console.error('Failed to load instructor PDS:', err));
+    } else {
+      setPdsDoc(null);
     }
     return () => {
       isCurrent = false;
@@ -561,7 +586,7 @@ export default function ReviewFacultyPortfolio({
             >
               <ArrowLeft size={16} />
             </button>
-            <h1 className="min-w-0 text-2xl font-semibold text-brand-purple sm:text-3xl">
+            <h1 className="min-w-0 text-xl font-bold text-brand-purple sm:text-2xl">
               Faculty Portfolio Review
             </h1>
           </div>
@@ -669,7 +694,20 @@ export default function ReviewFacultyPortfolio({
                     <p className="mt-1 break-words text-sm text-gray-500">{rank}</p>
                     <p className="break-words text-sm text-gray-500">{department}</p>
 
-                    {pdsUrl ? (
+                    {pdsDoc ? (
+                      <div className="mt-3 space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => setPdsPreviewOpen(true)}
+                          className="w-full cursor-pointer rounded-md border border-brand-purple bg-purple-50 px-6 py-2 text-center text-sm font-semibold text-brand-purple transition hover:bg-purple-100"
+                        >
+                          See PDS
+                        </button>
+                        <div className="flex justify-center">
+                          <StatusBadge status={pdsDoc.status} />
+                        </div>
+                      </div>
+                    ) : pdsUrl ? (
                       <a
                         href={pdsUrl}
                         target="_blank"
@@ -821,6 +859,14 @@ export default function ReviewFacultyPortfolio({
             </div>
           )}
         </section>
+
+        <PreviewModal
+          isOpen={pdsPreviewOpen}
+          onClose={() => setPdsPreviewOpen(false)}
+          document={pdsDoc}
+          isAdmin
+          onReviewSuccess={() => loadPdsDoc(id)}
+        />
       </div>
     );
   }

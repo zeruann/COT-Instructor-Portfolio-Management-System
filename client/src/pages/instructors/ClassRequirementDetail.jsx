@@ -33,11 +33,12 @@ const STATUS_STYLE = {
   rejected: 'rejected',
 };
 
-// Requirements configured as single document upload (A 1.0 through J 1.0, plus O, P, Q, R)
+// Requirements configured with the unified Submitted Evidence + multi-document upload UI
 const SINGLE_DOCUMENT_REQUIREMENTS = new Set([
   'CLASS_A_LOAD_REPORT',
   'CLASS_B_CLASS_LIST',
   'CLASS_C_SYLLABUS',
+  'CLASS_D_INSTRUCTIONAL_MATERIALS',
   'CLASS_E_POLICIES_RECEIPT',
   'CLASS_F_SYLLABUS_RECEIPT',
   'CLASS_G_SEAT_PLAN',
@@ -303,83 +304,83 @@ export default function ClassRequirementPage({
   // Fixed term rows for Midterm & Finalterm
   const fixedTermRows = isFixedTerm
     ? TERMS.map((term) => {
-        const doc = records.find((r) => r.slot?.term === term);
-        return {
-          term,
-          label: `${reqConfig.title} (${term})`,
-          doc,
-          hasRecord: Boolean(doc),
-          status: doc ? doc.status : 'missing',
-          date: doc?.meta?.date || doc?.createdAt,
-          fileName: doc ? getCurrentFileName(doc) : null,
-          version: doc?.currentVersion || 1,
-        };
-      })
+      const doc = records.find((r) => r.slot?.term === term);
+      return {
+        term,
+        label: `${reqConfig.title} (${term})`,
+        doc,
+        hasRecord: Boolean(doc),
+        status: doc ? doc.status : 'missing',
+        date: doc?.meta?.date || doc?.createdAt,
+        fileName: doc ? getCurrentFileName(doc) : null,
+        version: doc?.currentVersion || 1,
+      };
+    })
     : [];
 
   // Fixed rows for Checked Activities (CO1 - CO5 per category + Return receipt)
   const checkedActivitiesRows = isCheckedActivities
     ? CHECKED_ACTIVITIES_SECTIONS.flatMap((sec) =>
-        sec.coList.map((co) => {
-          const doc = records.find(
-            (r) => r.slot?.type === sec.type && (co ? r.slot?.co === co : true)
-          );
-          const rowKey = `${sec.type}_${co || 'all'}`;
-          const displayTitle = co
-            ? `${sec.categoryTitle} - ${co.replace('CO', 'CO ')}`
-            : sec.categoryTitle;
+      sec.coList.map((co) => {
+        const doc = records.find(
+          (r) => r.slot?.type === sec.type && (co ? r.slot?.co === co : true)
+        );
+        const rowKey = `${sec.type}_${co || 'all'}`;
+        const displayTitle = co
+          ? `${sec.categoryTitle} - ${co.replace('CO', 'CO ')}`
+          : sec.categoryTitle;
 
-          return {
-            rowKey,
-            categoryTitle: sec.categoryTitle,
-            type: sec.type,
-            co,
-            displayTitle,
-            doc,
-            hasRecord: Boolean(doc),
-            status: doc ? doc.status : 'missing',
-            date: doc?.meta?.date || doc?.createdAt,
-            fileName: doc ? getCurrentFileName(doc) : null,
-            version: doc?.currentVersion || 1,
-          };
-        })
-      )
+        return {
+          rowKey,
+          categoryTitle: sec.categoryTitle,
+          type: sec.type,
+          co,
+          displayTitle,
+          doc,
+          hasRecord: Boolean(doc),
+          status: doc ? doc.status : 'missing',
+          date: doc?.meta?.date || doc?.createdAt,
+          fileName: doc ? getCurrentFileName(doc) : null,
+          version: doc?.currentVersion || 1,
+        };
+      })
+    )
     : [];
 
   // Fixed rows for M 1.0 Class record and official grade (4 fixed rows)
   const classRecordRows = isClassRecord
     ? CLASS_RECORD_ROWS.map((row) => {
-        const doc = records.find((r) => r.slot?.type === row.type);
-        return {
-          type: row.type,
-          label: row.label,
-          hint: row.hint,
-          doc,
-          hasRecord: Boolean(doc),
-          status: doc ? doc.status : 'missing',
-          date: doc?.meta?.date || doc?.createdAt,
-          fileName: doc ? getCurrentFileName(doc) : null,
-          version: doc?.currentVersion || 1,
-        };
-      })
+      const doc = records.find((r) => r.slot?.type === row.type);
+      return {
+        type: row.type,
+        label: row.label,
+        hint: row.hint,
+        doc,
+        hasRecord: Boolean(doc),
+        status: doc ? doc.status : 'missing',
+        date: doc?.meta?.date || doc?.createdAt,
+        fileName: doc ? getCurrentFileName(doc) : null,
+        version: doc?.currentVersion || 1,
+      };
+    })
     : [];
 
   // Fixed rows for N 1.0 Student consultation forms (3 fixed rows)
   const consultationRows = isConsultation
     ? CONSULTATION_ROWS.map((row) => {
-        const doc = records.find((r) => r.slot?.type === row.type);
-        return {
-          type: row.type,
-          label: row.label,
-          hint: row.hint,
-          doc,
-          hasRecord: Boolean(doc),
-          status: doc ? doc.status : 'missing',
-          date: doc?.meta?.date || doc?.createdAt,
-          fileName: doc ? getCurrentFileName(doc) : null,
-          version: doc?.currentVersion || 1,
-        };
-      })
+      const doc = records.find((r) => r.slot?.type === row.type);
+      return {
+        type: row.type,
+        label: row.label,
+        hint: row.hint,
+        doc,
+        hasRecord: Boolean(doc),
+        status: doc ? doc.status : 'missing',
+        date: doc?.meta?.date || doc?.createdAt,
+        fileName: doc ? getCurrentFileName(doc) : null,
+        version: doc?.currentVersion || 1,
+      };
+    })
     : [];
 
   const summaryData = isFixedTerm
@@ -426,10 +427,10 @@ export default function ClassRequirementPage({
     metaFields: isSingle || isFixedTerm || isCheckedActivities || isClassRecord || isConsultation
       ? []
       : [
-          { name: 'title', label: 'Document / Activity Title', type: 'text', required: true },
-          { name: 'date', label: 'Date', type: 'date' },
-          { name: 'remarks', label: 'Remarks', type: 'text' },
-        ],
+        { name: 'title', label: 'Document / Activity Title', type: 'text', required: true },
+        { name: 'date', label: 'Date', type: 'date' },
+        { name: 'remarks', label: 'Remarks', type: 'text' },
+      ],
   };
 
   // For single document requirements, if a document already exists, the top action says "Reupload" or hides "Add"
@@ -988,257 +989,257 @@ export default function ClassRequirementPage({
         </section>
       ) : (
         /* ── ALL OTHER REQUIREMENTS ── table layout ── */
-      <section className="doc-table-card" aria-label={reqConfig.title}>
-        <div className="doc-table-scroll" style={{ overflowX: 'auto' }}>
-          <table
-            className="doc-table doc-table--entries"
-            style={{ tableLayout: 'auto', width: '100%', minWidth: '1000px' }}
-          >
-            <thead>
-              <tr>
-                <th scope="col" className="whitespace-nowrap">Name</th>
-                <th scope="col" className="whitespace-nowrap">Date</th>
-                <th scope="col" className="whitespace-nowrap">Attached Evidence</th>
-                <th scope="col" className="doc-table__status whitespace-nowrap">Status</th>
-                <th scope="col" className="whitespace-nowrap">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {loading ? (
+        <section className="doc-table-card" aria-label={reqConfig.title}>
+          <div className="doc-table-scroll" style={{ overflowX: 'auto' }}>
+            <table
+              className="doc-table doc-table--entries"
+              style={{ tableLayout: 'auto', width: '100%', minWidth: '1000px' }}
+            >
+              <thead>
                 <tr>
-                  <td colSpan={5} className="doc-table__empty">Loading...</td>
+                  <th scope="col" className="whitespace-nowrap">Name</th>
+                  <th scope="col" className="whitespace-nowrap">Date</th>
+                  <th scope="col" className="whitespace-nowrap">Attached Evidence</th>
+                  <th scope="col" className="doc-table__status whitespace-nowrap">Status</th>
+                  <th scope="col" className="whitespace-nowrap">Actions</th>
                 </tr>
-              ) : isFixedTerm ? (
-                /* FIXED ROWS FOR MIDTERM AND FINALTERM */
-                fixedTermRows.map((row) => {
-                  const doc = row.doc;
-                  const hasRecord = row.hasRecord;
-                  const actions = getRowActions(row.status, isArchived);
+              </thead>
 
-                  return (
-                    <tr key={row.term}>
-                      <td className="whitespace-nowrap">
-                        <div className="doc-table__type">
-                          <svg {...iconProps} className="doc-table__icon" width="26" height="26" strokeWidth="1.6">
-                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                            <path d="M14 3v5h5M9 13h6M9 17h6" />
-                          </svg>
-                          <div>
-                            <span className="doc-table__name font-semibold">{row.term}</span>
-                            <p className="text-[13px] text-gray-400">{reqConfig.title}</p>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="doc-table__empty">Loading...</td>
+                  </tr>
+                ) : isFixedTerm ? (
+                  /* FIXED ROWS FOR MIDTERM AND FINALTERM */
+                  fixedTermRows.map((row) => {
+                    const doc = row.doc;
+                    const hasRecord = row.hasRecord;
+                    const actions = getRowActions(row.status, isArchived);
+
+                    return (
+                      <tr key={row.term}>
+                        <td className="whitespace-nowrap">
+                          <div className="doc-table__type">
+                            <svg {...iconProps} className="doc-table__icon" width="26" height="26" strokeWidth="1.6">
+                              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                              <path d="M14 3v5h5M9 13h6M9 17h6" />
+                            </svg>
+                            <div>
+                              <span className="doc-table__name font-semibold">{row.term}</span>
+                              <p className="text-[13px] text-gray-400">{reqConfig.title}</p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="whitespace-nowrap">
-                        {hasRecord ? formatDate(row.date) : '—'}
-                      </td>
+                        <td className="whitespace-nowrap">
+                          {hasRecord ? formatDate(row.date) : '—'}
+                        </td>
 
-                      <td className="whitespace-nowrap">
-                        {hasRecord ? (
-                          <>
-                            <span
-                              className="doc-table__evidence"
-                              title={row.fileName}
-                              style={{ display: 'inline', maxWidth: 'none', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}
-                            >
-                              {row.fileName}
-                            </span>
-                            {row.version > 1 && <span className="doc-table__hint"> v{row.version}</span>}
-                          </>
-                        ) : (
-                          <span className="text-gray-400 italic text-xs">No file uploaded</span>
-                        )}
-                      </td>
-
-                      <td className="doc-table__status whitespace-nowrap">
-                        <StatusBadge status={row.status} />
-                      </td>
-
-                      <td className="whitespace-nowrap">
-                        {isAdmin ? (
-                          row.status === 'approved' || row.status === 'rejected' ? (
-                            <span className="doc-badge--reviewed">
-                              <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                              Reviewed
-                            </span>
+                        <td className="whitespace-nowrap">
+                          {hasRecord ? (
+                            <>
+                              <span
+                                className="doc-table__evidence"
+                                title={row.fileName}
+                                style={{ display: 'inline', maxWidth: 'none', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}
+                              >
+                                {row.fileName}
+                              </span>
+                              {row.version > 1 && <span className="doc-table__hint"> v{row.version}</span>}
+                            </>
                           ) : (
-                            <button
-                              type="button"
-                              className="doc-btn doc-btn--review"
-                              disabled={!hasRecord}
-                              title={hasRecord ? 'Review document' : 'No document submitted yet'}
-                              onClick={() => handleView(doc)}
-                            >
-                              <CheckSquare className="w-4 h-4" />
-                              Review
-                            </button>
-                          )
-                        ) : (
-                          <div className="doc-icon-actions">
-                            {hasRecord ? (
-                              <>
-                                <IconButton
-                                  variant="view"
-                                  label={`View ${row.term}`}
-                                  title="View"
-                                  disabled={actions.view.disabled}
-                                  onClick={() => handleView(doc)}
-                                >
-                                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-                                  <circle cx="12" cy="12" r="3" />
-                                </IconButton>
+                            <span className="text-gray-400 italic text-xs">No file uploaded</span>
+                          )}
+                        </td>
 
-                                <IconButton
-                                  variant="replace"
-                                  label={`Reupload ${row.term}`}
-                                  title="Reupload"
-                                  disabled={actions.replace.disabled}
-                                  onClick={() => openModal(doc, { term: row.term })}
-                                >
-                                  <path d="M21 12a9 9 0 1 1-3-6.7" />
-                                  <path d="M21 4v5h-5" />
-                                </IconButton>
+                        <td className="doc-table__status whitespace-nowrap">
+                          <StatusBadge status={row.status} />
+                        </td>
 
-                                <IconButton
-                                  variant="delete"
-                                  label={`Delete ${row.term}`}
-                                  title={actions.remove.disabled ? actions.remove.tip : 'Delete'}
-                                  disabled={actions.remove.disabled}
-                                  onClick={() => handleDelete(doc)}
-                                >
-                                  <polyline points="3 6 5 6 21 6" />
-                                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                </IconButton>
-                              </>
-                            ) : isArchived ? (
-                              <span className="text-gray-400 italic text-xs">Archived (read-only)</span>
+                        <td className="whitespace-nowrap">
+                          {isAdmin ? (
+                            row.status === 'approved' || row.status === 'rejected' ? (
+                              <span className="doc-badge--reviewed">
+                                <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
+                                Reviewed
+                              </span>
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => openModal(null, { term: row.term })}
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-purple px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-opacity-90 shadow-2xs"
+                                className="doc-btn doc-btn--review"
+                                disabled={!hasRecord}
+                                title={hasRecord ? 'Review document' : 'No document submitted yet'}
+                                onClick={() => handleView(doc)}
                               >
-                                <span>Upload {row.term}</span>
+                                <CheckSquare className="w-4 h-4" />
+                                Review
                               </button>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              ) : records.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="doc-table__empty">
-                    No entries yet. Click &quot;Add {reqConfig.title}&quot; above to submit evidence.
-                  </td>
-                </tr>
-              ) : (
-                records.map((doc) => {
-                  const actions = getRowActions(doc.status, isArchived);
-                  const title = doc.meta?.title || doc.meta?.name || reqConfig.title || 'Class Document';
-                  const fileName = getCurrentFileName(doc);
-
-                  return (
-                    <tr key={doc._id}>
-                      <td className="whitespace-nowrap">
-                        <div className="doc-table__type">
-                          <svg {...iconProps} className="doc-table__icon" width="26" height="26" strokeWidth="1.6">
-                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                            <path d="M14 3v5h5M9 13h6M9 17h6" />
-                          </svg>
-                          <div>
-                            <span className="doc-table__name">{title}</span>
-                            <p className="text-[13px] text-gray-400">Class Portfolio Entry</p>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="whitespace-nowrap">{formatDate(doc.meta?.date || doc.createdAt)}</td>
-
-                      <td className="whitespace-nowrap">
-                        <span
-                          className="doc-table__evidence"
-                          title={fileName}
-                          style={{ display: 'inline', maxWidth: 'none', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}
-                        >
-                          {fileName}
-                        </span>
-                        {doc.currentVersion > 1 && <span className="doc-table__hint"> v{doc.currentVersion}</span>}
-                      </td>
-
-                      <td className="doc-table__status whitespace-nowrap">
-                        <span className={`doc-status doc-status--${STATUS_STYLE[doc.status] || 'pending'}`}>
-                          {STATUS_LABEL[doc.status] || doc.status}
-                        </span>
-                      </td>
-
-                      <td className="whitespace-nowrap">
-                        {isAdmin ? (
-                          doc.status === 'approved' || doc.status === 'rejected' ? (
-                            <span className="doc-badge--reviewed">
-                              <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                              Reviewed
-                            </span>
+                            )
                           ) : (
-                            <button
-                              type="button"
-                              className="doc-btn doc-btn--review"
-                              disabled={!doc}
-                              title="Review document"
-                              onClick={() => handleView(doc)}
-                            >
-                              <CheckSquare className="w-4 h-4" />
-                              Review
-                            </button>
-                          )
-                        ) : (
-                          <div className="doc-icon-actions">
-                            <IconButton
-                              variant="view"
-                              label={`View ${title}`}
-                              title="View"
-                              disabled={actions.view.disabled}
-                              onClick={() => handleView(doc)}
-                            >
-                              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-                              <circle cx="12" cy="12" r="3" />
-                            </IconButton>
+                            <div className="doc-icon-actions">
+                              {hasRecord ? (
+                                <>
+                                  <IconButton
+                                    variant="view"
+                                    label={`View ${row.term}`}
+                                    title="View"
+                                    disabled={actions.view.disabled}
+                                    onClick={() => handleView(doc)}
+                                  >
+                                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                                    <circle cx="12" cy="12" r="3" />
+                                  </IconButton>
 
-                            <IconButton
-                              variant="replace"
-                              label={`Reupload ${title}`}
-                              title="Reupload"
-                              disabled={actions.replace.disabled}
-                              onClick={() => openModal(doc)}
-                            >
-                              <path d="M21 12a9 9 0 1 1-3-6.7" />
-                              <path d="M21 4v5h-5" />
-                            </IconButton>
+                                  <IconButton
+                                    variant="replace"
+                                    label={`Reupload ${row.term}`}
+                                    title="Reupload"
+                                    disabled={actions.replace.disabled}
+                                    onClick={() => openModal(doc, { term: row.term })}
+                                  >
+                                    <path d="M21 12a9 9 0 1 1-3-6.7" />
+                                    <path d="M21 4v5h-5" />
+                                  </IconButton>
 
-                            <IconButton
-                              variant="delete"
-                              label={`Delete ${title}`}
-                              title={actions.remove.disabled ? actions.remove.tip : 'Delete'}
-                              disabled={actions.remove.disabled}
-                              onClick={() => handleDelete(doc)}
-                            >
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            </IconButton>
+                                  <IconButton
+                                    variant="delete"
+                                    label={`Delete ${row.term}`}
+                                    title={actions.remove.disabled ? actions.remove.tip : 'Delete'}
+                                    disabled={actions.remove.disabled}
+                                    onClick={() => handleDelete(doc)}
+                                  >
+                                    <polyline points="3 6 5 6 21 6" />
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                  </IconButton>
+                                </>
+                              ) : isArchived ? (
+                                <span className="text-gray-400 italic text-xs">Archived (read-only)</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => openModal(null, { term: row.term })}
+                                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-purple px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-opacity-90 shadow-2xs"
+                                >
+                                  <span>Upload {row.term}</span>
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : records.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="doc-table__empty">
+                      No entries yet. Click &quot;Add {reqConfig.title}&quot; above to submit evidence.
+                    </td>
+                  </tr>
+                ) : (
+                  records.map((doc) => {
+                    const actions = getRowActions(doc.status, isArchived);
+                    const title = doc.meta?.title || doc.meta?.name || reqConfig.title || 'Class Document';
+                    const fileName = getCurrentFileName(doc);
+
+                    return (
+                      <tr key={doc._id}>
+                        <td className="whitespace-nowrap">
+                          <div className="doc-table__type">
+                            <svg {...iconProps} className="doc-table__icon" width="26" height="26" strokeWidth="1.6">
+                              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                              <path d="M14 3v5h5M9 13h6M9 17h6" />
+                            </svg>
+                            <div>
+                              <span className="doc-table__name">{title}</span>
+                              <p className="text-[13px] text-gray-400">Class Portfolio Entry</p>
+                            </div>
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+                        </td>
+
+                        <td className="whitespace-nowrap">{formatDate(doc.meta?.date || doc.createdAt)}</td>
+
+                        <td className="whitespace-nowrap">
+                          <span
+                            className="doc-table__evidence"
+                            title={fileName}
+                            style={{ display: 'inline', maxWidth: 'none', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}
+                          >
+                            {fileName}
+                          </span>
+                          {doc.currentVersion > 1 && <span className="doc-table__hint"> v{doc.currentVersion}</span>}
+                        </td>
+
+                        <td className="doc-table__status whitespace-nowrap">
+                          <span className={`doc-status doc-status--${STATUS_STYLE[doc.status] || 'pending'}`}>
+                            {STATUS_LABEL[doc.status] || doc.status}
+                          </span>
+                        </td>
+
+                        <td className="whitespace-nowrap">
+                          {isAdmin ? (
+                            doc.status === 'approved' || doc.status === 'rejected' ? (
+                              <span className="doc-badge--reviewed">
+                                <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
+                                Reviewed
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="doc-btn doc-btn--review"
+                                disabled={!doc}
+                                title="Review document"
+                                onClick={() => handleView(doc)}
+                              >
+                                <CheckSquare className="w-4 h-4" />
+                                Review
+                              </button>
+                            )
+                          ) : (
+                            <div className="doc-icon-actions">
+                              <IconButton
+                                variant="view"
+                                label={`View ${title}`}
+                                title="View"
+                                disabled={actions.view.disabled}
+                                onClick={() => handleView(doc)}
+                              >
+                                <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+                                <circle cx="12" cy="12" r="3" />
+                              </IconButton>
+
+                              <IconButton
+                                variant="replace"
+                                label={`Reupload ${title}`}
+                                title="Reupload"
+                                disabled={actions.replace.disabled}
+                                onClick={() => openModal(doc)}
+                              >
+                                <path d="M21 12a9 9 0 1 1-3-6.7" />
+                                <path d="M21 4v5h-5" />
+                              </IconButton>
+
+                              <IconButton
+                                variant="delete"
+                                label={`Delete ${title}`}
+                                title={actions.remove.disabled ? actions.remove.tip : 'Delete'}
+                                disabled={actions.remove.disabled}
+                                onClick={() => handleDelete(doc)}
+                              >
+                                <polyline points="3 6 5 6 21 6" />
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                              </IconButton>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
 
       {/* Upload Modal (Reused existing component) */}
