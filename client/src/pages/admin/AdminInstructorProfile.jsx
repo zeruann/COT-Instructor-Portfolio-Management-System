@@ -62,8 +62,13 @@ const statusStyles = {
   pending: "bg-amber-50 text-amber-700 border-amber-200",
 };
 
-function AdminInstructorProfile() {
-  const { id } = useParams();
+function AdminInstructorProfile({
+  instructorId: propId,
+  embedded = false,
+  onStatusUpdated,
+} = {}) {
+  const { id: paramId } = useParams();
+  const id = propId || paramId;
   const navigate = useNavigate();
 
   const [instructor, setInstructor] = useState(null); // account record
@@ -147,10 +152,12 @@ function AdminInstructorProfile() {
           });
           if (!res.ok) throw new Error(`Failed to ${verb} instructor.`);
           const updated = await res.json();
+          const finalStatus = updated.accountStatus ?? newStatus;
           setInstructor((prev) => ({
             ...prev,
-            accountStatus: updated.accountStatus ?? newStatus,
+            accountStatus: finalStatus,
           }));
+          onStatusUpdated?.(id, finalStatus);
           notify('success', 'Status Updated', `Instructor account has been ${verb}d successfully.`);
         } catch (err) {
           notify('error', 'Update Failed', err.message);
@@ -173,12 +180,14 @@ function AdminInstructorProfile() {
     return (
       <div className="bg-white rounded-2xl p-6 shadow">
         <p className="text-red-500 font-medium">{error}</p>
-        <button
-          onClick={() => navigate("/admin/instructors")}
-          className="mt-4 text-sm text-orange-500 hover:underline cursor-pointer"
-        >
-          ← Back to Instructors
-        </button>
+        {!embedded && (
+          <button
+            onClick={() => navigate("/admin/instructors")}
+            className="mt-4 text-sm text-orange-500 hover:underline cursor-pointer"
+          >
+            ← Back to Instructors
+          </button>
+        )}
       </div>
     );
   }
@@ -261,12 +270,14 @@ function AdminInstructorProfile() {
         </div>
 
         <div className="flex items-center gap-3 self-start">
-          <button
-            onClick={() => navigate("/admin/instructors")}
-            className="px-6 py-2 border border-gray-300 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-50 transition cursor-pointer"
-          >
-            Back
-          </button>
+          {!embedded && (
+            <button
+              onClick={() => navigate("/admin/instructors")}
+              className="px-6 py-2 border border-gray-300 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-50 transition cursor-pointer"
+            >
+              Back
+            </button>
+          )}
           <button
             onClick={handleToggleStatus}
             disabled={updatingStatus}
