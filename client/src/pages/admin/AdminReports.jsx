@@ -1,0 +1,422 @@
+// client/src/pages/admin/AdminReports.jsx
+import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Search, ChevronDown } from 'lucide-react';
+import { fetchFacultySummary } from '../../api/documents';
+import InstructorReports from '../instructors/InstructorReports';
+import { API_BASE } from '../../api/config';
+
+const CATEGORY_PATHS = [
+  'educational-attainment',
+  'service-records',
+  'seminars-and-workshops',
+  'achievements',
+  'research',
+  'extension-involvement',
+  'production',
+  'professional-organization-membership',
+  'passed-licensure-examinations',
+  'ipcr',
+];
+
+const computeCompletion = (summaries) => {
+  const categoryCount = CATEGORY_PATHS.length;
+  let approvedShare = 0;
+  let pendingShare = 0;
+  let rejectedShare = 0;
+  const counts = { approved: 0, pending: 0, rejected: 0 };
+
+  CATEGORY_PATHS.forEach((path) => {
+    const s = summaries?.[path] || {};
+    const approved = s.approved || 0;
+    const pending = s.pendingReview || 0;
+    const rejected = s.rejected || 0;
+    const total = Math.max(s.totalFiles || 0, approved + pending + rejected);
+    if (total === 0) return;
+
+    approvedShare += approved / total;
+    pendingShare += pending / total;
+    rejectedShare += rejected / total;
+    counts.approved += approved;
+    counts.pending += pending;
+    counts.rejected += rejected;
+  });
+
+  const toPct = (share) => (share / categoryCount) * 100;
+  return {
+    percent: Math.round(toPct(approvedShare)),
+    approvedPct: toPct(approvedShare),
+    pendingPct: toPct(pendingShare),
+    rejectedPct: toPct(rejectedShare),
+    counts,
+  };
+};
+
+export default function AdminReports() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const instructorId = searchParams.get('instructorId');
+
+  const [instructors, setInstructors] = useState([]);
+  const [summariesById, setSummariesById] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [viewBy, setViewBy] = useState('all');
+
+  // Load list of instructors
+  useEffect(() => {
+    fetch(`${API_BASE}/instructors`)
+      .then((res) => res.json())
+      .then((data) => {
+        const list = Array.isArray(data) ? data : data.instructors || [];
+        setInstructors(list);
+      })
+      .catch((err) => console.error('Failed to load instructors:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Load every instructor's portfolio summary for live completion percentage
+  useEffect(() => {
+    if (instructorId || instructors.length === 0) return undefined;
+    let isCurrent = true;
+
+    Promise.allSettled(
+      instructors.map((inst) => {
+        const id = inst._id || inst.id;
+        return fetchFacultySummary(id).then((sum) => [id, sum || {}]);
+      })
+    ).then((results) => {
+      if (!isCurrent) return;
+      const next = {};
+      results.forEach((r) => {
+        if (r.status === 'fulfilled') next[r.value[0]] = r.value[1];
+      });
+      setSummariesById((prev) => ({ ...prev, ...next }));
+    });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [instructorId, instructors]);
+
+  const selectInstructor = (inst) => {
+    setSearchParams({ instructorId: inst._id || inst.id });
+  };
+
+  const clearSelection = () => {
+    setSearchParams({});
+  };
+
+  const departments = [
+    ...new Set(instructors.map((i) => i.department).filter(Boolean)),
+  ].sort();
+
+  const getCompletion = (inst) => {
+    const summary = summariesById[inst._id || inst.id];
+    if (summary) return computeCompletion(summary);
+
+    const apiPercent =
+      typeof inst.completionPercentage === 'number'
+        ? inst.completionPercentage
+        : inst.completionRate;
+    if (typeof apiPercent === 'number') {
+      return {
+        percent: apiPercent,
+        approvedPct: apiPercent,
+        pendingPct: 0,
+        rejectedPct: 0,
+        counts: null,
+      };
+    }
+    return null;
+  };
+
+  const viewByOptions = [
+    { value: 'all', label: 'All' },
+    { value: 'last_updated', label: 'Last Updated' },
+    { value: 'name_asc', label: 'Name (A to Z)' },
+    { value: 'name_desc', label: 'Name (Z to A)' },
+    { value: 'completion_high', label: 'Highest Completion' },
+    { value: 'completion_low', label: 'Lowest Completion' },
+  ];
+
+  const getDisplayName = (inst) => {
+    const p = inst?.profile || {};
+    const parts = [p.firstName, p.middleName, p.lastName].filter(Boolean);
+    if (parts.length > 0) return parts.join(' ');
+    return inst?.fullName || '';
+  };
+
+  const filteredInstructors = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+
+    const result = instructors.filter((inst) => {
+      if (inst.accountType === 'Administrator') return false;
+
+      const name = getDisplayName(inst);
+      const email = inst.email || '';
+      const matchSearch =
+        name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
+      const matchDept =
+        departmentFilter === 'all' || inst.department === departmentFilter;
+
+      return matchSearch && matchDept;
+    });
+
+    return result.sort((a, b) => {
+      if (viewBy === 'last_updated') {
+        const dateA = new Date(a.updatedAt || a.createdAt || 0);
+        const dateB = new Date(b.updatedAt || b.createdAt || 0);
+        return dateB - dateA;
+      }
+      if (viewBy === 'name_asc') {
+        return getDisplayName(a).localeCompare(getDisplayName(b));
+      }
+      if (viewBy === 'name_desc') {
+        return getDisplayName(b).localeCompare(getDisplayName(a));
+      }
+      if (viewBy === 'completion_high') {
+        const pctA = getCompletion(a)?.percent ?? -1;
+        const pctB = getCompletion(b)?.percent ?? -1;
+        return pctB - pctA;
+      }
+      if (viewBy === 'completion_low') {
+        const pctA = getCompletion(a)?.percent ?? 999;
+        const pctB = getCompletion(b)?.percent ?? 999;
+        return pctA - pctB;
+      }
+      return 0;
+    });
+  }, [instructors, searchQuery, departmentFilter, viewBy, summariesById]);
+
+  const instructorGridClass =
+    'grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-4 sm:gap-6';
+
+  // ─────────────── Step 2: Redirected to the Instructor's Reports Page ───────────────
+  if (instructorId) {
+    return (
+      <InstructorReports
+        instructorId={instructorId}
+        onBack={clearSelection}
+      />
+    );
+  }
+
+  // ─────────────── Step 1: Instructor Selection Grid (same cards as Review) ───────────────
+  return (
+    <div className="min-w-0 space-y-4 sm:space-y-6">
+      {/* Title & Subtitle */}
+      <div>
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
+          Reports
+        </h1>
+        <p className="text-sm text-gray-500 mt-0.5">
+          Select an instructor to view, print, or export their Faculty Compliance Checklist
+        </p>
+      </div>
+
+      {/* Search, Department, View by */}
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+        {/* Search */}
+        <div className="relative min-w-0 flex-1">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search instructor by name or email.."
+            className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+          />
+          <Search className="pointer-events-none absolute right-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+        </div>
+
+        {/* Department Filter */}
+        <div className="relative shrink-0 sm:w-52 lg:w-60">
+          <select
+            value={departmentFilter}
+            onChange={(e) => setDepartmentFilter(e.target.value)}
+            className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+          >
+            <option value="all">All Departments</option>
+            {departments.map((dept) => (
+              <option key={dept} value={dept}>
+                {dept}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        </div>
+
+        {/* View by */}
+        <div className="relative shrink-0 sm:w-44 lg:w-48">
+          <select
+            value={viewBy}
+            onChange={(e) => setViewBy(e.target.value)}
+            aria-label="View by"
+            className="w-full cursor-pointer appearance-none truncate rounded-xl border border-gray-200 bg-white py-3 pl-4 pr-9 text-sm text-gray-700 shadow-2xs transition focus:border-brand-orange focus:outline-none"
+          >
+            <option value="all">View by</option>
+            {viewByOptions
+              .filter((o) => o.value !== 'all')
+              .map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        </div>
+      </div>
+
+      {/* Cards Grid */}
+      {loading ? (
+        <div className={instructorGridClass}>
+          {[...Array(6)].map((_, i) => (
+            <div
+              key={i}
+              className="flex animate-pulse items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs sm:gap-5 sm:p-5"
+            >
+              <div className="h-20 w-20 shrink-0 rounded-full bg-gray-200 sm:h-24 sm:w-24" />
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="h-4 w-3/4 rounded bg-gray-200" />
+                <div className="h-3 w-1/2 rounded bg-gray-200" />
+                <div className="h-3 w-2/3 rounded bg-gray-200" />
+                <div className="mt-2 h-2 w-full rounded bg-gray-200" />
+                <div className="mt-3 h-8 w-full rounded bg-gray-200" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : filteredInstructors.length === 0 ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-2xs sm:p-12">
+          <p className="text-base font-semibold text-gray-700">No instructors found</p>
+          <p className="mt-1 text-xs text-gray-400">
+            Try adjusting your search query or department filter.
+          </p>
+          {(searchQuery || departmentFilter !== 'all' || viewBy !== 'all') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setDepartmentFilter('all');
+                setViewBy('all');
+              }}
+              className="mt-4 inline-flex items-center rounded-lg bg-purple-50 px-4 py-2 text-xs font-semibold text-brand-purple transition hover:bg-purple-100"
+            >
+              Reset Filters
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className={instructorGridClass}>
+          {filteredInstructors.map((inst) => {
+            const id = inst._id || inst.id;
+            const name = getDisplayName(inst) || 'Instructor';
+            const rank =
+              inst.profile?.rank || inst.profile?.position || 'Assistant Professor IV';
+            const department = inst.department || 'IT Department';
+            const photoUrl = inst.profile?.photoUrl || inst.googlePhotoUrl;
+            const completion = getCompletion(inst);
+            const percent = completion?.percent;
+
+            return (
+              <div
+                key={id}
+                onClick={() => selectInstructor(inst)}
+                className="group flex min-w-0 cursor-pointer items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs transition-all hover:border-orange-300 hover:shadow-md sm:gap-5 sm:p-5"
+              >
+                {/* Left: Avatar */}
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 sm:h-24 sm:w-24">
+                  {photoUrl ? (
+                    <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#fb923c"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-10 w-10 sm:h-12 sm:w-12"
+                      aria-hidden="true"
+                    >
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  )}
+                </div>
+
+                {/* Right: Info + Progress + View button */}
+                <div className="flex min-w-0 flex-1 flex-col justify-between">
+                  <div className="min-w-0">
+                    <h3
+                      title={name}
+                      className="truncate text-base font-bold leading-snug text-gray-900 transition-colors group-hover:text-brand-orange"
+                    >
+                      {name}
+                    </h3>
+                    <p className="mt-0.5 truncate text-xs font-normal text-gray-400">{rank}</p>
+                    <p className="truncate text-xs font-normal text-gray-400">{department}</p>
+                  </div>
+
+                  <div className="mt-3">
+                    <div className="mb-1.5 flex items-center justify-between gap-2 text-xs">
+                      <span className="truncate font-semibold text-[#2e2a72]">
+                        Completion Status
+                      </span>
+                      <span className="shrink-0 font-bold text-[#10b981]">
+                        {percent != null ? `${percent}%` : '—'}
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="flex h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                      {completion?.approvedPct > 0 && (
+                        <div
+                          style={{ width: `${completion.approvedPct}%` }}
+                          className="bg-[#10b981] transition-all duration-300"
+                          title={`Approved: ${Math.round(completion.approvedPct)}%`}
+                        />
+                      )}
+                      {completion?.pendingPct > 0 && (
+                        <div
+                          style={{ width: `${completion.pendingPct}%` }}
+                          className="bg-amber-400 transition-all duration-300"
+                          title={`Pending: ${Math.round(completion.pendingPct)}%`}
+                        />
+                      )}
+                      {completion?.rejectedPct > 0 && (
+                        <div
+                          style={{ width: `${completion.rejectedPct}%` }}
+                          className="bg-red-400 transition-all duration-300"
+                          title={`Rejected: ${Math.round(completion.rejectedPct)}%`}
+                        />
+                      )}
+                      {(!percent || percent === 0) &&
+                        !completion?.pendingPct &&
+                        !completion?.rejectedPct && (
+                          <div className="w-full bg-gray-200" />
+                        )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      selectInstructor(inst);
+                    }}
+                    className="mt-3.5 w-full rounded-lg bg-brand-orange py-2 text-center text-xs font-bold uppercase tracking-wider text-white shadow-2xs transition hover:bg-orange-600 hover:shadow active:bg-orange-700"
+                  >
+                    VIEW
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+

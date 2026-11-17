@@ -1,0 +1,191 @@
+/* Shared styles for LIST-type requirement pages (Service Records, Seminars and Workshops,
+   Achievements, Research, ...). Load it together with requirementStyle.css:
+     import './requirementStyle.css';
+     import './listEntries.css';
+   It reuses the .doc-table-card / .doc-table / .doc-status classes from requirementStyle.css. */
+
+/* ---------- page header: "Add ..." button ---------- */
+.entry-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 4px;
+  background: #f56a14;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.entry-add-btn:hover {
+  filter: brightness(0.95);
+}
+
+.entry-add-btn:focus-visible {
+  outline: 3px solid #4a3f8f;
+  outline-offset: 2px;
+}
+
+/* ---------- table: Name | Date | Attached Evidence | Status | Actions ---------- */
+.doc-table--entries {
+  min-width: 860px;
+  /* narrower screens scroll sideways inside .doc-table-scroll */
+}
+
+.doc-table__col-name {
+  width: 30%;
+}
+
+.doc-table__col-date {
+  width: 14%;
+}
+
+.doc-table__col-evidence {
+  width: 24%;
+}
+
+.doc-table__col-entry-status {
+  width: 14%;
+}
+
+.doc-table__col-entry-actions {
+  width: 18%;
+}
+
+.doc-table__date {
+  font-size: 14px;
+  color: var(--doc-ink);
+  white-space: nowrap;
+}
+
+.doc-table__evidence {
+  display: block;
+  max-width: 240px;
+  overflow: hidden;
+  font-size: 14px;
+  color: var(--doc-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+
+
+
+
+/* ---------- Subtle horizontal scrollbar for tables ---------- */
+.doc-table-scroll {
+  scrollbar-width: thin;
+  /* Firefox + current Chrome/Edge */
+  scrollbar-color: transparent transparent;
+  /* hidden until hover */
+  transition: scrollbar-color 0.2s ease;
+}
+
+.doc-table-scroll:hover {
+  scrollbar-color: #d1d5db transparent;
+  /* soft gray thumb, no visible track */
+}
+
+/* Fallback for Safari and older Chrome/Edge */
+.doc-table-scroll::-webkit-scrollbar {
+  height: 15px;
+  /* slim */
+}
+
+.doc-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.doc-table-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+}
+
+.doc-table-scroll:hover::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+}
+
+.doc-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+  /* slightly darker when grabbed */
+}
+
+
+
+
+
+
+
+
+
+
+
+/* ---------- icon action buttons (view / edit / replace / delete) ---------- */
+.doc-icon-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doc-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1.5px solid var(--doc-ink);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--doc-ink);
+  cursor: pointer;
+}
+
+.doc-icon-btn:hover {
+  filter: brightness(0.96);
+}
+
+.doc-icon-btn:focus-visible {
+  outline: 3px solid var(--doc-purple);
+  outline-offset: 2px;
+}
+
+.doc-icon-btn--view {
+  border-color: var(--doc-purple);
+  background: #f3f1fb;
+  color: var(--doc-purple);
+}
+
+.doc-icon-btn--edit {
+  border-color: var(--doc-orange);
+  background: #fff6ee;
+  color: var(--doc-orange);
+}
+
+.doc-icon-btn--replace {
+  border-color: var(--doc-ink);
+  color: var(--doc-ink);
+}
+
+.doc-icon-btn--delete {
+  border-color: var(--doc-red);
+  background: #fff1ef;
+  color: var(--doc-red);
+}
+
+/* Disabled: gray, with the red "not allowed" cursor on hover (same look as .doc-btn:disabled) */
+button.doc-icon-btn:disabled {
+  background: #e5e7eb;
+  border-color: #d1d5db;
+  color: #9ca3af;
+  box-shadow: none;
+  filter: none;
+  cursor: not-allowed;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23dc2626' stroke-width='2.5' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M5.6 5.6l12.8 12.8'/%3E%3C/svg%3E") 12 12,
+    not-allowed;
+}

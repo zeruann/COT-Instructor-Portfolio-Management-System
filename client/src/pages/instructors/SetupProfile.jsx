@@ -20,15 +20,13 @@ function PasswordInput({ name, value, onChange, placeholder, className }) {
         type="button"
         onClick={() => setShow((s) => !s)}
         aria-label={show ? 'Hide password' : 'Show password'}
-        className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600"
+        className="absolute inset-y-0 right-3 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer"
       >
         {show ? (
-          // eye-off
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.1A9.7 9.7 0 0112 5c5 0 9 4.5 10 7a11.8 11.8 0 01-3.2 4.3M6.1 6.1A11.8 11.8 0 002 12c1 2.5 5 7 10 7a9.6 9.6 0 004.1-.9" />
           </svg>
         ) : (
-          // eye
           <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
             <path strokeLinecap="round" strokeLinejoin="round" d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
             <circle cx="12" cy="12" r="3" />
@@ -56,23 +54,23 @@ function SetupProfile() {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
-useEffect(() => {
-  if (!token) {
-    setLoadError('This setup link is missing a token.');
-    setLoading(false);
-    return;
-  }
+  useEffect(() => {
+    if (!token) {
+      setLoadError('This setup link is missing a token.');
+      setLoading(false);
+      return;
+    }
 
-  fetch(`/api/invitations/token/${token}`)
-    .then(async (res) => {
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.message || 'Link unavailable.');
-      if (!data.needsSetup) throw new Error('This account is already set up. Please log in.');
-      setInfo(data);
-    })
-    .catch((err) => setLoadError(err.message))
-    .finally(() => setLoading(false));
-}, [token]);
+    fetch(`/api/invitations/token/${token}`)
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || 'Link unavailable.');
+        if (!data.needsSetup) throw new Error('This account is already set up. Please log in.');
+        setInfo(data);
+      })
+      .catch((err) => setLoadError(err.message))
+      .finally(() => setLoading(false));
+  }, [token]);
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
@@ -111,50 +109,68 @@ useEffect(() => {
   };
 
   const inputClass =
-    'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all';
+    'w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#ff6900] focus:border-transparent transition-all';
 
   return (
-    <div className="min-h-screen bg-[#F8F9FB] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-8">
-        {loading && <p className="text-sm text-gray-400 text-center">Loading…</p>}
+    <div className="min-h-screen bg-[#fbfbfb] flex items-center justify-center p-4 sm:p-8 font-sans text-gray-800 relative overflow-hidden">
+      {/* Landing Page Campus Image & Warm Gradient Overlays */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center pointer-events-none"
+        style={{ backgroundImage: "url('/buksu_bg.png')" }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-b from-white/92 via-orange-50/85 to-[#fbfbfb] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-orange-200/35 rounded-full blur-3xl pointer-events-none -z-10" />
+
+      {/* Main Card */}
+      <div className="relative z-10 w-full max-w-md bg-white/95 backdrop-blur-md rounded-3xl shadow-[0_12px_45px_rgba(0,0,0,0.08)] p-8 sm:p-10 border border-orange-100/80">
+        {loading && (
+          <div className="text-center py-6">
+            <p className="text-sm text-gray-500 font-medium">Loading setup details…</p>
+          </div>
+        )}
 
         {!loading && loadError && (
-          <div className="text-center">
-            <h1 className="text-lg font-semibold text-gray-800 mb-2">Link unavailable</h1>
+          <div className="text-center py-4">
+            <h1 className="text-lg font-bold text-gray-800 mb-2">Link unavailable</h1>
             <p className="text-sm text-gray-500">{loadError}</p>
           </div>
         )}
 
         {!loading && info && done && (
-          <div className="text-center">
-            <h1 className="text-lg font-semibold text-gray-800 mb-2">You’re all set</h1>
+          <div className="text-center py-4">
+            <h1 className="text-lg font-bold text-gray-800 mb-2">You’re all set</h1>
             <p className="text-sm text-gray-500">Your account is ready. Taking you to login…</p>
           </div>
         )}
 
         {!loading && info && !done && (
           <>
-            <h1 className="text-xl font-semibold text-gray-800 mb-1">Set up your account</h1>
-            <p className="text-sm text-gray-500 mb-6">
-              Welcome, {info.fullName}. Create a password to activate your account.
-            </p>
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-orange-100 text-[#ff6900] text-xs font-semibold mb-3 border border-orange-200/70">
+                College of Technologies
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-1">Set up your account</h1>
+              <p className="text-xs sm:text-sm text-gray-500">
+                Welcome, <span className="font-semibold text-gray-700">{info.fullName}</span>. Create a password to activate your account.
+              </p>
+            </div>
 
             <div className="grid gap-4">
               <div>
-                <label className="text-sm text-gray-500 block mb-1.5">Email</label>
-                <input value={info.email} disabled className={`${inputClass} bg-gray-50 text-gray-400`} />
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-1">Email</label>
+                <input value={info.email} disabled className={`${inputClass} bg-gray-50 text-gray-400 cursor-not-allowed`} />
               </div>
               <div>
-                <label className="text-sm text-gray-500 block mb-1.5">Department</label>
-                <input value={info.department} disabled className={`${inputClass} bg-gray-50 text-gray-400`} />
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-1">Department</label>
+                <input value={info.department} disabled className={`${inputClass} bg-gray-50 text-gray-400 cursor-not-allowed`} />
               </div>
               <div>
-                <label className="text-sm text-gray-500 block mb-1.5">Password</label>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-1">Password</label>
                 <PasswordInput name="password" value={form.password} onChange={handleChange} className={inputClass} />
                 <PasswordChecklist password={form.password} />
               </div>
               <div>
-                <label className="text-sm text-gray-500 block mb-1.5">Confirm Password</label>
+                <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-1">Confirm Password</label>
                 <PasswordInput
                   name="confirmPassword"
                   value={form.confirmPassword}
@@ -164,12 +180,12 @@ useEffect(() => {
               </div>
             </div>
 
-            {formError && <p className="text-sm text-red-500 mt-4">{formError}</p>}
+            {formError && <p className="text-xs sm:text-sm text-red-500 mt-4">{formError}</p>}
 
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="w-full mt-6 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-orange-200 transition-all disabled:opacity-60"
+              className="w-full mt-6 bg-[#ff6900] hover:bg-[#e05d00] text-white rounded-xl py-3 text-sm font-semibold shadow-md shadow-orange-200 transition-all disabled:opacity-60 cursor-pointer"
             >
               {submitting ? 'Saving…' : 'Complete Setup'}
             </button>

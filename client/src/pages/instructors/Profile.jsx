@@ -1,8 +1,32 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import Header from "../../components/Header";
-import Sidebar from '../../components/Sidebar';
+
+// Academic ranks shown in the "Academic Rank" dropdown (same list as the Instructor model)
+const RANKS = [
+  "Instructor I", "Instructor II", "Instructor III",
+  "Assistant Professor I", "Assistant Professor II", "Assistant Professor III", "Assistant Professor IV",
+  "Associate Professor I", "Associate Professor II", "Associate Professor III", "Associate Professor IV", "Associate Professor V",
+  "Professor I", "Professor II", "Professor III", "Professor IV", "Professor V", "Professor VI",
+];
+
+// Academic / Administrative positions shown in the "Position" dropdown
+const POSITIONS = [
+  "Faculty Member",
+  "Full-Time Faculty",
+  "Part-Time Faculty",
+  "Department Chairperson",
+  "Program Head",
+  "College Dean",
+  "Associate Dean",
+  "College Secretary",
+  "Research Coordinator",
+  "Extension Coordinator",
+  "OJT / Practicum Coordinator",
+  "Quality Assurance Officer",
+  "Laboratory In-Charge",
+  "Visiting Lecturer",
+];
 
 function getInitials(name = "") {
   return name
@@ -19,10 +43,10 @@ const show = (value) =>
 const formatDate = (value) =>
   value
     ? new Date(value).toLocaleDateString("en-PH", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
     : "—";
 
 function Info({ label, value, className = "" }) {
@@ -52,6 +76,7 @@ function Profile() {
 
   const [instructor, setInstructor] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [avatarError, setAvatarError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
 
@@ -61,10 +86,7 @@ function Profile() {
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState("");
 
-  // =========================
-  // CHECK LOGIN
-  // =========================
-
+  // Check login
   useEffect(() => {
     const token = localStorage.getItem("token");
     const stored = localStorage.getItem("instructor");
@@ -77,10 +99,7 @@ function Profile() {
     setInstructor(JSON.parse(stored));
   }, [navigate]);
 
-  // =========================
-  // LOAD PROFILE
-  // =========================
-
+  // Load profile
   useEffect(() => {
     if (!instructor) return;
 
@@ -90,6 +109,7 @@ function Profile() {
       },
     })
       .then(async (res) => {
+        fetch
         if (!res.ok) {
           throw new Error("Failed to load profile.");
         }
@@ -97,13 +117,40 @@ function Profile() {
         return res.json();
       })
       .then((me) => {
-        setProfile(me.profile || {});
+        const prof = me.profile || {};
+        if (me.googlePhotoUrl && !prof.photoUrl) {
+          prof.photoUrl = me.googlePhotoUrl;
+        }
+        setProfile(prof);
+        setAvatarError(false);
 
-        if (me.fullName) {
+        const computed = [prof.firstName, prof.middleName, prof.lastName]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
+        const activeName = computed || me.fullName;
+
+        if (activeName) {
           setInstructor((prev) => ({
             ...prev,
-            fullName: me.fullName,
+            fullName: activeName,
           }));
+
+          const stored = localStorage.getItem('instructor');
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              if (parsed.fullName !== activeName) {
+                localStorage.setItem(
+                  'instructor',
+                  JSON.stringify({ ...parsed, fullName: activeName })
+                );
+                window.dispatchEvent(new Event('instructor-updated'));
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          }
         }
       })
       .catch(() => {
@@ -116,10 +163,7 @@ function Profile() {
       });
   }, [instructor?.id]);
 
-  // =========================
-  // START EDITING
-  // =========================
-
+  // Start editing
   const handleEdit = () => {
     const p = profile || {};
 
@@ -141,11 +185,11 @@ function Profile() {
       education:
         p.education && p.education.length > 0
           ? p.education.map((ed) => ({
-              level: ed.level || "",
-              degree: ed.degree || "",
-              school: ed.school || "",
-              yearGraduated: ed.yearGraduated || "",
-            }))
+            level: ed.level || "",
+            degree: ed.degree || "",
+            school: ed.school || "",
+            yearGraduated: ed.yearGraduated || "",
+          }))
           : [],
 
       position: p.position || "",
@@ -157,10 +201,7 @@ function Profile() {
     setIsEditing(true);
   };
 
-  // =========================
-  // NORMAL INPUT CHANGE
-  // =========================
-
+  // Normal input change
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -170,10 +211,7 @@ function Profile() {
     }));
   };
 
-  // =========================
-  // EDUCATION CHANGE
-  // =========================
-
+  // Education change
   const handleEducationChange = (index, field, value) => {
     setForm((prev) => {
       const updatedEducation = [...prev.education];
@@ -190,10 +228,7 @@ function Profile() {
     });
   };
 
-  // =========================
-  // ADD EDUCATION
-  // =========================
-
+  // Add education
   const handleAddEducation = () => {
     setForm((prev) => ({
       ...prev,
@@ -209,10 +244,7 @@ function Profile() {
     }));
   };
 
-  // =========================
-  // REMOVE EDUCATION
-  // =========================
-
+  // Remove education
   const handleRemoveEducation = (index) => {
     setForm((prev) => ({
       ...prev,
@@ -220,10 +252,7 @@ function Profile() {
     }));
   };
 
-  // =========================
-  // SAVE PROFILE
-  // =========================
-
+  // Save profile
   const handleSave = async () => {
     setSaving(true);
     setSaveError("");
@@ -307,6 +336,9 @@ function Profile() {
         );
       }
 
+      // Tell the top bar to show the new name
+      window.dispatchEvent(new Event("instructor-updated"));
+
       setSaveSuccess("Profile updated successfully.");
 
       setIsEditing(false);
@@ -321,10 +353,7 @@ function Profile() {
     }
   };
 
-  // =========================
-  // CANCEL EDITING
-  // =========================
-
+  // Cancel editing
   const handleCancel = () => {
     setIsEditing(false);
     setSaveError("");
@@ -336,741 +365,532 @@ function Profile() {
   const p = profile || {};
   const education = p.education || [];
 
+  const profileFullName = [p.firstName, p.middleName, p.lastName]
+    .filter(Boolean)
+    .join(' ')
+    .trim();
+  const displayName = profileFullName || instructor.fullName || 'Instructor';
+
+  const avatarUrl = p.photoUrl || instructor.googlePhotoUrl || instructor.photoUrl;
+
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar role="instructor" />
+    <div className="space-y-6">
 
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header role="instructor" user={instructor} />
+      {/* PROFILE CARD */}
+      <div className="bg-white rounded-2xl shadow p-6 flex flex-wrap items-center justify-between gap-4">
 
-        <main className="flex-1 overflow-y-auto p-8">
-          <div className="space-y-6">
+        <div className="flex items-center gap-4">
 
-            {/* ========================= */}
-            {/* PROFILE CARD */}
-            {/* ========================= */}
+          {avatarUrl && !avatarError ? (
+            <img
+              src={avatarUrl}
+              alt={displayName}
+              referrerPolicy="no-referrer"
+              onError={() => setAvatarError(true)}
+              className="w-20 h-20 rounded-full object-cover border-2 border-orange-200"
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-full bg-orange-500 text-white flex items-center justify-center text-2xl font-semibold">
+              {getInitials(displayName)}
+            </div>
+          )}
 
-            <div className="bg-white rounded-2xl shadow p-6 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-lg font-bold text-gray-800">
+              {displayName}
+            </p>
 
-              <div className="flex items-center gap-4">
+            <p className="text-gray-500 text-sm">
+              {instructor.email}
+            </p>
 
-                {p.photoUrl ? (
-                  <img
-                    src={p.photoUrl}
-                    alt="Profile"
-                    className="w-20 h-20 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-full bg-orange-500 text-white flex items-center justify-center text-2xl font-semibold">
-                    {getInitials(instructor.fullName)}
+            <p className="text-gray-400 text-xs">
+              id: {instructor.id}
+            </p>
+
+            {loadError && (
+              <p className="text-red-500 text-xs mt-1">
+                {loadError}
+              </p>
+            )}
+
+            {saveSuccess && (
+              <p className="text-green-600 text-xs mt-1">
+                {saveSuccess}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {!isEditing && (
+          <button
+            type="button"
+            onClick={handleEdit}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600"
+          >
+            <Pencil size={16} />
+            Edit Profile
+          </button>
+        )}
+
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-gray-400">
+          Loading profile…
+        </p>
+      ) : (
+        <>
+
+          {/* BASIC INFORMATION */}
+          <Section title="Basic Information">
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+              {isEditing ? (
+                <>
+                  {/* First Name */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      First Name
+                    </label>
+
+                    <input
+                      type="text"
+                      name="firstName"
+                      value={form.firstName}
+                      onChange={handleChange}
+                      className="w-full mt-1 border rounded-lg px-3 py-2"
+                    />
                   </div>
-                )}
 
-                <div>
+                  {/* Middle Name */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Middle Name
+                    </label>
 
-                  <p className="text-lg font-bold text-gray-800">
-                    {instructor.fullName}
-                  </p>
+                    <input
+                      type="text"
+                      name="middleName"
+                      value={form.middleName}
+                      onChange={handleChange}
+                      className="w-full mt-1 border rounded-lg px-3 py-2"
+                    />
+                  </div>
 
-                  <p className="text-gray-500 text-sm">
-                    {instructor.email}
-                  </p>
+                  {/* Last Name */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Last Name
+                    </label>
 
-                  <p className="text-gray-400 text-xs">
-                    id: {instructor.id}
-                  </p>
+                    <input
+                      type="text"
+                      name="lastName"
+                      value={form.lastName}
+                      onChange={handleChange}
+                      className="w-full mt-1 border rounded-lg px-3 py-2"
+                    />
+                  </div>
 
-                  {loadError && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {loadError}
-                    </p>
-                  )}
+                  {/* Gender */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Gender
+                    </label>
 
-                  {saveSuccess && (
-                    <p className="text-green-600 text-xs mt-1">
-                      {saveSuccess}
-                    </p>
-                  )}
+                    <select
+                      name="gender"
+                      value={form.gender}
+                      onChange={handleChange}
+                      className="w-full mt-1 border rounded-lg px-3 py-2"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </div>
 
-                </div>
-              </div>
+                  {/* Civil Status */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Civil Status
+                    </label>
 
-              {!isEditing && (
-                <button
-                  type="button"
-                  onClick={handleEdit}
-                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600"
-                >
-                  <Pencil size={16} />
-                  Edit Profile
-                </button>
+                    <select
+                      name="civilStatus"
+                      value={form.civilStatus}
+                      onChange={handleChange}
+                      className="w-full mt-1 border rounded-lg px-3 py-2"
+                    >
+                      <option value="">Select Civil Status</option>
+                      <option value="Single">Single</option>
+                      <option value="Married">Married</option>
+                      <option value="Widowed">Widowed</option>
+                      <option value="Separated">Separated</option>
+                    </select>
+                  </div>
+
+                  {/* Birthdate */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Birthdate
+                    </label>
+
+                    <input
+                      type="date"
+                      name="birthdate"
+                      value={form.birthdate}
+                      onChange={handleChange}
+                      className="w-full mt-1 border rounded-lg px-3 py-2"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Info label="First Name" value={p.firstName} />
+                  <Info label="Middle Name" value={p.middleName} />
+                  <Info label="Last Name" value={p.lastName} />
+                  <Info label="Gender" value={p.gender} />
+                  <Info label="Civil Status" value={p.civilStatus} />
+                  <Info label="Birthdate" value={formatDate(p.birthdate)} />
+                </>
               )}
 
             </div>
 
-            {loading ? (
-              <p className="text-sm text-gray-400">
-                Loading profile…
-              </p>
-            ) : (
-              <>
+          </Section>
 
-                {/* ========================= */}
-                {/* BASIC INFORMATION */}
-                {/* ========================= */}
+          {/* CONTACT INFORMATION */}
+          <Section title="Contact Information">
 
-                <Section title="Basic Information">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {isEditing ? (
+                <>
+                  {/* Contact Number */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Contact Number
+                    </label>
 
-                    {isEditing ? (
-                      <>
-
-                        {/* First Name */}
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            First Name
-                          </label>
-
-                          <input
-                            type="text"
-                            name="firstName"
-                            value={form.firstName}
-                            onChange={handleChange}
-                            className="w-full mt-1 border rounded-lg px-3 py-2"
-                          />
-                        </div>
-
-                        {/* Middle Name */}
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Middle Name
-                          </label>
-
-                          <input
-                            type="text"
-                            name="middleName"
-                            value={form.middleName}
-                            onChange={handleChange}
-                            className="w-full mt-1 border rounded-lg px-3 py-2"
-                          />
-                        </div>
-
-                        {/* Last Name */}
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Last Name
-                          </label>
-
-                          <input
-                            type="text"
-                            name="lastName"
-                            value={form.lastName}
-                            onChange={handleChange}
-                            className="w-full mt-1 border rounded-lg px-3 py-2"
-                          />
-                        </div>
-
-                        {/* Gender */}
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Gender
-                          </label>
-
-                          <select
-                            name="gender"
-                            value={form.gender}
-                            onChange={handleChange}
-                            className="w-full mt-1 border rounded-lg px-3 py-2"
-                          >
-                            <option value="">
-                              Select Gender
-                            </option>
-
-                            <option value="Male">
-                              Male
-                            </option>
-
-                            <option value="Female">
-                              Female
-                            </option>
-
-                            <option value="Prefer not to say">
-                              Prefer not to say
-                            </option>
-                          </select>
-                        </div>
-
-                        {/* Civil Status */}
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Civil Status
-                          </label>
-
-                          <select
-                            name="civilStatus"
-                            value={form.civilStatus}
-                            onChange={handleChange}
-                            className="w-full mt-1 border rounded-lg px-3 py-2"
-                          >
-                            <option value="">
-                              Select Civil Status
-                            </option>
-
-                            <option value="Single">
-                              Single
-                            </option>
-
-                            <option value="Married">
-                              Married
-                            </option>
-
-                            <option value="Widowed">
-                              Widowed
-                            </option>
-
-                            <option value="Separated">
-                              Separated
-                            </option>
-                          </select>
-                        </div>
-
-                        {/* Birthdate */}
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Birthdate
-                          </label>
-
-                          <input
-                            type="date"
-                            name="birthdate"
-                            value={form.birthdate}
-                            onChange={handleChange}
-                            className="w-full mt-1 border rounded-lg px-3 py-2"
-                          />
-                        </div>
-
-                      </>
-                    ) : (
-                      <>
-                        <Info
-                          label="First Name"
-                          value={p.firstName}
-                        />
-
-                        <Info
-                          label="Middle Name"
-                          value={p.middleName}
-                        />
-
-                        <Info
-                          label="Last Name"
-                          value={p.lastName}
-                        />
-
-                        <Info
-                          label="Gender"
-                          value={p.gender}
-                        />
-
-                        <Info
-                          label="Civil Status"
-                          value={p.civilStatus}
-                        />
-
-                        <Info
-                          label="Birthdate"
-                          value={formatDate(p.birthdate)}
-                        />
-                      </>
-                    )}
-
+                    <input
+                      type="text"
+                      name="contactNumber"
+                      value={form.contactNumber}
+                      onChange={handleChange}
+                      className="w-full mt-1 border rounded-lg px-3 py-2"
+                    />
                   </div>
 
-                </Section>
+                  {/* Alternate Email */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Alternate Email
+                    </label>
 
-                {/* ========================= */}
-                {/* CONTACT INFORMATION */}
-                {/* ========================= */}
-
-                <Section title="Contact Information">
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                    {isEditing ? (
-                      <>
-
-                        {/* Contact Number */}
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Contact Number
-                          </label>
-
-                          <input
-                            type="text"
-                            name="contactNumber"
-                            value={form.contactNumber}
-                            onChange={handleChange}
-                            className="w-full mt-1 border rounded-lg px-3 py-2"
-                          />
-                        </div>
-
-                        {/* Alternate Email */}
-                        <div>
-                          <label className="text-sm font-medium text-gray-500">
-                            Alternate Email
-                          </label>
-
-                          <input
-                            type="email"
-                            name="alternateEmail"
-                            value={form.alternateEmail}
-                            onChange={handleChange}
-                            className="w-full mt-1 border rounded-lg px-3 py-2"
-                          />
-                        </div>
-
-                        {/* Address */}
-                        <div className="md:col-span-2">
-                          <label className="text-sm font-medium text-gray-500">
-                            Address
-                          </label>
-
-                          <textarea
-                            name="address"
-                            value={form.address}
-                            onChange={handleChange}
-                            rows="3"
-                            className="w-full mt-1 border rounded-lg px-3 py-2"
-                          />
-                        </div>
-
-                      </>
-                    ) : (
-                      <>
-                        <Info
-                          label="Contact Number"
-                          value={p.contactNumber}
-                        />
-
-                        <Info
-                          label="Alternate Email"
-                          value={p.alternateEmail}
-                        />
-
-                        <Info
-                          label="Address"
-                          value={p.address}
-                          className="md:col-span-2"
-                        />
-                      </>
-                    )}
-
+                    <input
+                      type="email"
+                      name="alternateEmail"
+                      value={form.alternateEmail}
+                      onChange={handleChange}
+                      className="w-full mt-1 border rounded-lg px-3 py-2"
+                    />
                   </div>
 
-                </Section>
+                  {/* Address */}
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-gray-500">
+                      Address
+                    </label>
 
-                {/* ========================= */}
-                {/* EDUCATIONAL BACKGROUND */}
-                {/* ========================= */}
+                    <textarea
+                      name="address"
+                      value={form.address}
+                      onChange={handleChange}
+                      rows="3"
+                      className="w-full mt-1 border rounded-lg px-3 py-2"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Info label="Contact Number" value={p.contactNumber} />
+                  <Info label="Alternate Email" value={p.alternateEmail} />
+                  <Info label="Address" value={p.address} className="md:col-span-2" />
+                </>
+              )}
 
-                <Section
-                  title="Educational Background"
-                  action={
-                    isEditing ? (
-                      <button
-                        type="button"
-                        onClick={handleAddEducation}
-                        className="flex items-center gap-2 px-3 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600"
-                      >
-                        <Plus size={16} />
-                        Add Education
-                      </button>
-                    ) : null
-                  }
+            </div>
+
+          </Section>
+
+          {/* EDUCATIONAL BACKGROUND */}
+          <Section
+            title="Educational Background"
+            action={
+              isEditing ? (
+                <button
+                  type="button"
+                  onClick={handleAddEducation}
+                  className="flex items-center gap-2 px-3 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600"
                 >
+                  <Plus size={16} />
+                  Add Education
+                </button>
+              ) : null
+            }
+          >
 
-                  {isEditing ? (
+            {isEditing ? (
 
-                    form.education && form.education.length > 0 ? (
+              form.education && form.education.length > 0 ? (
 
-                      <div className="space-y-4">
+                <div className="space-y-4">
 
-                        {form.education.map((ed, index) => (
+                  {form.education.map((ed, index) => (
 
-                          <div
-                            key={index}
-                            className="border border-gray-200 rounded-xl p-4"
-                          >
+                    <div
+                      key={index}
+                      className="border border-gray-200 rounded-xl p-4"
+                    >
 
-                            <div className="flex justify-between items-center mb-4">
+                      <div className="flex justify-between items-center mb-4">
 
-                              <p className="font-semibold text-gray-700">
-                                Education #{index + 1}
-                              </p>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleRemoveEducation(index)
-                                }
-                                className="flex items-center gap-1 text-red-500 hover:text-red-700 text-sm"
-                              >
-                                <Trash2 size={16} />
-                                Remove
-                              </button>
-
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                              {/* Level */}
-                              <div>
-                                <label className="text-sm font-medium text-gray-500">
-                                  Level
-                                </label>
-
-                                <select
-                                  value={ed.level}
-                                  onChange={(e) =>
-                                    handleEducationChange(
-                                      index,
-                                      "level",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full mt-1 border rounded-lg px-3 py-2"
-                                >
-                                  <option value="">
-                                    Select Level
-                                  </option>
-
-                                  <option value="Bachelor's">
-                                    Bachelor's
-                                  </option>
-
-                                  <option value="Master's">
-                                    Master's
-                                  </option>
-
-                                  <option value="Doctorate">
-                                    Doctorate
-                                  </option>
-                                </select>
-                              </div>
-
-                              {/* Degree */}
-                              <div>
-                                <label className="text-sm font-medium text-gray-500">
-                                  Degree / Program
-                                </label>
-
-                                <input
-                                  type="text"
-                                  value={ed.degree}
-                                  onChange={(e) =>
-                                    handleEducationChange(
-                                      index,
-                                      "degree",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full mt-1 border rounded-lg px-3 py-2"
-                                />
-                              </div>
-
-                              {/* School */}
-                              <div>
-                                <label className="text-sm font-medium text-gray-500">
-                                  School / University
-                                </label>
-
-                                <input
-                                  type="text"
-                                  value={ed.school}
-                                  onChange={(e) =>
-                                    handleEducationChange(
-                                      index,
-                                      "school",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full mt-1 border rounded-lg px-3 py-2"
-                                />
-                              </div>
-
-                              {/* Year Graduated */}
-                              <div>
-                                <label className="text-sm font-medium text-gray-500">
-                                  Year Graduated
-                                </label>
-
-                                <input
-                                  type="number"
-                                  value={ed.yearGraduated}
-                                  onChange={(e) =>
-                                    handleEducationChange(
-                                      index,
-                                      "yearGraduated",
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full mt-1 border rounded-lg px-3 py-2"
-                                />
-                              </div>
-
-                            </div>
-                          </div>
-                        ))}
-
-                      </div>
-
-                    ) : (
-
-                      <div className="text-center py-6">
-
-                        <p className="text-sm text-gray-400 mb-3">
-                          No educational background added yet.
+                        <p className="font-semibold text-gray-700">
+                          Education #{index + 1}
                         </p>
 
                         <button
                           type="button"
-                          onClick={handleAddEducation}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600"
+                          onClick={() => handleRemoveEducation(index)}
+                          className="flex items-center gap-1 text-red-500 hover:text-red-700 text-sm"
                         >
-                          <Plus size={16} />
-                          Add Education
+                          <Trash2 size={16} />
+                          Remove
                         </button>
 
                       </div>
-                    )
 
-                  ) : education.length === 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                    <p className="text-sm text-gray-400">
-                      No educational background added yet.
-                    </p>
-
-                  ) : (
-
-                    <div className="space-y-4">
-
-                      {education.map((ed, i) => (
-
-                        <div
-                          key={ed._id || i}
-                          className="border border-gray-100 rounded-xl p-4"
-                        >
-
-                          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-
-                            <Info
-                              label="Level"
-                              value={ed.level}
-                            />
-
-                            <Info
-                              label="Degree / Program"
-                              value={ed.degree}
-                            />
-
-                            <Info
-                              label="School / University"
-                              value={ed.school}
-                            />
-
-                            <Info
-                              label="Year Graduated"
-                              value={ed.yearGraduated}
-                            />
-
-                          </div>
-
-                        </div>
-                      ))}
-
-                    </div>
-                  )}
-
-                </Section>
-
-                {/* ========================= */}
-                {/* POSITION / RANK */}
-                {/* ========================= */}
-
-                <Section title="Position / Rank">
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                    {isEditing ? (
-                      <>
-
-                        {/* Position */}
+                        {/* Level */}
                         <div>
                           <label className="text-sm font-medium text-gray-500">
-                            Position
+                            Level
+                          </label>
+
+                          <select
+                            value={ed.level}
+                            onChange={(e) =>
+                              handleEducationChange(index, "level", e.target.value)
+                            }
+                            className="w-full mt-1 border rounded-lg px-3 py-2"
+                          >
+                            <option value="">Select Level</option>
+                            <option value="Bachelor's">Bachelor's</option>
+                            <option value="Master's">Master's</option>
+                            <option value="Doctorate">Doctorate</option>
+                          </select>
+                        </div>
+
+                        {/* Degree */}
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">
+                            Degree / Program
                           </label>
 
                           <input
                             type="text"
-                            name="position"
-                            value={form.position}
-                            onChange={handleChange}
+                            value={ed.degree}
+                            onChange={(e) =>
+                              handleEducationChange(index, "degree", e.target.value)
+                            }
                             className="w-full mt-1 border rounded-lg px-3 py-2"
                           />
                         </div>
 
-                        {/* Academic Rank */}
+                        {/* School */}
                         <div>
                           <label className="text-sm font-medium text-gray-500">
-                            Academic Rank
+                            School / University
                           </label>
 
-                          <select
-                            name="rank"
-                            value={form.rank}
-                            onChange={handleChange}
+                          <input
+                            type="text"
+                            value={ed.school}
+                            onChange={(e) =>
+                              handleEducationChange(index, "school", e.target.value)
+                            }
                             className="w-full mt-1 border rounded-lg px-3 py-2"
-                          >
-                            <option value="">
-                              Select Academic Rank
-                            </option>
-
-                            <option value="Instructor I">
-                              Instructor I
-                            </option>
-
-                            <option value="Instructor II">
-                              Instructor II
-                            </option>
-
-                            <option value="Instructor III">
-                              Instructor III
-                            </option>
-
-                            <option value="Assistant Professor I">
-                              Assistant Professor I
-                            </option>
-
-                            <option value="Assistant Professor II">
-                              Assistant Professor II
-                            </option>
-
-                            <option value="Assistant Professor III">
-                              Assistant Professor III
-                            </option>
-
-                            <option value="Assistant Professor IV">
-                              Assistant Professor IV
-                            </option>
-
-                            <option value="Associate Professor I">
-                              Associate Professor I
-                            </option>
-
-                            <option value="Associate Professor II">
-                              Associate Professor II
-                            </option>
-
-                            <option value="Associate Professor III">
-                              Associate Professor III
-                            </option>
-
-                            <option value="Associate Professor IV">
-                              Associate Professor IV
-                            </option>
-
-                            <option value="Associate Professor V">
-                              Associate Professor V
-                            </option>
-
-                            <option value="Professor I">
-                              Professor I
-                            </option>
-
-                            <option value="Professor II">
-                              Professor II
-                            </option>
-
-                            <option value="Professor III">
-                              Professor III
-                            </option>
-
-                            <option value="Professor IV">
-                              Professor IV
-                            </option>
-
-                            <option value="Professor V">
-                              Professor V
-                            </option>
-
-                            <option value="Professor VI">
-                              Professor VI
-                            </option>
-                          </select>
+                          />
                         </div>
 
-                      </>
-                    ) : (
-                      <>
-                        <Info
-                          label="Position"
-                          value={p.position}
-                        />
+                        {/* Year Graduated */}
+                        <div>
+                          <label className="text-sm font-medium text-gray-500">
+                            Year Graduated
+                          </label>
 
-                        <Info
-                          label="Academic Rank"
-                          value={p.rank}
-                        />
-                      </>
-                    )}
+                          <input
+                            type="number"
+                            value={ed.yearGraduated}
+                            onChange={(e) =>
+                              handleEducationChange(index, "yearGraduated", e.target.value)
+                            }
+                            className="w-full mt-1 border rounded-lg px-3 py-2"
+                          />
+                        </div>
 
-                  </div>
+                      </div>
+                    </div>
+                  ))}
 
-                </Section>
+                </div>
 
-                {/* ========================= */}
-                {/* SAVE / CANCEL */}
-                {/* ========================= */}
+              ) : (
 
-                {isEditing && (
-                  <div className="bg-white rounded-2xl shadow p-6">
+                <div className="text-center py-6">
 
-                    {saveError && (
-                      <p className="text-red-500 text-sm mb-4">
-                        {saveError}
-                      </p>
-                    )}
+                  <p className="text-sm text-gray-400 mb-3">
+                    No educational background added yet.
+                  </p>
 
-                    <div className="flex justify-end gap-3">
+                </div>
+              )
 
-                      <button
-                        type="button"
-                        onClick={handleCancel}
-                        disabled={saving}
-                        className="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        Cancel
-                      </button>
+            ) : education.length === 0 ? (
 
-                      <button
-                        type="button"
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="px-5 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 disabled:opacity-50"
-                      >
-                        {saving ? "Saving..." : "Save Changes"}
-                      </button>
+              <p className="text-sm text-gray-400">
+                No educational background added yet.
+              </p>
+
+            ) : (
+
+              <div className="space-y-4">
+
+                {education.map((ed, i) => (
+
+                  <div
+                    key={ed._id || i}
+                    className="border border-gray-100 rounded-xl p-4"
+                  >
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+
+                      <Info label="Level" value={ed.level} />
+                      <Info label="Degree / Program" value={ed.degree} />
+                      <Info label="School / University" value={ed.school} />
+                      <Info label="Year Graduated" value={ed.yearGraduated} />
 
                     </div>
-                  </div>
-                )}
 
-              </>
+                  </div>
+                ))}
+
+              </div>
             )}
-          </div>
-        </main>
-      </div>
+
+          </Section>
+
+          {/* POSITION / RANK */}
+          <Section title="Position / Rank">
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              {isEditing ? (
+                <>
+                  {/* Position */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Position
+                    </label>
+
+                    <select
+                      name="position"
+                      value={form.position}
+                      onChange={handleChange}
+                      className="w-full mt-1 border rounded-lg px-3 py-2 bg-white"
+                    >
+                      <option value="">Select Position</option>
+                      {POSITIONS.map((pos) => (
+                        <option key={pos} value={pos}>
+                          {pos}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Academic Rank */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-500">
+                      Academic Rank
+                    </label>
+
+                    <select
+                      name="rank"
+                      value={form.rank}
+                      onChange={handleChange}
+                      className="w-full mt-1 border rounded-lg px-3 py-2"
+                    >
+                      <option value="">Select Academic Rank</option>
+                      {RANKS.map((rank) => (
+                        <option key={rank} value={rank}>
+                          {rank}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Info label="Position" value={p.position} />
+                  <Info label="Academic Rank" value={p.rank} />
+                </>
+              )}
+
+            </div>
+
+          </Section>
+
+          {/* SAVE / CANCEL */}
+          {isEditing && (
+            <div className="bg-white rounded-2xl shadow p-6">
+
+              {saveError && (
+                <p className="text-red-500 text-sm mb-4">
+                  {saveError}
+                </p>
+              )}
+
+              <div className="flex justify-end gap-3">
+
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={saving}
+                  className="px-5 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-5 py-2 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+
+              </div>
+            </div>
+          )}
+
+        </>
+      )}
     </div>
   );
 }
