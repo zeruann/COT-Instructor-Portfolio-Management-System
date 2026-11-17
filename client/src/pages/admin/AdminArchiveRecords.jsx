@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 import {
@@ -604,9 +605,9 @@ export default function AdminArchiveRecords() {
       </div>
 
       {/* ── CONFIRMATION MODAL ── */}
-      {confirmAnim.rendered && (
+      {confirmAnim.rendered && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
         >
@@ -643,7 +644,8 @@ export default function AdminArchiveRecords() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

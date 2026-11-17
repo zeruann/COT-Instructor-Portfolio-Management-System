@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 import {
   Calendar,
@@ -1011,8 +1012,8 @@ export default function AcademicPeriod() {
       {formAnim.rendered && (() => {
         const [yearFrom = '', yearTo = ''] = (formData.schoolYear || '').split('-');
 
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        return createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <div className={`absolute inset-0 bg-gray-900/40 ${formAnim.backdropAnim}`} />
             <div className={`relative bg-white rounded-2xl max-w-2xl w-full p-8 shadow-xl ${formAnim.panelAnim}`}>
               {/* Header */}
@@ -1183,14 +1184,15 @@ export default function AcademicPeriod() {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
 
       {/* CONFIRMATION MODAL */}
-      {confirmAnim.rendered && (
+      {confirmAnim.rendered && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
         >
@@ -1225,12 +1227,13 @@ export default function AcademicPeriod() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* PERIOD DETAILS MODAL */}
-      {detailsAnim.rendered && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {detailsAnim.rendered && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className={`absolute inset-0 bg-gray-900/40 ${detailsAnim.backdropAnim}`} />
           <div className={`relative bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl ${detailsAnim.panelAnim}`}>
             {/* Header */}
@@ -1429,7 +1432,8 @@ export default function AcademicPeriod() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

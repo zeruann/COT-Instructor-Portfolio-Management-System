@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Plus, ChevronRight, X, Search, BookOpen, AlertCircle, Loader2, MoreVertical, Archive, Edit3, ChevronUp, ChevronDown } from 'lucide-react';
 import PlaceholderPage from '../../components/layout/PlaceholderPage';
@@ -278,8 +279,8 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
 
   const isEdit = Boolean(initialData);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
       <div className="absolute inset-0 bg-black/50 animate-[modalBackdropIn_150ms_ease-out_forwards]" />
       <div className="relative w-full max-w-2xl rounded-2xl bg-white p-7 sm:p-8 shadow-2xl animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]">
         {/* Header */}
@@ -462,7 +463,8 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

@@ -1,5 +1,6 @@
 // client/src/components/documentActions/UploadModal.jsx
 import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, UploadCloud, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { uploadDocument } from '../../api/documents';
 import { useAnimatedModal } from '../../hooks/useAnimatedModal';
@@ -126,8 +127,8 @@ function UploadModalContent({
     ? `Reupload: ${existingDoc.meta?.name || existingDoc.meta?.title || requirement?.label || 'Document'}`
     : `Upload: ${requirement?.label || requirement?.card || 'Document'}`;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6">
       <div className={`absolute inset-0 bg-black/50 ${backdropAnim}`} />
       <div className={`relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[92vh] ${panelAnim}`}>
         {/* Header */}
@@ -366,7 +367,8 @@ function UploadModalContent({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 import {
@@ -100,9 +101,9 @@ function AppModal({ modal, onClose }) {
   const style = MODAL_STYLES[activeModal.tone] || MODAL_STYLES.error;
   const Icon = style.icon;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="app-modal-title"
@@ -116,6 +117,7 @@ function AppModal({ modal, onClose }) {
       {/* Card */}
       <div
         className={`relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ${style.ring} p-6 ${panelAnim}`}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className={`absolute inset-x-6 top-0 h-1 rounded-full ${style.accent}`} />
 
@@ -173,7 +175,8 @@ function AppModal({ modal, onClose }) {
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 }
 

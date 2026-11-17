@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { CircleAlert, TriangleAlert, CircleCheck, X } from 'lucide-react';
 import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 
@@ -57,9 +58,9 @@ export function AppModal({ modal, onClose }) {
   const style = MODAL_STYLES[activeModal.tone] || MODAL_STYLES.error;
   const Icon = style.icon;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="app-modal-title"
@@ -138,7 +139,8 @@ export function AppModal({ modal, onClose }) {
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 }
 

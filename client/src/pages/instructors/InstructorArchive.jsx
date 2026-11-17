@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Archive,
   ArrowLeft,
@@ -631,9 +632,9 @@ function InstructorArchive() {
       )}
 
       {/* ── ARCHIVED CLASS PORTFOLIO MODAL (Matches AdminArchiveRecordDetail) ── */}
-      {classModalAnim.rendered && modalClass && (
+      {classModalAnim.rendered && modalClass && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5"
           onClick={handleCloseClassModal}
         >
           <div className={`absolute inset-0 bg-black/50 ${classModalAnim.backdropAnim}`} />
@@ -723,7 +724,8 @@ function InstructorArchive() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <ConfirmationModal

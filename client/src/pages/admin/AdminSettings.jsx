@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { useAnimatedModal } from "../../hooks/useAnimatedModal";
@@ -1447,9 +1448,9 @@ export default function AdminSettings() {
       </div>
 
       {/* ── SECURITY VERIFICATION OVERLAY COVER (Dark backdrop blur, centered across the whole screen) ── */}
-      {!isUnlocked && (
+      {!isUnlocked && createPortal(
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 transition-all duration-500 ease-out overflow-y-auto ${isFadingOut
+          className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/50 transition-all duration-500 ease-out overflow-y-auto ${isFadingOut
             ? "opacity-0 scale-[0.98] pointer-events-none"
             : "opacity-100 scale-100"
             }`}
@@ -1655,13 +1656,14 @@ export default function AdminSettings() {
               </form>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── RESTORE TO DEFAULT CONFIRMATION MODAL ── */}
-      {restoreAnim.rendered && (
+      {restoreAnim.rendered && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
           role="dialog"
           aria-modal="true"
         >
@@ -1709,12 +1711,13 @@ export default function AdminSettings() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── CUSTOM API SAVE: CONNECTION TEST & OTP MODAL ── */}
-      {showCustomSaveModal && pendingCustomSave && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {showCustomSaveModal && pendingCustomSave && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 animate-[modalBackdropIn_150ms_ease-out_forwards]" />
           <div className="relative w-full max-w-[500px] rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border border-gray-100 text-center animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]">
             {/* Top Close 'X' Button */}
@@ -1987,7 +1990,8 @@ export default function AdminSettings() {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

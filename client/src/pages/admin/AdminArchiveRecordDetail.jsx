@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -719,9 +720,9 @@ export default function AdminArchiveRecordDetail() {
       )}
 
       {/* ── ARCHIVED CLASS PORTFOLIO MODAL (Single Source of Truth) ── */}
-      {selectedClassMeta && (
+      {selectedClassMeta && createPortal(
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-5 ${isClosingModal
+          className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 sm:p-5 ${isClosingModal
             ? 'animate-[modalBackdropOut_150ms_ease-in_forwards]'
             : 'animate-[modalBackdropIn_150ms_ease-out_forwards]'
             }`}
@@ -819,12 +820,13 @@ export default function AdminArchiveRecordDetail() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* ── ARCHIVED FACULTY PORTFOLIO MODAL (Same Pattern as Class Portfolio Modal) ── */}
-      {selectedFacultyInstructor && (
+      {selectedFacultyInstructor && createPortal(
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-5 ${isClosingFacultyModal
+          className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 sm:p-5 ${isClosingFacultyModal
             ? 'animate-[modalBackdropOut_150ms_ease-in_forwards]'
             : 'animate-[modalBackdropIn_150ms_ease-out_forwards]'
             }`}
@@ -928,7 +930,8 @@ export default function AdminArchiveRecordDetail() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
