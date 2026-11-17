@@ -24,6 +24,8 @@ export default function ReviewClassPortfolio() {
   const [loadingInstructors, setLoadingInstructors] = useState(true);
   const [classes, setClasses] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
+  const [classCounts, setClassCounts] = useState({});
+  const [loadingClassCounts, setLoadingClassCounts] = useState(true);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
@@ -46,6 +48,32 @@ export default function ReviewClassPortfolio() {
       })
       .catch((err) => console.error('Failed to load instructors:', err))
       .finally(() => setLoadingInstructors(false));
+  }, []);
+
+  // Load active class counts per instructor for the summary cards
+  useEffect(() => {
+    let isCurrent = true;
+
+    fetchClasses()
+      .then((data) => {
+        if (!isCurrent) return;
+        const classList = Array.isArray(data) ? data : data.classes || [];
+        const counts = classList.reduce((acc, cls) => {
+          const ownerId = String(cls.ownerId?._id || cls.ownerId || cls.owner?._id || '');
+          if (!ownerId) return acc;
+          acc[ownerId] = (acc[ownerId] || 0) + 1;
+          return acc;
+        }, {});
+        setClassCounts(counts);
+      })
+      .catch((err) => console.error('Failed to load class counts:', err))
+      .finally(() => {
+        if (isCurrent) setLoadingClassCounts(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
   }, []);
 
   const getDisplayName = (inst) => {
@@ -370,6 +398,7 @@ export default function ReviewClassPortfolio() {
               inst.profile?.rank || inst.profile?.position || 'Assistant Professor IV';
             const department = inst.department || 'IT Department';
             const photoUrl = inst.profile?.photoUrl;
+            const classCount = classCounts[String(id)];
 
             return (
               <div
@@ -410,6 +439,12 @@ export default function ReviewClassPortfolio() {
                     </h3>
                     <p className="mt-0.5 truncate text-xs font-normal text-gray-400">{rank}</p>
                     <p className="truncate text-xs font-normal text-gray-400">{department}</p>
+                    <p className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-orange-50 px-1.5 py-0.5 text-[11px] font-semibold text-brand-orange">
+                      <BookOpen size={11} />
+                      {loadingClassCounts
+                        ? '…'
+                        : `${classCount || 0} ${classCount === 1 ? 'class' : 'classes'}`}
+                    </p>
                   </div>
 
                   <button
