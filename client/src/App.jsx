@@ -52,6 +52,7 @@ import AdminReports from "./pages/admin/AdminReports";
 // SHARED LAYOUT (sidebar + top bar + breadcrumb) FOR EVERY SIGNED-IN PAGE
 
 import LandingPage from "./pages/LandingPage";
+import PrivacyNotice from "./pages/PrivacyNotice";
 import AppLayout from "./components/layout/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -64,7 +65,11 @@ import Achievements from "./pages/portfolioRequirements/FacultyPortfolioRequirem
 import Research from "./pages/portfolioRequirements/FacultyPortfolioRequirements/Research";
 import ExtensionInvolvement from "./pages/portfolioRequirements/FacultyPortfolioRequirements/ExtensionInvolvement";
 import Production from "./pages/portfolioRequirements/FacultyPortfolioRequirements/Production";
-import OtherRequirements from "./pages/portfolioRequirements/FacultyPortfolioRequirements/otherRequirements/OtherRequirements";
+import OtherRequirements, {
+  StandaloneProfessionalOrgs,
+  StandalonePassedLicensureExams,
+  StandaloneIPCR,
+} from "./pages/portfolioRequirements/FacultyPortfolioRequirements/otherRequirements/OtherRequirements";
 import ProfessionalOrgs from "./pages/portfolioRequirements/FacultyPortfolioRequirements/otherRequirements/ProfessionalOrgs";
 import PassedLicensureExams from "./pages/portfolioRequirements/FacultyPortfolioRequirements/otherRequirements/PassedLicensureExams";
 import IPCR from "./pages/portfolioRequirements/FacultyPortfolioRequirements/otherRequirements/IPCR";
@@ -79,6 +84,10 @@ function App() {
           {/* DEFAULT ROUTE */}
 
           <Route path="/" element={<LandingPage />} />
+
+          {/* PUBLIC POLICY PAGES */}
+
+          <Route path="/privacy" element={<PrivacyNotice />} />
 
           {/* AUTHENTICATION PAGES */}
 
@@ -136,6 +145,9 @@ function App() {
             <Route path="/admin/portfolio/faculty-portfolio/research" element={<Research />} />
             <Route path="/admin/portfolio/faculty-portfolio/extension-involvement" element={<ExtensionInvolvement />} />
             <Route path="/admin/portfolio/faculty-portfolio/production" element={<Production />} />
+            <Route path="/admin/portfolio/faculty-portfolio/professional-organization-membership" element={<StandaloneProfessionalOrgs />} />
+            <Route path="/admin/portfolio/faculty-portfolio/passed-licensure-examinations" element={<StandalonePassedLicensureExams />} />
+            <Route path="/admin/portfolio/faculty-portfolio/ipcr" element={<StandaloneIPCR />} />
 
             {/* OTHER REQUIREMENTS: parent page with 3 tab pages inside it */}
 
@@ -199,6 +211,9 @@ function App() {
             <Route path="/instructors/portfolio/faculty-portfolio/research" element={<Research />} />
             <Route path="/instructors/portfolio/faculty-portfolio/extension-involvement" element={<ExtensionInvolvement />} />
             <Route path="/instructors/portfolio/faculty-portfolio/production" element={<Production />} />
+            <Route path="/instructors/portfolio/faculty-portfolio/professional-organization-membership" element={<StandaloneProfessionalOrgs />} />
+            <Route path="/instructors/portfolio/faculty-portfolio/passed-licensure-examinations" element={<StandalonePassedLicensureExams />} />
+            <Route path="/instructors/portfolio/faculty-portfolio/ipcr" element={<StandaloneIPCR />} />
 
             {/* OTHER REQUIREMENTS: parent page with 3 tab pages inside it */}
 

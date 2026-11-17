@@ -27,9 +27,10 @@ import {
 import { fetchClasses, unarchiveClass } from '../../api/classes';
 import { fetchFacultySummary } from '../../api/documents';
 import { downloadComplianceExcel } from '../../api/reports';
+import { API_BASE } from '../../api/config';
 
-const API_INSTRUCTORS_URL = 'http://localhost:5000/api/instructors';
-const API_PERIODS_URL = 'http://localhost:5000/api/academic-periods';
+const API_INSTRUCTORS_URL = `${API_BASE}/instructors`;
+const API_PERIODS_URL = `${API_BASE}/academic-periods`;
 
 const CATEGORY_PATHS = [
   'educational-attainment',
@@ -484,14 +485,14 @@ export default function AdminArchive() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+            <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
               System Archive &amp; Records
             </h1>
             <span className="rounded-lg bg-purple-50 border border-purple-200/80 px-2.5 py-0.5 text-xs font-bold text-brand-purple">
               Read-Only
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 mt-0.5">
             Preserved historical academic periods, completed course portfolios, and faculty compliance records.
           </p>
         </div>

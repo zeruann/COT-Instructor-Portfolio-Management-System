@@ -28,7 +28,7 @@ function Header({ role, user }) {
       <div className="flex items-center gap-3">
         <img src={logo} alt="Logo" className="w-10" />
         <h1 className="text-orange-600 font-bold text-lg">
-          COT Instructor Portfolio Management System
+          COT Instructor E-Portfolio Management System
         </h1>
       </div>
 

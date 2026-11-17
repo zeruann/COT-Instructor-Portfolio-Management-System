@@ -152,7 +152,7 @@ function IconButton({ variant, label, title, disabled, onClick, children }) {
 // ═════════════════════════════════════════════════════════════
 
 // ► CHANGE 3: rename the function (must match the export at the bottom)
-function IPCR() {
+function IPCR({ addTrigger: propAddTrigger } = {}) {
   const { modal, close: closeModal, notify, confirm: showConfirm } = useAppModal();
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
@@ -234,7 +234,7 @@ function IPCR() {
 
   // The parent's "Add Document" button bumps addTrigger -> open the Add popup of THIS tab.
   // lastTrigger remembers the value we started with, so switching tabs does not open it by accident.
-  const { addTrigger } = outletContext;
+  const addTrigger = propAddTrigger ?? outletContext.addTrigger;
   const lastTrigger = useRef(addTrigger);
   useEffect(() => {
     if (addTrigger !== lastTrigger.current) {

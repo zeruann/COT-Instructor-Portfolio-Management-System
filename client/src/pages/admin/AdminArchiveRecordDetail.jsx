@@ -22,9 +22,37 @@ import {
 import { fetchClasses } from '../../api/classes';
 import AdminViewClassPortfolio from './AdminViewClassPortfolio';
 import ClassRequirementDetail from '../instructors/ClassRequirementDetail';
+import ReviewFacultyPortfolio from './ReviewFacultyPortfolio';
+import { PortfolioContext } from '../../context/portfolioContextDef';
+import EducationalAttainment from '../portfolioRequirements/FacultyPortfolioRequirements/EducationalAttainment';
+import ServiceRecords from '../portfolioRequirements/FacultyPortfolioRequirements/ServiceRecords';
+import SeminarsAndWorkshops from '../portfolioRequirements/FacultyPortfolioRequirements/Seminars&Workshops';
+import Achievements from '../portfolioRequirements/FacultyPortfolioRequirements/Achievements';
+import Research from '../portfolioRequirements/FacultyPortfolioRequirements/Research';
+import ExtensionInvolvement from '../portfolioRequirements/FacultyPortfolioRequirements/ExtensionInvolvement';
+import Production from '../portfolioRequirements/FacultyPortfolioRequirements/Production';
+import OtherRequirements, {
+  StandaloneProfessionalOrgs,
+  StandalonePassedLicensureExams,
+  StandaloneIPCR,
+} from '../portfolioRequirements/FacultyPortfolioRequirements/otherRequirements/OtherRequirements';
+import { API_BASE } from '../../api/config';
 
-const API_PERIODS_URL = 'http://localhost:5000/api/academic-periods';
-const API_INSTRUCTORS_URL = 'http://localhost:5000/api/instructors';
+const FACULTY_REQ_COMPONENTS = {
+  'educational-attainment': EducationalAttainment,
+  'service-records': ServiceRecords,
+  'seminars-and-workshops': SeminarsAndWorkshops,
+  achievements: Achievements,
+  research: Research,
+  'extension-involvement': ExtensionInvolvement,
+  production: Production,
+  'professional-organization-membership': StandaloneProfessionalOrgs,
+  'passed-licensure-examinations': StandalonePassedLicensureExams,
+  ipcr: StandaloneIPCR,
+};
+
+const API_PERIODS_URL = `${API_BASE}/academic-periods`;
+const API_INSTRUCTORS_URL = `${API_BASE}/instructors`;
 
 function MetricCard({ icon: Icon, label, value, note, tone }) {
   const tones = {
@@ -108,6 +136,11 @@ export default function AdminArchiveRecordDetail() {
   const [isClosingModal, setIsClosingModal] = useState(false);
   const modalBodyRef = useRef(null);
 
+  const [selectedFacultyInstructor, setSelectedFacultyInstructor] = useState(null);
+  const [activeFacultyReqPath, setActiveFacultyReqPath] = useState(null);
+  const [isClosingFacultyModal, setIsClosingFacultyModal] = useState(false);
+  const facultyModalBodyRef = useRef(null);
+
   const handleOpenClassModal = (cls, instructor) => {
     setIsClosingModal(false);
     setSelectedClassMeta({ cls, instructor });
@@ -123,11 +156,32 @@ export default function AdminArchiveRecordDetail() {
     }, 180);
   };
 
+  const handleOpenFacultyModal = (instructor) => {
+    setIsClosingFacultyModal(false);
+    setSelectedFacultyInstructor(instructor);
+    setActiveFacultyReqPath(null);
+  };
+
+  const handleCloseFacultyModal = () => {
+    setIsClosingFacultyModal(true);
+    setTimeout(() => {
+      setSelectedFacultyInstructor(null);
+      setActiveFacultyReqPath(null);
+      setIsClosingFacultyModal(false);
+    }, 180);
+  };
+
   useEffect(() => {
     if (modalBodyRef.current) {
       modalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }, [activeReqPath]);
+
+  useEffect(() => {
+    if (facultyModalBodyRef.current) {
+      facultyModalBodyRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [activeFacultyReqPath]);
 
   const loadDetails = useCallback(
     async (isRefresh = false) => {
@@ -519,17 +573,14 @@ export default function AdminArchiveRecordDetail() {
                       <span>Class Portfolio</span>
                       <ChevronDown
                         size={14}
-                        className={`transition-transform duration-300 ${
-                          isExpanded ? 'rotate-180' : ''
-                        }`}
+                        className={`transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''
+                          }`}
                       />
                     </button>
 
                     <button
                       type="button"
-                      onClick={() =>
-                        navigate(`/admin/review/faculty-portfolio?instructorId=${inst.id}`)
-                      }
+                      onClick={() => handleOpenFacultyModal(inst)}
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 hover:border-brand-purple/40 text-gray-700 font-semibold text-xs transition cursor-pointer"
                     >
                       <Briefcase size={14} className="text-brand-purple" />
@@ -601,11 +652,10 @@ export default function AdminArchiveRecordDetail() {
 
                 {/* Expanded Class Portfolios for this Instructor (smooth accordion) */}
                 <div
-                  className={`grid transition-all duration-300 ease-in-out cursor-default ${
-                    isExpanded
-                      ? 'grid-rows-[1fr] opacity-100 mt-4'
-                      : 'grid-rows-[0fr] opacity-0 !mt-0'
-                  }`}
+                  className={`grid transition-all duration-300 ease-in-out cursor-default ${isExpanded
+                    ? 'grid-rows-[1fr] opacity-100 mt-4'
+                    : 'grid-rows-[0fr] opacity-0 !mt-0'
+                    }`}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="overflow-hidden">
@@ -671,15 +721,13 @@ export default function AdminArchiveRecordDetail() {
       {/* ── ARCHIVED CLASS PORTFOLIO MODAL (Single Source of Truth) ── */}
       {selectedClassMeta && (
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-[1px] p-3 sm:p-5 transition-opacity duration-200 ${
-            isClosingModal ? 'opacity-0' : 'animate-modal-backdrop'
-          }`}
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-[1px] p-3 sm:p-5 transition-opacity duration-200 ${isClosingModal ? 'opacity-0' : 'animate-modal-backdrop'
+            }`}
           onClick={handleCloseClassModal}
         >
           <div
-            className={`relative flex flex-col w-full max-w-7xl h-[90vh] rounded-2xl bg-[#f8f9fc] shadow-2xl border border-gray-200 overflow-hidden transition-all duration-200 ${
-              isClosingModal ? 'opacity-0 scale-[0.985] translate-y-2' : 'animate-modal-panel'
-            }`}
+            className={`relative flex flex-col w-full max-w-7xl h-[90vh] rounded-2xl bg-[#f8f9fc] shadow-2xl border border-gray-200 overflow-hidden transition-all duration-200 ${isClosingModal ? 'opacity-0 scale-[0.985] translate-y-2' : 'animate-modal-panel'
+              }`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -697,28 +745,16 @@ export default function AdminArchiveRecordDetail() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2.5 flex-wrap">
                       <h2 className="text-lg sm:text-xl font-bold text-[#2e2a72] truncate">
-                        {subjectCode} · {sectionCode}
+                        {selectedClassMeta.instructor?.fullName || 'Instructor'} · Class Portfolio
                       </h2>
-                      {isArchived ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-brand-purple border border-purple-200">
-                          <Archive size={12} />
-                          Archived
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                          Closed
-                        </span>
-                      )}
                     </div>
-                    {subjectName && (
-                      <p className="text-xs sm:text-sm font-medium text-gray-700 mt-0.5 truncate">
-                        {subjectName}
-                      </p>
-                    )}
+                    <p className="text-xs sm:text-sm font-medium text-gray-700 mt-0.5 truncate">
+                      {subjectCode} · {sectionCode}
+                      {subjectName ? ` ${subjectName}` : ''}
+                    </p>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {selectedClassMeta.instructor?.fullName}
-                      {program ? ` • ${program}` : ''}
-                      {ay ? ` • A.Y. ${ay}` : ''}
+                      {program ? `${program}` : ''}
+                      {ay ? `${program ? ' • ' : ''}A.Y. ${ay}` : ''}
                       {sem ? `, ${sem} Semester` : ''}
                     </p>
                   </div>
@@ -773,6 +809,113 @@ export default function AdminArchiveRecordDetail() {
               <button
                 type="button"
                 onClick={handleCloseClassModal}
+                className="px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 text-xs sm:text-sm font-semibold text-gray-700 transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── ARCHIVED FACULTY PORTFOLIO MODAL (Same Pattern as Class Portfolio Modal) ── */}
+      {selectedFacultyInstructor && (
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-[1px] p-3 sm:p-5 transition-opacity duration-200 ${isClosingFacultyModal ? 'opacity-0' : 'animate-modal-backdrop'
+            }`}
+          onClick={handleCloseFacultyModal}
+        >
+          <div
+            className={`relative flex flex-col w-full max-w-7xl h-[90vh] rounded-2xl bg-[#f8f9fc] shadow-2xl border border-gray-200 overflow-hidden transition-all duration-200 ${isClosingFacultyModal
+              ? 'opacity-0 scale-[0.985] translate-y-2'
+              : 'animate-modal-panel'
+              }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            {(() => {
+              const isArchived = Boolean(period?.isArchived);
+              const ay = period?.schoolYear || '';
+              const sem = period?.semester || '';
+              return (
+                <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-4 bg-white">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h2 className="text-lg sm:text-xl font-bold text-[#2e2a72] truncate">
+                        {selectedFacultyInstructor.fullName} · Faculty Portfolio
+                      </h2>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {selectedFacultyInstructor.department}
+                      {ay ? ` • A.Y. ${ay}` : ''}
+                      {sem ? `, ${sem} Semester` : ''}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseFacultyModal}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer shrink-0"
+                    aria-label="Close modal"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* Modal Body — renders ReviewFacultyPortfolio & requirement detail inside PortfolioContext */}
+            <div ref={facultyModalBodyRef} className="flex-1 overflow-y-auto p-6">
+              <PortfolioContext.Provider
+                value={{
+                  isAdmin: true,
+                  targetInstructorId: selectedFacultyInstructor.id,
+                  selectedInstructor: {
+                    ...selectedFacultyInstructor,
+                    _id: selectedFacultyInstructor.id,
+                  },
+                  selectInstructor: () => { },
+                }}
+              >
+                <div className={activeFacultyReqPath ? 'hidden' : 'animate-modal-page-back'}>
+                  <ReviewFacultyPortfolio
+                    instructorId={selectedFacultyInstructor.id}
+                    embedded
+                    onSelectRequirement={(card) => setActiveFacultyReqPath(card.path)}
+                  />
+                </div>
+
+                {activeFacultyReqPath && (
+                  <div key={activeFacultyReqPath} className="animate-modal-page-forward">
+                    {activeFacultyReqPath === 'other-requirements' ? (
+                      <OtherRequirements
+                        embedded
+                        onBack={() => setActiveFacultyReqPath(null)}
+                      />
+                    ) : (() => {
+                      const ReqComponent = FACULTY_REQ_COMPONENTS[activeFacultyReqPath];
+                      return ReqComponent ? <ReqComponent /> : null;
+                    })()}
+                  </div>
+                )}
+              </PortfolioContext.Provider>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between gap-2 border-t border-gray-200 px-6 py-3.5 bg-white">
+              <div>
+                {activeFacultyReqPath && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveFacultyReqPath(null)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-xs sm:text-sm font-semibold text-gray-700 transition cursor-pointer"
+                  >
+                    <ArrowLeft size={14} />
+                    <span>Back to Checklist</span>
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseFacultyModal}
                 className="px-4 py-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-100 text-xs sm:text-sm font-semibold text-gray-700 transition cursor-pointer"
               >
                 Close

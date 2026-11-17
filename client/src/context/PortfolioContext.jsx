@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import { PortfolioContext } from './portfolioContextDef';
+import { API_BASE } from '../api/config';
 
 export function PortfolioProvider({ children }) {
   const location = useLocation();
@@ -17,7 +18,7 @@ export function PortfolioProvider({ children }) {
     let isMounted = true;
 
     if (isAdmin && queryInstructorId) {
-      fetch(`http://localhost:5000/api/instructors/${queryInstructorId}`)
+      fetch(`${API_BASE}/instructors/${queryInstructorId}`)
         .then((res) => {
           if (!res.ok) throw new Error('Instructor not found');
           return res.json();

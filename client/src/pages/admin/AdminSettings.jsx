@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
@@ -28,8 +28,9 @@ import driveIcon from "../../assets/Google_Drive_icon_(2026).svg";
 import googleIcon from "../../assets/Google_Favicon_2025.svg";
 import sheetsIcon from "../../assets/google-sheets.svg";
 import securityShieldIcon from "../../assets/security-shield.png";
+import { API_BASE } from "../../api/config";
 
-const API_URL = "http://localhost:5000/api/settings";
+const API_URL = `${API_BASE}/settings`;
 
 /* ─── Integrated API & Credential Definitions ────────────────── */
 const INTEGRATIONS = [
@@ -324,15 +325,19 @@ export default function AdminSettings() {
     return () => clearInterval(interval);
   }, [customSaveResendTimer]);
 
+  const didInitialFetchRef = useRef(false);
+
   useEffect(() => {
+    if (didInitialFetchRef.current) return;
+    didInitialFetchRef.current = true;
     fetchSettings();
   }, []);
 
-  const fetchSettings = async () => {
+  const fetchSettings = async ({ silent = false } = {}) => {
     setLoading(true);
     setGlobalFeedback({ type: "", message: "" });
     try {
-      const res = await axios.get(API_URL, {
+      const res = await axios.get(silent ? `${API_URL}?silent=1` : API_URL, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data?.settings) setSettings(res.data.settings);
@@ -729,7 +734,7 @@ export default function AdminSettings() {
       setApiModes((prev) => ({ ...prev, [group.groupKey]: "custom" }));
 
       // Refresh settings
-      await fetchSettings();
+      await fetchSettings({ silent: true });
       setEditingGroup(null);
       handleCloseCustomSaveModal();
     } catch (err) {
@@ -799,7 +804,7 @@ export default function AdminSettings() {
         },
       }));
 
-      await fetchSettings();
+      await fetchSettings({ silent: true });
       setEditingGroup(null);
     } catch (err) {
       setGroupFeedback((prev) => ({
@@ -1056,11 +1061,10 @@ export default function AdminSettings() {
                                       Custom API
                                     </h4>
                                     <label
-                                      className={`flex items-center select-none ${
-                                        hasCustom
+                                      className={`flex items-center select-none ${hasCustom
                                           ? "cursor-pointer"
                                           : "cursor-not-allowed opacity-50"
-                                      }`}
+                                        }`}
                                       title={
                                         hasCustom
                                           ? "Select to use Custom API for this service"
@@ -1074,9 +1078,8 @@ export default function AdminSettings() {
                                         disabled={!hasCustom || modeSaving[group.groupKey]}
                                         checked={hasCustom && apiModes[group.groupKey] === "custom"}
                                         onChange={() => handleModeChange(group.groupKey, "custom")}
-                                        className={`w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600 ${
-                                          hasCustom ? "cursor-pointer" : "cursor-not-allowed"
-                                        }`}
+                                        className={`w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 accent-emerald-600 ${hasCustom ? "cursor-pointer" : "cursor-not-allowed"
+                                          }`}
                                       />
                                     </label>
                                   </div>

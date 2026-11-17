@@ -56,4 +56,9 @@ function buildFileName({ slot, qualifier, version, originalName, documentId }) {
   return ext ? `${parts}.${ext}` : parts;
 }
 
-module.exports = { checklistLetter, instructorBasePath, facultyFolderPath, classFolderPath, buildFileName };
+// Reports: <base>/Reports
+function reportsFolderPath({ department, fullName, instructorId }) {
+  return [...instructorBasePath({ department, fullName, instructorId }), 'Reports'];
+}
+
+module.exports = { checklistLetter, instructorBasePath, facultyFolderPath, classFolderPath, reportsFolderPath, buildFileName };

@@ -46,6 +46,9 @@ const TOGGLE_LABELS = {
     googleSheetsEnabled: 'Google Sheets API',
 };
 
+const RECENT_ATTEMPT_WINDOW_MS = 3000;
+const recentSettingsAttempts = new Map();
+
 const logSettingAudit = async ({ req, action, outcome = 'success', targetLabel, details, meta }) => {
     await logAudit({
         actor: req.user,
@@ -305,12 +308,20 @@ exports.getSettings = async (req, res) => {
             accountType: adminUser.accountType || 'Administrator',
         } : null;
 
-        await logSettingAudit({
-            req,
-            action: ACTION.SETTING_ACCESS,
-            targetLabel: 'API & Integration Settings',
-            details: 'Opened API & Integration Settings',
-        });
+        if (req.query.silent !== '1') {
+            const actorKey = String(req.user?.id || req.ip || 'anon');
+            const now = Date.now();
+            const lastAttempt = recentSettingsAttempts.get(actorKey) || 0;
+            if (now - lastAttempt > RECENT_ATTEMPT_WINDOW_MS) {
+                recentSettingsAttempts.set(actorKey, now);
+                await logSettingAudit({
+                    req,
+                    action: ACTION.SETTING_ATTEMPT,
+                    targetLabel: 'API & Integration Settings',
+                    details: 'Attempted to access API & Integration Settings (OTP required)',
+                });
+            }
+        }
 
         res.json({
             success: true,
@@ -769,13 +780,13 @@ exports.sendSettingsOtp = async (req, res) => {
         // Always bypass googleMailEnabled toggle and fall back to default .env SMTP if needed
         sendEmail({
             to: admin.email,
-            subject: 'COT Portfolio - API Settings Security Verification Code',
+            subject: 'COT Instructor E-Portfolio - API Settings Security Verification Code',
             bypassToggle: true,
             fallbackToDefault: true,
             html: `
                 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
                     <div style="text-align: center; margin-bottom: 24px;">
-                        <h2 style="color: #4338ca; margin: 0; font-size: 20px; font-weight: 700;">COT Faculty Portfolio</h2>
+                        <h2 style="color: #4338ca; margin: 0; font-size: 20px; font-weight: 700;">COT Instructor E-Portfolio</h2>
                         <p style="color: #6b7280; font-size: 13px; margin: 4px 0 0 0;">Institutional System Administration</p>
                     </div>
 
@@ -921,7 +932,14 @@ exports.verifySettingsOtp = async (req, res) => {
             req,
             action: ACTION.SETTING_OTP_VERIFY,
             targetLabel: 'API Settings OTP Verification',
-            details: 'Verified OTP and unlocked API & Integration Settings',
+            details: 'Verified email OTP for API & Integration Settings',
+        });
+
+        await logSettingAudit({
+            req,
+            action: ACTION.SETTING_ACCESS,
+            targetLabel: 'API & Integration Settings',
+            details: 'Opened API & Integration Settings after email OTP verification',
         });
 
         res.json({

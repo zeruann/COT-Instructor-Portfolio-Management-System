@@ -18,7 +18,9 @@ import {
   X,
 } from 'lucide-react';
 
-const API_PERIODS_URL = 'http://localhost:5000/api/academic-periods';
+import { API_BASE } from '../../api/config';
+
+const API_PERIODS_URL = `${API_BASE}/academic-periods`;
 
 const STATUS_BADGE = {
   Closed: { label: 'Inactive/Closed', bg: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -268,11 +270,10 @@ export default function AdminArchiveRecords() {
       {toast && (
         <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-200">
           <div
-            className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold ${
-              toast.type === 'error'
+            className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold ${toast.type === 'error'
                 ? 'bg-red-50 text-red-800 border-red-200'
                 : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-            }`}
+              }`}
           >
             {toast.type === 'error' ? (
               <AlertCircle size={16} className="text-red-600 shrink-0" />
@@ -295,27 +296,17 @@ export default function AdminArchiveRecords() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+            <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
               Archive Records
             </h1>
             <span className="rounded-lg bg-purple-50 border border-purple-200/80 px-2.5 py-0.5 text-xs font-bold text-brand-purple">
               Read-Only
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 mt-0.5">
             Closed and archived academic years with preserved course portfolios and compliance records.
           </p>
         </div>
-
-        <button
-          type="button"
-          onClick={() => loadData(true)}
-          disabled={refreshing || loading}
-          className="inline-flex items-center gap-1.5 self-start sm:self-auto px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs sm:text-sm font-semibold shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={refreshing ? 'animate-spin text-brand-orange' : 'text-gray-500'} />
-          <span>{refreshing ? 'Refreshing…' : 'Refresh Archive'}</span>
-        </button>
       </div>
 
       {/* ── 3 METRIC STAT CARDS ── */}
@@ -575,11 +566,10 @@ export default function AdminArchiveRecords() {
                       type="button"
                       onClick={() => setPage(p)}
                       aria-current={p === currentPage ? 'page' : undefined}
-                      className={`w-9 h-9 inline-flex items-center justify-center rounded-lg text-[13px] font-medium border transition cursor-pointer ${
-                        p === currentPage
+                      className={`w-9 h-9 inline-flex items-center justify-center rounded-lg text-[13px] font-medium border transition cursor-pointer ${p === currentPage
                           ? 'bg-orange-500 border-orange-500 text-white'
                           : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       {p}
                     </button>

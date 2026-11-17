@@ -66,6 +66,9 @@ export const NAV = {
       { to: '/instructors/portfolio/faculty-portfolio/research', label: 'Research', parentTo: '/instructors/faculty-portfolio' },
       { to: '/instructors/portfolio/faculty-portfolio/extension-involvement', label: 'Extension Involvement', parentTo: '/instructors/faculty-portfolio' },
       { to: '/instructors/portfolio/faculty-portfolio/production', label: 'Production', parentTo: '/instructors/faculty-portfolio' },
+      { to: '/instructors/portfolio/faculty-portfolio/professional-organization-membership', label: 'Professional Organization Membership', parentTo: '/instructors/faculty-portfolio' },
+      { to: '/instructors/portfolio/faculty-portfolio/passed-licensure-examinations', label: 'Passed Licensure Examinations', parentTo: '/instructors/faculty-portfolio' },
+      { to: '/instructors/portfolio/faculty-portfolio/ipcr', label: 'IPCR', parentTo: '/instructors/faculty-portfolio' },
 
       // The three tabs share one crumb: Home > Faculty Portfolio > Other Requirements
 
@@ -122,7 +125,7 @@ export const NAV = {
         heading: 'Records',
         items: [
           { to: '/admin/reports', label: 'Reports', icon: FileSpreadsheet },
-          { to: '/admin/archive', label: 'Archive', icon: Archive },
+          { to: '/admin/archive', label: 'Archive', icon: Archive, hidden: true },
           { to: '/admin/archive-records', label: 'Archive Records', icon: Archive },
           { to: '/admin/academic-period', label: 'Academic Period', icon: Calendar },
           { to: '/admin/activity-logs', label: 'Activity Logs', icon: History },
@@ -146,6 +149,9 @@ export const NAV = {
       { to: '/admin/portfolio/faculty-portfolio/research', label: 'Research', parentTo: '/admin/review/faculty-portfolio' },
       { to: '/admin/portfolio/faculty-portfolio/extension-involvement', label: 'Extension Involvement', parentTo: '/admin/review/faculty-portfolio' },
       { to: '/admin/portfolio/faculty-portfolio/production', label: 'Production', parentTo: '/admin/review/faculty-portfolio' },
+      { to: '/admin/portfolio/faculty-portfolio/professional-organization-membership', label: 'Professional Organization Membership', parentTo: '/admin/review/faculty-portfolio' },
+      { to: '/admin/portfolio/faculty-portfolio/passed-licensure-examinations', label: 'Passed Licensure Examinations', parentTo: '/admin/review/faculty-portfolio' },
+      { to: '/admin/portfolio/faculty-portfolio/ipcr', label: 'IPCR', parentTo: '/admin/review/faculty-portfolio' },
 
       // The three tabs share one crumb: Home > Portfolio Review > Faculty Portfolio > Other Requirements
 

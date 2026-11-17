@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useSearchParams } from 'react-router-dom';
 import SharedRequirementHeader from '../../../../components/portfolio/SharedRequirementHeader';
 import { usePortfolio } from '../../../../context/usePortfolio';
+import ProfessionalOrgs from './ProfessionalOrgs';
+import PassedLicensureExams from './PassedLicensureExams';
+import IPCR from './IPCR';
 import '../requirementStyle.css';
 import '../listEntries.css';
 
@@ -12,7 +15,7 @@ const tabs = [
   { label: 'IPCR', to: 'ipcr' },
 ];
 
-function OtherRequirements() {
+function OtherRequirements({ embedded = false, onBack } = {}) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { selectedInstructor, targetInstructorId } = usePortfolio();
@@ -29,6 +32,7 @@ function OtherRequirements() {
   // Every tab page reads the counter through <Outlet context>, and the tab that is
   // open (the only one on screen) opens its OWN upload popup with its OWN requirement.
   const [addTrigger, setAddTrigger] = useState(0);
+  const [embeddedTab, setEmbeddedTab] = useState('professional-organization-membership');
 
   const query = instructorId ? `?instructorId=${instructorId}` : location.search;
 
@@ -41,6 +45,8 @@ function OtherRequirements() {
         subtitle="Professional organizations, licensure examinations, and IPCR"
         onAddClick={null}
         addLabel="Add Document"
+        onBack={onBack}
+        embedded={embedded}
       />
 
       {/* TABS ROW: tabs on the left, Add button on the right.
@@ -50,6 +56,21 @@ function OtherRequirements() {
         <nav aria-label="Other requirements" className="max-w-full overflow-x-auto">
           <div className="inline-flex border border-gray-200 bg-white rounded-lg overflow-hidden">
             {tabs.map((tab) => {
+              if (embedded) {
+                const isActive = embeddedTab === tab.to;
+                return (
+                  <button
+                    key={tab.to}
+                    type="button"
+                    onClick={() => setEmbeddedTab(tab.to)}
+                    className={`whitespace-nowrap border-r border-gray-200 px-7 py-3.5 text-sm font-medium last:border-r-0 transition cursor-pointer ${isActive ? 'bg-brand-purple text-white' : 'bg-white text-gray-500 hover:bg-gray-50'
+                      }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              }
+
               const targetTo = query ? `${tab.to}${query}` : tab.to;
               return (
                 <NavLink
@@ -83,8 +104,81 @@ function OtherRequirements() {
       </div>
 
       {/* ACTIVE TAB PAGE (ProfessionalOrgs, PassedLicensureExams or IPCR) */}
-      <Outlet context={{ addTrigger, instructorId }} />
+      {embedded ? (
+        embeddedTab === 'professional-organization-membership' ? (
+          <ProfessionalOrgs />
+        ) : embeddedTab === 'passed-licensure-examinations' ? (
+          <PassedLicensureExams />
+        ) : (
+          <IPCR />
+        )
+      ) : (
+        <Outlet context={{ addTrigger, instructorId }} />
+      )}
     </div>
+  );
+}
+
+export function StandaloneOtherRequirement({
+  title,
+  subtitle,
+  Component,
+  addLabel = 'Add Document',
+  embedded = false,
+  onBack,
+}) {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith('/admin');
+  const [addTrigger, setAddTrigger] = useState(0);
+
+  return (
+    <div className="space-y-5">
+      <SharedRequirementHeader
+        title={title}
+        subtitle={subtitle}
+        onAddClick={isAdmin ? null : () => setAddTrigger((n) => n + 1)}
+        addLabel={addLabel}
+        onBack={onBack}
+        embedded={embedded}
+      />
+      <Component addTrigger={addTrigger} />
+    </div>
+  );
+}
+
+export function StandaloneProfessionalOrgs(props) {
+  return (
+    <StandaloneOtherRequirement
+      title="Professional Organization Membership"
+      subtitle="Upload proof of membership in your professional organizations"
+      addLabel="Add Membership"
+      Component={ProfessionalOrgs}
+      {...props}
+    />
+  );
+}
+
+export function StandalonePassedLicensureExams(props) {
+  return (
+    <StandaloneOtherRequirement
+      title="Passed Licensure Examinations"
+      subtitle="Upload sample copies of your PRC ID or licensure examination certificates"
+      addLabel="Add Licensure"
+      Component={PassedLicensureExams}
+      {...props}
+    />
+  );
+}
+
+export function StandaloneIPCR(props) {
+  return (
+    <StandaloneOtherRequirement
+      title="IPCR"
+      subtitle="Upload photocopy of IPCR from 1st and 2nd semester of the current school year"
+      addLabel="Add IPCR"
+      Component={IPCR}
+      {...props}
+    />
   );
 }
 

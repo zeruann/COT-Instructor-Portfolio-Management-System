@@ -599,15 +599,15 @@ export default function AcademicPeriod() {
       )}
 
       {/* PAGE HEADER */}
-      <div className="mb-6">
+      <div className="mb-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+              <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
                 Academic Period Management
               </h1>
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 mt-0.5">
               Set up school years, manage semester dates, activate submission terms, and archive completed periods.
             </p>
           </div>
@@ -619,14 +619,14 @@ export default function AcademicPeriod() {
         {/* Active Period Card (wide) */}
         <div className="md:col-span-2 bg-white rounded-2xl p-5 border border-gray-100 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-orange-600 flex items-center gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-black flex items-center gap-1.5">
               Active Academic Period
             </span>
           </div>
 
           {activePeriod ? (
             <div>
-              <h3 className="text-xl font-bold text-emerald-600">
+              <h3 className="text-xl font-bold text-orange-600">
                 AY {activePeriod.schoolYear} · {formatSemName(activePeriod.semester)}
               </h3>
               <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">

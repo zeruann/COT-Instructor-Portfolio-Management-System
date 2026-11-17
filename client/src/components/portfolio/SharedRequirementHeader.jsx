@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Plus, ShieldCheck } from 'lucide-react';
 import { usePortfolio } from '../../context/usePortfolio';
+import { API_BASE } from '../../api/config';
 
 export default function SharedRequirementHeader({
   title,
@@ -30,7 +31,7 @@ export default function SharedRequirementHeader({
     if (selectedInstructor) {
       setInstructorInfo(selectedInstructor);
     } else if (isAdmin && instructorId) {
-      fetch(`http://localhost:5000/api/instructors/${instructorId}`)
+      fetch(`${API_BASE}/instructors/${instructorId}`)
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data) setInstructorInfo(data);
@@ -84,34 +85,17 @@ export default function SharedRequirementHeader({
           </div>
         </div>
 
-        {/* Action area: Admin Review Badge OR Faculty Add Button */}
+        {/* Action area: Faculty Add Button */}
         <div>
-          {isAdmin ? (
-            <div className="flex items-center gap-2.5 px-3.5 py-1.5 bg-purple-50 border border-purple-200 rounded-xl text-xs text-purple-900 shadow-2xs">
-              <ShieldCheck className="w-4 h-4 text-brand-purple" />
-              <span>
-                Review Mode:{' '}
-                <strong className="font-semibold text-brand-purple">
-                  {instructorInfo?.fullName || 'Instructor Portfolio'}
-                </strong>
-                {instructorInfo?.department && (
-                  <span className="text-gray-500 ml-1">
-                    ({instructorInfo.department})
-                  </span>
-                )}
-              </span>
-            </div>
-          ) : (
-            onAddClick && (
-              <button
-                type="button"
-                onClick={onAddClick}
-                className="entry-add-btn inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-brand-purple hover:bg-opacity-90 rounded-xl shadow-xs transition"
-              >
-                <Plus className="w-4 h-4" />
-                {addLabel}
-              </button>
-            )
+          {!isAdmin && onAddClick && (
+            <button
+              type="button"
+              onClick={onAddClick}
+              className="entry-add-btn inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-brand-purple hover:bg-opacity-90 rounded-xl shadow-xs transition"
+            >
+              <Plus className="w-4 h-4" />
+              {addLabel}
+            </button>
           )}
         </div>
       </div>

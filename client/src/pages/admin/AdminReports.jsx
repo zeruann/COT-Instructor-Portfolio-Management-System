@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, ChevronDown } from 'lucide-react';
 import { fetchFacultySummary } from '../../api/documents';
 import InstructorReports from '../instructors/InstructorReports';
+import { API_BASE } from '../../api/config';
 
 const CATEGORY_PATHS = [
   'educational-attainment',
@@ -13,7 +14,9 @@ const CATEGORY_PATHS = [
   'research',
   'extension-involvement',
   'production',
-  'other-requirements',
+  'professional-organization-membership',
+  'passed-licensure-examinations',
+  'ipcr',
 ];
 
 const computeCompletion = (summaries) => {
@@ -62,7 +65,7 @@ export default function AdminReports() {
 
   // Load list of instructors
   useEffect(() => {
-    fetch('http://localhost:5000/api/instructors')
+    fetch(`${API_BASE}/instructors`)
       .then((res) => res.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : data.instructors || [];
@@ -204,8 +207,10 @@ export default function AdminReports() {
     <div className="min-w-0 space-y-4 sm:space-y-6">
       {/* Title & Subtitle */}
       <div>
-        <h1 className="text-xl font-medium text-brand-purple sm:text-2xl">Reports</h1>
-        <p className="mt-1 text-sm font-medium text-gray-500">
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
+          Reports
+        </h1>
+        <p className="text-sm text-gray-500 mt-0.5">
           Select an instructor to view, print, or export their Faculty Compliance Checklist
         </p>
       </div>

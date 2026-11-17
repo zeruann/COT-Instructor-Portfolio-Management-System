@@ -43,6 +43,7 @@ const ACTION_LABELS = {
   'document.archive': 'Archived document',
   'settings.update': 'Updated system settings',
   'settings.integration_toggle': 'Toggled API integration',
+  'settings.attempt': 'Attempted to access API settings',
   'settings.access': 'Opened API settings',
   'settings.otp_send': 'Requested settings OTP',
   'settings.otp_verify': 'Verified settings OTP',
@@ -523,8 +524,8 @@ export default function ActivityLogsTable({ role = 'admin' }) {
                       <td className="py-4 pr-4">
                         <div
                           className={`flex items-center gap-3 ${item.actorId && item.actorRole === 'Instructor'
-                              ? 'cursor-pointer group'
-                              : ''
+                            ? 'cursor-pointer group'
+                            : ''
                             }`}
                           onClick={() => {
                             if (item.actorId && item.actorRole === 'Instructor') {
@@ -573,8 +574,8 @@ export default function ActivityLogsTable({ role = 'admin' }) {
                           <div>
                             <p
                               className={`text-[15px] font-medium text-gray-800 leading-tight ${item.actorId && item.actorRole === 'Instructor'
-                                  ? 'group-hover:text-orange-600 transition-colors'
-                                  : ''
+                                ? 'group-hover:text-orange-600 transition-colors'
+                                : ''
                                 }`}
                             >
                               {item.actorName || 'System'}

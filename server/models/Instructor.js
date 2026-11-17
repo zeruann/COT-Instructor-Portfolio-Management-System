@@ -74,6 +74,10 @@ const instructorSchema = new mongoose.Schema({
   respondedAt: Date,
   resendCount: { type: Number, default: 0 },
 
+  // Privacy notice acknowledgement, recorded when the invitee accepts.
+  privacyAcknowledgedAt: Date,
+  privacyNoticeVersion: String,
+
   resetPasswordToken: String,
   resetPasswordExpires: Date,
   resetPasswordOtp: String,

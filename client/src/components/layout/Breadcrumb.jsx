@@ -9,11 +9,60 @@ import { fetchClassById } from '../../api/classes';
 function Breadcrumb({ role }) {
   const { pathname } = useLocation();
   const [classLabel, setClassLabel] = useState(null);
+  const [archivePeriodLabel, setArchivePeriodLabel] = useState(null);
 
   const menu = NAV[role];
 
+  // Detect /admin/archive-records/:periodId
+  const archiveMatch =
+    role === 'admin'
+      ? pathname.match(/^\/admin\/archive-records\/([^/]+)\/?$/)
+      : null;
+  const archivePeriodId = archiveMatch ? archiveMatch[1] : null;
+
   // Find the current sub-page independently of the sidebar menu item.
   const subPage = menu ? findSubPage(role, pathname) : null;
+
+  // Resolve academic period label for archived period detail routes.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadArchivePeriodLabel() {
+      if (!archivePeriodId) {
+        setArchivePeriodLabel(null);
+        return;
+      }
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(
+          `http://localhost:5000/api/academic-periods/${archivePeriodId}/details`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (!res.ok) throw new Error('Failed');
+        const data = await res.json();
+        if (cancelled) return;
+        const p = data?.period;
+        if (p?.schoolYear) {
+          const sem =
+            p.semester === 'Summer'
+              ? 'Summer Term'
+              : p.semester
+                ? `${p.semester} Semester`
+                : '';
+          setArchivePeriodLabel(`AY ${p.schoolYear}${sem ? ` ${sem}` : ''}`);
+        } else {
+          setArchivePeriodLabel(null);
+        }
+      } catch {
+        if (!cancelled) setArchivePeriodLabel(null);
+      }
+    }
+
+    loadArchivePeriodLabel();
+    return () => {
+      cancelled = true;
+    };
+  }, [archivePeriodId]);
 
   // Resolve a friendly class label for class-portfolio nested routes.
   useEffect(() => {
@@ -104,15 +153,27 @@ function Breadcrumb({ role }) {
   }
 
   if (match) {
+    const hasSubCrumb = Boolean(subPage || archivePeriodId);
     crumbs.push({
       key: 'parent',
-      node: subPage ? (
+      node: hasSubCrumb ? (
         <Link to={match.item.to} className="hover:text-brand-purple">
           {match.item.label}
         </Link>
       ) : (
         <span aria-current="page" className="text-gray-900">
           {match.item.label}
+        </span>
+      ),
+    });
+  }
+
+  if (archivePeriodId) {
+    crumbs.push({
+      key: 'archive-period',
+      node: (
+        <span aria-current="page" className="text-gray-900">
+          {archivePeriodLabel || 'Academic Period'}
         </span>
       ),
     });
