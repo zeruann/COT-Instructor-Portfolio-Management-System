@@ -18,7 +18,9 @@ import {
   X,
 } from 'lucide-react';
 
-const API_PERIODS_URL = 'http://localhost:5000/api/academic-periods';
+import { API_BASE } from '../../api/config';
+
+const API_PERIODS_URL = `${API_BASE}/academic-periods`;
 
 const STATUS_BADGE = {
   Closed: { label: 'Inactive/Closed', bg: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -294,14 +296,14 @@ export default function AdminArchiveRecords() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+            <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
               Archive Records
             </h1>
             <span className="rounded-lg bg-purple-50 border border-purple-200/80 px-2.5 py-0.5 text-xs font-bold text-brand-purple">
               Read-Only
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 mt-0.5">
             Closed and archived academic years with preserved course portfolios and compliance records.
           </p>
         </div>

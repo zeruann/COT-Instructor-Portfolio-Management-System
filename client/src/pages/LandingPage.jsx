@@ -261,7 +261,7 @@ export default function LandingPage() {
                 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.15] auth-anim"
                 style={{ animation: "authFadeUp 0.8s ease-out 0.12s both" }}
               >
-                Instructor Portfolio <br />
+                Instructor E-Portfolio <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff6900] via-orange-500 to-amber-500">
                   Management System
                 </span>
@@ -363,7 +363,7 @@ export default function LandingPage() {
                 Empowering BukSU Educators Through <span className="text-[#ff6900]">Digital Excellence</span>
               </h2>
               <p className="mt-4 text-base text-gray-600 leading-relaxed">
-                The BukSU College of Technologies Instructor Portfolio Management System modernizes faculty portfolio submissions, replaces paper-intensive document audits, and provides a continuous compliance trail.
+                The BukSU College of Technologies Instructor E-Portfolio Management System modernizes faculty portfolio submissions, replaces paper-intensive document audits, and provides a continuous compliance trail.
               </p>
             </Reveal>
 

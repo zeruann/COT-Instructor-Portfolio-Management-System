@@ -6,11 +6,11 @@ import { ArrowLeft } from 'lucide-react';
 // Pass backTo (a path) to show a round back arrow in front of the title.
 function PlaceholderPage({ title, backTo }) {
   useEffect(() => {
-    document.title = `${title} | COT Faculty Portfolio`;
+    document.title = `${title} | COT Instructor E-Portfolio`;
   }, [title]);
 
   const heading = (
-    <h1 className="text-[24px] leading-[32px] font-medium text-brand-purple">
+    <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
       {title}
     </h1>
   );

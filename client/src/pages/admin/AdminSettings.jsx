@@ -28,8 +28,9 @@ import driveIcon from "../../assets/Google_Drive_icon_(2026).svg";
 import googleIcon from "../../assets/Google_Favicon_2025.svg";
 import sheetsIcon from "../../assets/google-sheets.svg";
 import securityShieldIcon from "../../assets/security-shield.png";
+import { API_BASE } from "../../api/config";
 
-const API_URL = "http://localhost:5000/api/settings";
+const API_URL = `${API_BASE}/settings`;
 
 /* ─── Integrated API & Credential Definitions ────────────────── */
 const INTEGRATIONS = [

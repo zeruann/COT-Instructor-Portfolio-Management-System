@@ -71,7 +71,7 @@ async function sendEmail({ to, subject, html, bypassToggle = false, fallbackToDe
   try {
     const { transporter, user } = await getTransporter();
     await transporter.sendMail({
-      from: `"COT Instructor Portfolio" <${user}>`,
+      from: `"COT Instructor E-Portfolio" <${user}>`,
       to,
       subject,
       html,
@@ -82,7 +82,7 @@ async function sendEmail({ to, subject, html, bypassToggle = false, fallbackToDe
       console.warn("[Google Mail] Primary SMTP failed, falling back to default .env SMTP:", err.message);
       const fallbackTransporter = await createTransporter(process.env.EMAIL_USER, process.env.EMAIL_PASS);
       await fallbackTransporter.sendMail({
-        from: `"COT Instructor Portfolio" <${process.env.EMAIL_USER}>`,
+        from: `"COT Instructor E-Portfolio" <${process.env.EMAIL_USER}>`,
         to,
         subject,
         html,
@@ -101,7 +101,7 @@ const sendInvitationEmail = async (to, fullName, token) => {
     subject: "You've been invited to join as an Instructor",
     html: `
       <div style="font-family: sans-serif; max-width: 480px; margin: auto;">
-        <h2 style="color: #F97316;">COT Instructor Portfolio Management System</h2>
+        <h2 style="color: #F97316;">COT Instructor E-Portfolio Management System</h2>
         <p>Hi ${fullName},</p>
         <p>You have been invited to join the system as an instructor.</p>
         <a href="${inviteLink}" style="display:inline-block; background:#F97316; color:white; padding:10px 20px; border-radius:999px; text-decoration:none; margin-top:10px;">

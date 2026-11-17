@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, Plus, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AppModal, { useAppModal } from '../../components/common/AppModal';
+import { API_BASE } from '../../api/config';
 
 const PAGE_SIZE = 10;
 
-const API_URL = 'http://localhost:5000/api/instructors';
+const API_URL = `${API_BASE}/instructors`;
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All statuses' },
@@ -270,12 +271,11 @@ export default function ViewInstructors() {
   return (
     <>
       {/* PAGE HEADER */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Instructors</h1>
-        </div>
-        <p className="text-sm text-gray-500">
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
+          Instructors
+        </h1>
+        <p className="text-sm text-gray-500 mt-0.5">
           Manage and monitor all registered faculty members.
         </p>
       </div>

@@ -13,11 +13,9 @@ import {
   List,
   ChevronLeft,
   ChevronRight,
-  RotateCcw,
-  Check,
-  Minus,
 } from 'lucide-react';
 import { fetchFacultySummary } from '../../api/documents';
+import { API_BASE } from '../../api/config';
 
 // accent = dot + underline color of the card (matches the design reference)
 const requirementCards = [
@@ -308,7 +306,6 @@ export default function ReviewFacultyPortfolio({
   const [viewBy, setViewBy] = useState('all');
   const [displayMode, setDisplayMode] = useState('grid'); // 'grid' | 'table'
   const [viewVisible, setViewVisible] = useState(true);
-  const [selectedIds, setSelectedIds] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
   const [openMenu, setOpenMenu] = useState(null);
@@ -326,7 +323,7 @@ export default function ReviewFacultyPortfolio({
 
   // Load list of instructors
   useEffect(() => {
-    fetch('http://localhost:5000/api/instructors')
+    fetch(`${API_BASE}/instructors`)
       .then((res) => res.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : data.instructors || [];
@@ -881,18 +878,6 @@ export default function ReviewFacultyPortfolio({
           <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
 
-        {/* Reset Filter Button */}
-        <button
-          type="button"
-          onClick={resetFilters}
-          title="Reset filters"
-          aria-label="Reset filters"
-          className="flex shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-2xs transition hover:bg-gray-50 hover:text-brand-orange hover:border-brand-orange/40 cursor-pointer whitespace-nowrap active:bg-gray-100"
-        >
-          <RotateCcw size={15} className="text-gray-500" />
-          <span>Reset</span>
-        </button>
-
         {/* Cards vs Table Switcher */}
         <div className="flex items-center shrink-0 rounded-xl border border-gray-200 bg-white p-1 shadow-2xs">
           <button
@@ -950,11 +935,7 @@ export default function ReviewFacultyPortfolio({
           {(searchQuery || departmentFilter !== 'all' || viewBy !== 'all') && (
             <button
               type="button"
-              onClick={() => {
-                setSearchQuery('');
-                setDepartmentFilter('all');
-                setViewBy('all');
-              }}
+              onClick={resetFilters}
               className="mt-4 inline-flex items-center rounded-lg bg-purple-50 px-4 py-2 text-xs font-semibold text-brand-purple transition hover:bg-purple-100"
             >
               Reset Filters
@@ -967,51 +948,7 @@ export default function ReviewFacultyPortfolio({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-gray-100 text-xs font-bold uppercase tracking-wider text-gray-600">
-                  <th className="pb-3 pl-2 pr-4 w-10">
-                    <label
-                      className="inline-flex items-center justify-center cursor-pointer select-none"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <input
-                        type="checkbox"
-                        aria-label="Select all instructors"
-                        checked={
-                          paginatedInstructors.length > 0 &&
-                          paginatedInstructors.every((i) => selectedIds.includes(i._id || i.id))
-                        }
-                        onChange={(e) => {
-                          const pageIds = paginatedInstructors.map((i) => i._id || i.id);
-                          if (e.target.checked) {
-                            setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
-                          } else {
-                            setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
-                          }
-                        }}
-                        className="sr-only"
-                      />
-                      {(() => {
-                        const isAllSelected =
-                          paginatedInstructors.length > 0 &&
-                          paginatedInstructors.every((i) => selectedIds.includes(i._id || i.id));
-                        const isSomeSelected =
-                          !isAllSelected &&
-                          paginatedInstructors.some((i) => selectedIds.includes(i._id || i.id));
-
-                        return (
-                          <span
-                            className={`h-4.5 w-4.5 rounded-md border flex items-center justify-center transition-all duration-150 ${isAllSelected || isSomeSelected
-                              ? 'bg-orange-500 border-orange-500 text-white shadow-2xs'
-                              : 'bg-white border-gray-300 hover:border-orange-400'
-                              }`}
-                          >
-                            {isAllSelected && <Check size={12} strokeWidth={3} className="text-white" />}
-                            {isSomeSelected && <Minus size={12} strokeWidth={3} className="text-white" />}
-                          </span>
-                        );
-                      })()}
-                    </label>
-                  </th>
-                  <th className="pb-3 pr-4">LOG ID</th>
+                  <th className="pb-3 pr-4 pl-2">LOG ID</th>
                   <th className="pb-3 px-4">INSTRUCTOR</th>
                   <th className="pb-3 px-4">DEPARTMENT</th>
                   <th className="pb-3 px-4 min-w-[280px]">COMPLETION STATUS</th>
@@ -1027,7 +964,6 @@ export default function ReviewFacultyPortfolio({
                   const completion = getCompletion(inst);
                   const percent = completion?.percent;
                   const displayId = inst.instructorId || inst.employeeId || id.slice(-8).toUpperCase();
-                  const isChecked = selectedIds.includes(id);
 
                   return (
                     <tr
@@ -1035,39 +971,6 @@ export default function ReviewFacultyPortfolio({
                       onClick={() => selectInstructor(inst)}
                       className="group cursor-pointer hover:bg-gray-50/70 transition-colors duration-150"
                     >
-                      {/* CHECKBOX */}
-                      <td
-                        className="py-4 pl-2 pr-4 w-10"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <label
-                          className="inline-flex items-center justify-center cursor-pointer select-none"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <input
-                            type="checkbox"
-                            aria-label={`Select ${name}`}
-                            checked={isChecked}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedIds((prev) => [...prev, id]);
-                              } else {
-                                setSelectedIds((prev) => prev.filter((x) => x !== id));
-                              }
-                            }}
-                            className="sr-only"
-                          />
-                          <span
-                            className={`h-4.5 w-4.5 rounded-md border flex items-center justify-center transition-all duration-150 ${isChecked
-                              ? 'bg-orange-500 border-orange-500 text-white shadow-2xs'
-                              : 'bg-white border-gray-300 hover:border-orange-400'
-                              }`}
-                          >
-                            {isChecked && <Check size={12} strokeWidth={3} className="text-white" />}
-                          </span>
-                        </label>
-                      </td>
-
                       {/* LOG ID / INSTRUCTOR ID */}
                       <td className="py-4 pr-4 text-[14px] font-medium text-gray-700 whitespace-nowrap">
                         {displayId}

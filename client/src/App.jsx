@@ -52,6 +52,7 @@ import AdminReports from "./pages/admin/AdminReports";
 // SHARED LAYOUT (sidebar + top bar + breadcrumb) FOR EVERY SIGNED-IN PAGE
 
 import LandingPage from "./pages/LandingPage";
+import PrivacyNotice from "./pages/PrivacyNotice";
 import AppLayout from "./components/layout/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -83,6 +84,10 @@ function App() {
           {/* DEFAULT ROUTE */}
 
           <Route path="/" element={<LandingPage />} />
+
+          {/* PUBLIC POLICY PAGES */}
+
+          <Route path="/privacy" element={<PrivacyNotice />} />
 
           {/* AUTHENTICATION PAGES */}
 
