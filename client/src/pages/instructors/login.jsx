@@ -169,17 +169,31 @@ function Login() {
     <AuthLayout>
       <div className="w-full">
         {/* Title updated to Welcome Back */}
-        <h2 className="text-3xl sm:text-4xl font-bold text-[#575488] mb-1.5 tracking-tight">
+        <h2 className="text-[26px] sm:text-4xl font-bold text-[#575488] mb-1.5 tracking-tight">
           Welcome Back
         </h2>
-        <p className="text-sm text-gray-400 mb-7 font-normal">
+        <p className="text-sm text-gray-400 mb-6 sm:mb-7 font-normal">
           Please login to continue to your account.
         </p>
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-5 p-3.5 rounded-lg bg-red-50 border border-red-200 text-xs sm:text-sm text-red-600">
-            {error}
+          <div className="mb-5 flex items-start gap-2.5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs sm:text-sm text-red-600">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="mt-0.5 h-4 w-4 shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.8}
+                d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+              />
+            </svg>
+            <span>{error}</span>
           </div>
         )}
 
@@ -188,7 +202,7 @@ function Login() {
           <div className="relative">
             <label
               htmlFor="email"
-              className={`absolute left-4 transition-all duration-200 ease-out pointer-events-none z-10 px-1.5 bg-white select-none ${
+              className={`absolute left-11 transition-all duration-200 ease-out pointer-events-none z-10 px-1.5 bg-white select-none ${
                 isEmailActive
                   ? "-top-2.5 text-xs font-semibold text-[#575488]"
                   : "top-1/2 -translate-y-1/2 text-sm sm:text-base text-gray-400"
@@ -196,6 +210,22 @@ function Login() {
             >
               Email
             </label>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 transition-colors duration-200 ${
+                emailFocused ? "text-[#575488]" : "text-gray-400"
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.7}
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
+            </svg>
             <input
               id="email"
               type="email"
@@ -204,7 +234,7 @@ function Login() {
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
               onChange={(e) => setEmail(e.target.value)}
-              className={`w-full border rounded-xl px-4 py-3 sm:py-3.5 text-sm sm:text-base text-gray-700 leading-normal focus:outline-none transition-all duration-200 ${
+              className={`w-full border rounded-xl pl-11 pr-4 py-3 sm:py-3.5 text-sm sm:text-base text-gray-700 leading-normal focus:outline-none transition-all duration-200 ${
                 emailFocused
                   ? "border-[#575488] ring-1 ring-[#575488] shadow-xs"
                   : "border-gray-300 hover:border-gray-400"
@@ -217,7 +247,7 @@ function Login() {
           <div className="relative">
             <label
               htmlFor="password"
-              className={`absolute left-4 transition-all duration-200 ease-out pointer-events-none z-10 px-1.5 bg-white select-none ${
+              className={`absolute left-11 transition-all duration-200 ease-out pointer-events-none z-10 px-1.5 bg-white select-none ${
                 isPasswordActive
                   ? "-top-2.5 text-xs font-semibold text-[#575488]"
                   : "top-1/2 -translate-y-1/2 text-sm sm:text-base text-gray-400"
@@ -225,6 +255,22 @@ function Login() {
             >
               Password
             </label>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className={`pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 transition-colors duration-200 ${
+                passwordFocused ? "text-[#575488]" : "text-gray-400"
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.7}
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              />
+            </svg>
             <input
               id="password"
               type={showPassword ? "text" : "password"}
@@ -233,7 +279,7 @@ function Login() {
               onFocus={() => setPasswordFocused(true)}
               onBlur={() => setPasswordFocused(false)}
               onChange={(e) => setPassword(e.target.value)}
-              className={`w-full border rounded-xl px-4 py-3 sm:py-3.5 pr-12 text-sm sm:text-base text-gray-700 leading-normal focus:outline-none transition-all duration-200 ${
+              className={`w-full border rounded-xl pl-11 pr-12 py-3 sm:py-3.5 text-sm sm:text-base text-gray-700 leading-normal focus:outline-none transition-all duration-200 ${
                 passwordFocused
                   ? "border-[#575488] ring-1 ring-[#575488] shadow-xs"
                   : "border-gray-300 hover:border-gray-400"
@@ -262,29 +308,33 @@ function Login() {
 
           {/* Remember me & Forgot Password */}
           <div className="flex items-center justify-between text-xs sm:text-sm pt-0.5">
-            <label className="flex items-center gap-2.5 text-gray-600 cursor-pointer select-none">
+            <label className="group flex items-center gap-2.5 text-gray-600 cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={keepLoggedIn}
                 onChange={(e) => setKeepLoggedIn(e.target.checked)}
-                className="w-4 h-4 rounded text-[#ff6900] border-gray-300 focus:ring-[#ff6900] cursor-pointer"
+                className="w-4 h-4 accent-[#ff6900] rounded border-gray-300 focus:ring-[#ff6900] cursor-pointer"
               />
-              <span className="text-gray-600 font-medium">Keep me logged in</span>
+              <span className="text-gray-600 font-medium group-hover:text-[#575488] transition-colors">
+                Keep me logged in
+              </span>
             </label>
             <Link
               to="/reset-password"
-              className="text-gray-500 hover:text-[#ff6900] transition-colors font-medium"
+              className="text-gray-500 hover:text-[#ff6900] transition-colors font-medium underline-offset-4 hover:underline"
             >
               Forgot Password
             </Link>
           </div>
 
-          {/* Solid Orange Button */}
+          {/* Gradient Orange Button */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-3 bg-[#ff6900] hover:bg-[#e05d00] disabled:opacity-60 text-white font-semibold py-3 px-5 rounded-xl transition duration-150 flex items-center justify-center gap-2 cursor-pointer shadow-xs text-sm sm:text-base active:scale-[0.99]"
+            className="group relative w-full mt-3 overflow-hidden bg-gradient-to-r from-[#ff7a1a] via-[#ff6900] to-[#f25c00] hover:from-[#ff8629] hover:via-[#ff7308] hover:to-[#e85600] disabled:opacity-60 text-white font-semibold py-3.5 px-5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-[0_10px_24px_-8px_rgba(255,105,0,0.6)] hover:shadow-[0_14px_30px_-8px_rgba(255,105,0,0.7)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] text-sm sm:text-base"
           >
+            {/* Sheen sweep on hover */}
+            <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
             {loading ? (
               <>
                 <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -294,16 +344,31 @@ function Login() {
                 <span>Logging in...</span>
               </>
             ) : (
-              "Log in"
+              <>
+                <span>Log in</span>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </>
             )}
           </button>
         </form>
 
         {/* Google Authentication Option */}
         {apiConfig.googleAuthEnabled && (
-          <div className="mt-5">
-            <div className="text-center my-3.5">
-              <span className="text-gray-400 text-xs uppercase tracking-wider font-medium">or</span>
+          <div className="mt-6">
+            <div className="flex items-center gap-3 my-4">
+              <span className="h-px flex-1 bg-gradient-to-r from-transparent to-gray-200" />
+              <span className="text-gray-400 text-[10px] uppercase tracking-[0.18em] font-semibold">
+                or continue with
+              </span>
+              <span className="h-px flex-1 bg-gradient-to-l from-transparent to-gray-200" />
             </div>
 
             {/* Hidden real Google button */}
@@ -316,16 +381,23 @@ function Login() {
             <button
               type="button"
               onClick={handleGoogleClick}
-              className="w-full py-3 px-5 rounded-xl border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs sm:text-sm font-medium transition duration-150 flex items-center justify-center gap-2.5 cursor-pointer shadow-2xs active:scale-[0.99]"
+              className="w-full py-3 px-5 rounded-xl border border-gray-300 bg-white hover:border-[#575488]/40 hover:bg-[#575488]/[0.03] text-gray-700 hover:text-[#575488] text-xs sm:text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer shadow-2xs hover:shadow-sm active:scale-[0.99]"
             >
-              <span>Sign in with Google</span>
               <svg width="16" height="16" viewBox="0 0 48 48" className="shrink-0">
                 <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
                 <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.1 5.5c4.3-4 6.8-9.9 6.8-16.9z" />
                 <path fill="#FBBC05" d="M10.5 28.7c-.5-1.4-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.4 0 20.1 0 24s.9 7.6 2.6 10.8l7.9-6.1z" />
                 <path fill="#34A853" d="M24 48c6.3 0 11.6-2.1 15.5-5.7l-7.1-5.5c-2 1.4-4.8 2.3-8.4 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z" />
               </svg>
+              <span>Sign in with Google</span>
             </button>
+
+            <p className="mt-5 flex items-center justify-center gap-1.5 text-[10px] text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              Secured with reCAPTCHA verification
+            </p>
           </div>
         )}
 
