@@ -573,11 +573,24 @@ exports.exportComplianceGoogleSheet = async (req, res) => {
 
     const { drive, rootFolderId } = await getGoogleClients();
 
-    const name = `Compliance Checklist - ${data.instructorName || 'Faculty'}`;
+    let targetFolderId = rootFolderId;
+    try {
+      const folderPath = driveNaming.reportsFolderPath({
+        department: data.department,
+        fullName: data.instructorName,
+        instructorId: ownerId,
+      });
+      const resolvedId = await storageService.ensureFolderPath(folderPath);
+      if (resolvedId) targetFolderId = resolvedId;
+    } catch (folderErr) {
+      console.warn('Could not resolve instructor Reports folder, falling back to root:', folderErr.message);
+    }
+
+    const name = `Compliance Checklist - ${data.instructorName || 'Faculty'} (${data.schoolYear}, ${data.semester})`;
     const result = await uploadAsGoogleSheet(buffer, {
       name,
       auth: drive.context._options.auth,
-      rootFolderId,
+      rootFolderId: targetFolderId,
     });
 
     return res.json({

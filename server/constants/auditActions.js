@@ -44,6 +44,7 @@ const ACTION = Object.freeze({
   PERIOD_CLOSE: 'period.close',
   PERIOD_ARCHIVE: 'period.archive',
   SETTING_UPDATE: 'settings.update',
+  SETTING_ATTEMPT: 'settings.attempt',
   SETTING_ACCESS: 'settings.access',
   SETTING_OTP_SEND: 'settings.otp_send',
   SETTING_OTP_VERIFY: 'settings.otp_verify',

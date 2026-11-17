@@ -68,9 +68,21 @@ const requirementCards = [
     accent: '#6aaa64',
   },
   {
-    title: 'Other Requirements ',
+    title: 'Professional Organization Membership',
     description: 'Sample copy of your professional membership form.',
-    path: 'other-requirements',
+    path: 'professional-organization-membership',
+    accent: '#6aaa64',
+  },
+  {
+    title: 'Passed Licensure Examinations',
+    description: 'Sample copy of your PRC ID or licensure examination certificate.',
+    path: 'passed-licensure-examinations',
+    accent: '#6aaa64',
+  },
+  {
+    title: 'IPCR',
+    description: 'Photocopy of IPCR from 1st and 2nd semester of the current school year.',
+    path: 'ipcr',
     accent: '#6aaa64',
   },
 ];
@@ -127,7 +139,16 @@ const computeCompletion = (summaries) => {
   };
 };
 
-function PortfolioCard({ card, summary, instructorId, menuOpen, onToggleMenu, onCloseMenu }) {
+function PortfolioCard({
+  card,
+  summary,
+  instructorId,
+  menuOpen,
+  onToggleMenu,
+  onCloseMenu,
+  onSelectRequirement,
+  compact = false,
+}) {
   const approved = summary.approved || 0;
   const pending = summary.pendingReview || 0;
   const rejected = summary.rejected || 0;
@@ -136,19 +157,45 @@ function PortfolioCard({ card, summary, instructorId, menuOpen, onToggleMenu, on
   const status = statusStyles[getCardStatus({ approved, pending, rejected })];
   const href = `/admin/portfolio/faculty-portfolio/${card.path}?instructorId=${instructorId}`;
 
+  const titleCls = compact
+    ? 'min-w-0 break-words text-sm font-bold leading-snug text-gray-900 group-hover:text-brand-orange transition'
+    : 'min-w-0 break-words text-base font-bold leading-snug text-gray-900 group-hover:text-brand-orange transition sm:text-[17px]';
+  const descCls = compact
+    ? 'break-words text-xs leading-relaxed text-gray-400'
+    : 'break-words text-xs leading-relaxed text-gray-400 sm:text-sm';
+
   return (
-    <div className="relative flex h-full min-w-0 flex-col rounded-xl bg-[#f5f5f5] px-4 pt-5 pb-4 sm:px-5 sm:pt-6 sm:pb-5 min-h-[220px]">
+    <div
+      className={`relative flex h-full min-w-0 flex-col rounded-xl bg-[#f5f5f5] ${compact ? 'px-4 pt-4 pb-3.5 min-h-[165px]' : 'px-4 pt-5 pb-4 sm:px-5 sm:pt-6 sm:pb-5 min-h-[220px]'
+        }`}
+    >
       {/* Title row */}
       <div className="flex items-start justify-between gap-2">
-        <Link to={href} className="group flex min-w-0 items-start gap-3">
-          <span
-            className="mt-1.5 h-3 w-3 shrink-0 rounded-full"
-            style={{ backgroundColor: card.accent }}
-          />
-          <h3 className="min-w-0 break-words text-base font-semibold leading-tight text-gray-900 sm:text-lg">
-            {card.title}
-          </h3>
-        </Link>
+        {onSelectRequirement ? (
+          <button
+            type="button"
+            onClick={() => onSelectRequirement(card)}
+            className="group flex min-w-0 items-start gap-2.5 text-left cursor-pointer"
+          >
+            <span
+              className={`mt-1 ${compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} shrink-0 rounded-full`}
+              style={{ backgroundColor: card.accent }}
+            />
+            <h3 className={titleCls}>
+              {card.title}
+            </h3>
+          </button>
+        ) : (
+          <Link to={href} className="group flex min-w-0 items-start gap-2.5">
+            <span
+              className={`mt-1 ${compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} shrink-0 rounded-full`}
+              style={{ backgroundColor: card.accent }}
+            />
+            <h3 className={titleCls}>
+              {card.title}
+            </h3>
+          </Link>
+        )}
 
         <div className="relative shrink-0">
           <button
@@ -156,48 +203,74 @@ function PortfolioCard({ card, summary, instructorId, menuOpen, onToggleMenu, on
             onClick={onToggleMenu}
             aria-label={`${card.title} options`}
             aria-expanded={menuOpen}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple transition"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-gray-500 hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple transition cursor-pointer"
           >
-            <MoreVertical size={18} />
+            <MoreVertical size={16} />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-9 z-10 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-              <Link
-                to={href}
-                onClick={onCloseMenu}
-                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              >
-                Open and review
-              </Link>
+            <div className="absolute right-0 top-8 z-10 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+              {onSelectRequirement ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCloseMenu();
+                    onSelectRequirement(card);
+                  }}
+                  className="block w-full px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                >
+                  Open and review
+                </button>
+              ) : (
+                <Link
+                  to={href}
+                  onClick={onCloseMenu}
+                  className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Open and review
+                </Link>
+              )}
             </div>
           )}
         </div>
       </div>
 
       {/* Accent underline */}
-      <div className="mt-3 h-[3px] w-full rounded-full" style={{ backgroundColor: card.accent }} />
+      <div className="mt-3 h-[2px] w-full rounded-full" style={{ backgroundColor: card.accent }} />
 
       {/* Description */}
-      <Link to={href} className="mt-4 flex-1 sm:mt-5">
-        <p className="break-words text-sm leading-snug text-gray-500 sm:text-[15px]">
-          {card.description}
-        </p>
-      </Link>
+      {onSelectRequirement ? (
+        <button
+          type="button"
+          onClick={() => onSelectRequirement(card)}
+          className="mt-3 flex-1 text-left cursor-pointer"
+        >
+          <p className={descCls}>
+            {card.description}
+          </p>
+        </button>
+      ) : (
+        <Link to={href} className="mt-3 flex-1">
+          <p className={descCls}>
+            {card.description}
+          </p>
+        </Link>
+      )}
 
-      {/* Footer: wraps instead of overlapping on narrow cards */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 sm:mt-5">
+      {/* Footer */}
+      <div className={`${compact ? 'mt-3 pt-2.5' : 'mt-5 pt-3'} flex items-center justify-between gap-2 text-xs text-gray-500`}>
         <span
-          className={`whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium sm:text-sm ${status.className}`}
+          className={`whitespace-nowrap rounded-md ${compact ? 'px-2.5 py-1 text-[11px]' : 'px-3 py-1 text-xs'
+            } font-medium ${status.className}`}
         >
           {status.label}
         </span>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 sm:text-sm">
-          <span className="flex items-center gap-1.5 whitespace-nowrap">
-            <MessageSquare size={15} className="shrink-0" />
+        <div className={`flex items-center ${compact ? 'gap-2.5 text-[11px]' : 'gap-3 text-xs'} text-gray-400`}>
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            <MessageSquare size={compact ? 13 : 14} className="shrink-0" />
             {comments} {comments === 1 ? 'comment' : 'comments'}
           </span>
-          <span className="flex items-center gap-1.5 whitespace-nowrap">
-            <FileText size={15} className="shrink-0" />
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            <FileText size={compact ? 13 : 14} className="shrink-0" />
             {files} {files === 1 ? 'file' : 'files'}
           </span>
         </div>
@@ -218,9 +291,13 @@ function ContactRow({ label, value }) {
 }
 
 
-export default function ReviewFacultyPortfolio() {
+export default function ReviewFacultyPortfolio({
+  instructorId: propInstructorId,
+  embedded = false,
+  onSelectRequirement,
+} = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
-  const instructorId = searchParams.get('instructorId');
+  const instructorId = propInstructorId || searchParams.get('instructorId');
 
   const [instructors, setInstructors] = useState([]);
   // { [instructorId]: { [categoryPath]: { approved, pendingReview, rejected, ... } } }
@@ -439,9 +516,14 @@ export default function ReviewFacultyPortfolio() {
         : [];
     const instructorSummaries = summariesById[id] || {};
     const completion = getCompletion(selectedInstructor) || computeCompletion({});
-    const percent = completion.percent;
-    const { counts } = completion;
-    const uploaded = counts ? counts.approved + counts.pending + counts.rejected : null;
+    const {
+      percent = 0,
+      approvedPct = 0,
+      pendingPct = 0,
+      rejectedPct = 0,
+      counts,
+    } = completion;
+    const uploaded = counts ? counts.approved + counts.pending + counts.rejected : 0;
 
     const completionMessage =
       percent >= 100
@@ -459,194 +541,285 @@ export default function ReviewFacultyPortfolio() {
       { color: '#ef6c35', label: 'Rejected', value: counts?.rejected },
     ];
 
-    // Two rows of four cards, separated by a divider (matches the prototype)
-    const cardRows = [requirementCards.slice(0, 4), requirementCards.slice(4)];
+    const cardRows = [
+      requirementCards.slice(0, 4),
+      requirementCards.slice(4, 8),
+      requirementCards.slice(8),
+    ].filter((r) => r.length > 0);
 
     return (
       <div className="min-w-0 space-y-4 sm:space-y-6">
         {/* Page title */}
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={clearSelection}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple transition hover:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2"
-            title="Back to all instructors"
-            aria-label="Back to all instructors"
-          >
-            <ArrowLeft size={16} />
-          </button>
-          <h1 className="min-w-0 text-2xl font-semibold text-brand-purple sm:text-3xl">
-            Faculty Portfolio Review
-          </h1>
-        </div>
+        {!embedded && (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 border-brand-purple text-brand-purple transition hover:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple focus-visible:ring-offset-2"
+              title="Back to all instructors"
+              aria-label="Back to all instructors"
+            >
+              <ArrowLeft size={16} />
+            </button>
+            <h1 className="min-w-0 text-2xl font-semibold text-brand-purple sm:text-3xl">
+              Faculty Portfolio Review
+            </h1>
+          </div>
+        )}
 
-        {/* Profile + completion: side by side only when there is really room (2xl), stacked otherwise */}
-        <div className="grid grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">
-          {/* Profile card (container: layout reacts to the card's own width) */}
-          <div className="@container min-w-0">
-            <div className="flex h-full min-w-0 flex-col rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 @2xl:flex-row">
-              {/* Identity */}
-              <div className="flex min-w-0 flex-col items-center gap-4 border-b border-gray-200 pb-5 text-center @md:flex-row @md:text-left @2xl:shrink-0 @2xl:border-b-0 @2xl:border-r @2xl:pb-0 @2xl:pr-6">
-                <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 @md:h-28 @md:w-28">
-                  {profile.photoUrl ? (
-                    <img
-                      src={profile.photoUrl}
-                      alt={getDisplayName(selectedInstructor)}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#fb923c"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-12 w-12 sm:h-14 sm:w-14"
-                      aria-hidden="true"
-                    >
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                  )}
-                </div>
+        {embedded ? (
+          /* TOP ROW (embedded modal): matches Class Portfolio Compliance Summary + Portfolio Completion */
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+            <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-xs">
+              <h2 className="text-sm sm:text-base font-bold text-gray-800">
+                Compliance Summary
+              </h2>
 
-                <div className="min-w-0 w-full @md:w-auto @md:max-w-[220px]">
-                  <h2 className="break-words text-lg font-semibold leading-tight text-gray-900 sm:text-xl">
-                    {getDisplayName(selectedInstructor)}
-                  </h2>
-                  <p className="mt-1 break-words text-sm text-gray-500">{rank}</p>
-                  <p className="break-words text-sm text-gray-500">{department}</p>
-
-                  {pdsUrl ? (
-                    <a
-                      href={pdsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-3 block w-full rounded-md border border-gray-300 px-6 py-2 text-center text-sm text-gray-600 transition hover:bg-gray-50"
-                    >
-                      See PDS
-                    </a>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled
-                      title="No PDS uploaded yet"
-                      className="mt-3 w-full cursor-not-allowed rounded-md border border-gray-300 px-6 py-2 text-sm text-gray-400"
-                    >
-                      See PDS
-                    </button>
-                  )}
-                </div>
+              <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-gray-200 flex">
+                {approvedPct > 0 && (
+                  <div style={{ width: `${approvedPct}%` }} className="h-full bg-[#5cab5f]" />
+                )}
+                {pendingPct > 0 && (
+                  <div style={{ width: `${pendingPct}%` }} className="h-full bg-[#f5a30f]" />
+                )}
+                {rejectedPct > 0 && (
+                  <div style={{ width: `${rejectedPct}%` }} className="h-full bg-[#ef4444]" />
+                )}
               </div>
 
-              {/* Contact + educational background */}
-              <div className="grid min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(min(100%,230px),1fr))] gap-x-10 gap-y-6 pt-5 @2xl:pl-8 @2xl:pt-0">
-                <div className="min-w-0">
-                  <h3 className="mb-1 border-b border-gray-200 pb-3 text-base font-semibold text-gray-800">
-                    Contact Information
-                  </h3>
-                  <ContactRow label="Email" value={selectedInstructor.email} />
-                  <ContactRow label="Phone" value={phone} />
-                  <ContactRow label="Address" value={address} />
+              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#5cab5f]" />
+                  ({counts?.approved ?? 0}) Approved
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#f5a30f]" />
+                  ({counts?.pending ?? 0}) Pending Review
+                </span>
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#ef4444]" />
+                  ({counts?.rejected ?? 0}) Rejected
+                </span>
+                <span className="flex items-center gap-1.5 font-medium text-gray-400">
+                  <span className="h-2.5 w-2.5 rounded-full bg-gray-300" />
+                  Not Yet Submitted
+                </span>
+              </div>
+
+              <p className="mt-2.5 text-xs text-gray-400">
+                {counts?.approved ?? 0} of {uploaded} submitted documents are currently approved.
+              </p>
+            </section>
+
+            <section className="flex flex-col justify-between items-center text-center rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 shadow-xs">
+              <span className="text-xs sm:text-sm font-semibold text-brand-purple">
+                Portfolio Completion
+              </span>
+              <div className="my-auto py-1.5">
+                <span className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${percent > 0 ? 'text-[#5cab5f]' : 'text-gray-400'}`}>
+                  {percent}%
+                </span>
+                <p className="mt-1.5 text-xs font-normal text-gray-400">
+                  {percent >= 100
+                    ? 'Portfolio fully verified and completed.'
+                    : percent > 0
+                      ? 'Portfolio is in progress.'
+                      : 'No submissions approved yet.'}
+                </p>
+              </div>
+            </section>
+          </div>
+        ) : (
+          /* Profile + completion: side by side only when there is really room (2xl), stacked otherwise */
+          <div className="grid grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-[minmax(0,1fr)_520px]">
+            {/* Profile card (container: layout reacts to the card's own width) */}
+            <div className="@container min-w-0">
+              <div className="flex h-full min-w-0 flex-col rounded-2xl border border-gray-200 bg-white p-4 sm:p-6 @2xl:flex-row">
+                {/* Identity */}
+                <div className="flex min-w-0 flex-col items-center gap-4 border-b border-gray-200 pb-5 text-center @md:flex-row @md:text-left @2xl:shrink-0 @2xl:border-b-0 @2xl:border-r @2xl:pb-0 @2xl:pr-6">
+                  <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 @md:h-28 @md:w-28">
+                    {profile.photoUrl ? (
+                      <img
+                        src={profile.photoUrl}
+                        alt={getDisplayName(selectedInstructor)}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="#fb923c"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-12 w-12 sm:h-14 sm:w-14"
+                        aria-hidden="true"
+                      >
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 w-full @md:w-auto @md:max-w-[220px]">
+                    <h2 className="break-words text-lg font-semibold leading-tight text-gray-900 sm:text-xl">
+                      {getDisplayName(selectedInstructor)}
+                    </h2>
+                    <p className="mt-1 break-words text-sm text-gray-500">{rank}</p>
+                    <p className="break-words text-sm text-gray-500">{department}</p>
+
+                    {pdsUrl ? (
+                      <a
+                        href={pdsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 block w-full rounded-md border border-gray-300 px-6 py-2 text-center text-sm text-gray-600 transition hover:bg-gray-50"
+                      >
+                        See PDS
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        title="No PDS uploaded yet"
+                        className="mt-3 w-full cursor-not-allowed rounded-md border border-gray-300 px-6 py-2 text-sm text-gray-400"
+                      >
+                        See PDS
+                      </button>
+                    )}
+                  </div>
                 </div>
 
-                <div className="min-w-0">
-                  <h3 className="mb-1 border-b border-gray-200 pb-3 text-base font-semibold text-gray-800">
-                    Educational Background
-                  </h3>
-                  {education.length > 0 ? (
-                    <ul>
-                      {education.map((edu, i) => (
-                        <li
-                          key={`${edu.degree}-${i}`}
-                          className="border-b border-gray-200 py-3 last:border-b-0"
-                        >
-                          <p className="break-words text-sm font-semibold text-gray-800">{edu.degree}</p>
-                          <p className="break-words text-xs text-gray-400">
-                            {[edu.school || edu.institution, edu.year].filter(Boolean).join(' · ')}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="py-3 text-sm text-gray-400">No educational background provided.</p>
-                  )}
+                {/* Contact + educational background */}
+                <div className="grid min-w-0 flex-1 grid-cols-[repeat(auto-fit,minmax(min(100%,230px),1fr))] gap-x-10 gap-y-6 pt-5 @2xl:pl-8 @2xl:pt-0">
+                  <div className="min-w-0">
+                    <h3 className="mb-1 border-b border-gray-200 pb-3 text-base font-semibold text-gray-800">
+                      Contact Information
+                    </h3>
+                    <ContactRow label="Email" value={selectedInstructor.email} />
+                    <ContactRow label="Phone" value={phone} />
+                    <ContactRow label="Address" value={address} />
+                  </div>
+
+                  <div className="min-w-0">
+                    <h3 className="mb-1 border-b border-gray-200 pb-3 text-base font-semibold text-gray-800">
+                      Educational Background
+                    </h3>
+                    {education.length > 0 ? (
+                      <ul>
+                        {education.map((edu, i) => (
+                          <li
+                            key={`${edu.degree}-${i}`}
+                            className="border-b border-gray-200 py-3 last:border-b-0"
+                          >
+                            <p className="break-words text-sm font-semibold text-gray-800">{edu.degree}</p>
+                            <p className="break-words text-xs text-gray-400">
+                              {[edu.school || edu.institution, edu.year].filter(Boolean).join(' · ')}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="py-3 text-sm text-gray-400">No educational background provided.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Completion status card (also a container) */}
+            <div className="@container min-w-0">
+              <div className="flex h-full min-w-0 flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
+                <h2 className="text-lg font-medium text-brand-purple sm:text-2xl">Completion Status</h2>
+
+                <div className="flex flex-1 flex-col gap-5 @md:flex-row @md:items-center">
+                  <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+                    <p className="text-5xl font-extrabold leading-none text-[#6aaa64] sm:text-6xl @md:text-7xl">
+                      {percent}%
+                    </p>
+                    <p className="mt-4 text-sm leading-snug text-gray-400">{completionMessage}</p>
+                  </div>
+
+                  <ul className="w-full shrink-0 divide-y divide-gray-100 border-t border-gray-200 pt-2 @md:flex @md:w-56 @md:flex-col @md:justify-center @md:self-stretch @md:border-l @md:border-t-0 @md:pl-6 @md:pt-0">
+                    {legend.map((item) => (
+                      <li
+                        key={item.label}
+                        className="flex items-center justify-between gap-3 py-2.5 text-sm text-gray-500"
+                      >
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <span
+                            className="h-3 w-3 shrink-0 rounded-full"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <span className="truncate">{item.label}</span>
+                        </span>
+                        <span className="font-semibold tabular-nums text-gray-800">{item.value ?? '—'}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Completion status card (also a container) */}
-          <div className="@container min-w-0">
-            <div className="flex h-full min-w-0 flex-col gap-5 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
-              <h2 className="text-lg font-medium text-brand-purple sm:text-2xl">Completion Status</h2>
-
-              <div className="flex flex-1 flex-col gap-5 @md:flex-row @md:items-center">
-                <div className="flex min-w-0 flex-1 flex-col items-center text-center">
-                  <p className="text-5xl font-extrabold leading-none text-[#6aaa64] sm:text-6xl @md:text-7xl">
-                    {percent}%
-                  </p>
-                  <p className="mt-4 text-sm leading-snug text-gray-400">{completionMessage}</p>
-                </div>
-
-                <ul className="w-full shrink-0 divide-y divide-gray-100 border-t border-gray-200 pt-2 @md:flex @md:w-56 @md:flex-col @md:justify-center @md:self-stretch @md:border-l @md:border-t-0 @md:pl-6 @md:pt-0">
-                  {legend.map((item) => (
-                    <li
-                      key={item.label}
-                      className="flex items-center justify-between gap-3 py-2.5 text-sm text-gray-500"
-                    >
-                      <span className="flex min-w-0 items-center gap-2.5">
-                        <span
-                          className="h-3 w-3 shrink-0 rounded-full"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="truncate">{item.label}</span>
-                      </span>
-                      <span className="font-semibold tabular-nums text-gray-800">{item.value ?? '—'}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Portfolio content */}
-        <section className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
-          <div className="mb-4 flex items-center gap-3 sm:mb-5">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#efeef8] text-brand-purple">
-              <Folder size={20} />
+        <section className={`min-w-0 rounded-2xl border border-gray-200 bg-white ${embedded ? 'p-4 sm:p-5 shadow-xs' : 'p-4 sm:p-6'}`}>
+          <div className={`${embedded ? 'mb-4' : 'mb-4 sm:mb-5'} flex items-center gap-2.5`}>
+            <span className={`flex ${embedded ? 'h-8 w-8' : 'h-10 w-10'} shrink-0 items-center justify-center rounded-lg bg-[#efeef8] text-brand-purple`}>
+              <Folder size={embedded ? 17 : 20} />
             </span>
-            <h2 className="min-w-0 text-xl font-medium text-brand-purple sm:text-2xl">
-              Portfolio Content
+            <h2 className={`min-w-0 ${embedded ? 'text-base sm:text-lg font-bold' : 'text-xl sm:text-2xl font-medium'} text-brand-purple`}>
+              {embedded ? 'Faculty Requirements Checklist' : 'Portfolio Content'}
             </h2>
           </div>
 
-          <div className="space-y-4 sm:space-y-6">
-            {cardRows.map((row, rowIndex) => (
-              <div key={rowIndex}>
-                {rowIndex > 0 && <hr className="mb-4 border-gray-200 sm:mb-6" />}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
-                  {row.map((card) => (
-                    <PortfolioCard
-                      key={card.path}
-                      card={card}
-                      summary={instructorSummaries[card.path] || {}}
-                      instructorId={id}
-                      menuOpen={openMenu === card.path}
-                      onToggleMenu={(e) => {
-                        e.stopPropagation();
-                        setOpenMenu(openMenu === card.path ? null : card.path);
-                      }}
-                      onCloseMenu={() => setOpenMenu(null)}
-                    />
-                  ))}
+          {embedded ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {requirementCards.map((card) => (
+                <PortfolioCard
+                  key={card.path}
+                  card={card}
+                  summary={instructorSummaries[card.path] || {}}
+                  instructorId={id}
+                  menuOpen={openMenu === card.path}
+                  onToggleMenu={(e) => {
+                    e.stopPropagation();
+                    setOpenMenu(openMenu === card.path ? null : card.path);
+                  }}
+                  onCloseMenu={() => setOpenMenu(null)}
+                  onSelectRequirement={onSelectRequirement}
+                  compact
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4 sm:space-y-6">
+              {cardRows.map((row, rowIndex) => (
+                <div key={rowIndex}>
+                  {rowIndex > 0 && <hr className="mb-4 border-gray-200 sm:mb-6" />}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
+                    {row.map((card) => (
+                      <PortfolioCard
+                        key={card.path}
+                        card={card}
+                        summary={instructorSummaries[card.path] || {}}
+                        instructorId={id}
+                        menuOpen={openMenu === card.path}
+                        onToggleMenu={(e) => {
+                          e.stopPropagation();
+                          setOpenMenu(openMenu === card.path ? null : card.path);
+                        }}
+                        onCloseMenu={() => setOpenMenu(null)}
+                        onSelectRequirement={onSelectRequirement}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     );

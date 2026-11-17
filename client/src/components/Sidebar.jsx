@@ -13,14 +13,12 @@ function linkClass({ isActive }, isCollapsed) {
   const base = `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-regular transition-all ${focusRing}`;
 
   if (isActive) {
-    return `${base} bg-brand-orange text-white shadow-md shadow-orange-200 font-medium ${
-      isCollapsed ? 'justify-start lg:justify-center px-3 lg:px-2' : ''
-    }`;
+    return `${base} bg-brand-orange text-white shadow-md shadow-orange-200 font-medium ${isCollapsed ? 'justify-start lg:justify-center px-3 lg:px-2' : ''
+      }`;
   }
 
-  return `${base} text-brand-muted hover:bg-gray-100 hover:text-brand-purple font-regular ${
-    isCollapsed ? 'justify-start lg:justify-center px-3 lg:px-2' : ''
-  }`;
+  return `${base} text-brand-muted hover:bg-gray-100 hover:text-brand-purple font-regular ${isCollapsed ? 'justify-start lg:justify-center px-3 lg:px-2' : ''
+    }`;
 }
 
 function childLinkClass({ isActive }) {
@@ -40,9 +38,8 @@ function SidebarLogout({ role, isCollapsed }) {
         type="button"
         onClick={askToLogout}
         title={isCollapsed ? 'Logout' : undefined}
-        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-gray transition-colors hover:bg-red-50 hover:text-red-600 ${focusRing} ${
-          isCollapsed ? 'justify-start lg:justify-center px-3 lg:px-2' : ''
-        }`}
+        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-brand-gray transition-colors hover:bg-red-50 hover:text-red-600 ${focusRing} ${isCollapsed ? 'justify-start lg:justify-center px-3 lg:px-2' : ''
+          }`}
       >
         <LogOut size={18} aria-hidden="true" />
         <span className={isCollapsed ? 'inline lg:hidden' : ''}>Logout</span>
@@ -56,9 +53,8 @@ function SidebarGroup({ item, isOpen, isActive, onToggle, onClose, isChildActive
   const { label, icon: Icon, children } = item;
   const panelId = `nav-group-${label.toLowerCase().replace(/\s+/g, '-')}`;
 
-  const buttonClass = `flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-normal text-brand-muted transition-colors hover:bg-gray-100 hover:text-brand-purple ${focusRing} ${
-    isActive ? 'bg-orange-50' : ''
-  } ${isCollapsed ? 'justify-start lg:justify-center px-3 lg:px-2' : ''}`;
+  const buttonClass = `flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-normal text-brand-muted transition-colors hover:bg-gray-100 hover:text-brand-purple ${focusRing} ${isActive ? 'bg-orange-50' : ''
+    } ${isCollapsed ? 'justify-start lg:justify-center px-3 lg:px-2' : ''}`;
 
   return (
     <div className="relative group">
@@ -75,9 +71,8 @@ function SidebarGroup({ item, isOpen, isActive, onToggle, onClose, isChildActive
         <ChevronDown
           size={16}
           aria-hidden="true"
-          className={`text-brand-gray transition-transform duration-200 ${isOpen ? 'rotate-180' : ''} ${
-            isCollapsed ? 'inline lg:hidden' : ''
-          }`}
+          className={`text-brand-gray transition-transform duration-200 ${isOpen ? 'rotate-180' : ''} ${isCollapsed ? 'inline lg:hidden' : ''
+            }`}
         />
       </button>
 
@@ -175,6 +170,14 @@ function Sidebar({ role, isOpen, onClose, isCollapsed = false, onToggleCollapse 
       );
     }
 
+    // Admin Archive Records and its selected academic period detail pages
+    if (role === 'admin' && linkTo === '/admin/archive-records') {
+      return (
+        pathname === linkTo ||
+        pathname.startsWith('/admin/archive-records/')
+      );
+    }
+
     return false;
   };
 
@@ -221,9 +224,8 @@ function Sidebar({ role, isOpen, onClose, isCollapsed = false, onToggleCollapse 
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out lg:static lg:flex lg:shrink-0 ${
-          isOpen ? 'flex w-72' : 'hidden'
-        } ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}`}
+        className={`fixed inset-y-0 left-0 z-50 flex-col border-r border-gray-200 bg-white transition-all duration-300 ease-in-out lg:static lg:flex lg:shrink-0 ${isOpen ? 'flex w-72' : 'hidden'
+          } ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}`}
       >
         {/* Header Branding */}
         <div className="relative flex h-header shrink-0 items-center justify-center border-b border-gray-200 px-3 overflow-hidden">
@@ -283,47 +285,49 @@ function Sidebar({ role, isOpen, onClose, isCollapsed = false, onToggleCollapse 
               )}
 
               <ul className="flex flex-col gap-1">
-                {section.items.map((item) => {
-                  if (item.children) {
+                {section.items
+                  .filter((item) => !item.hidden)
+                  .map((item) => {
+                    if (item.children) {
+                      return (
+                        <li key={item.label}>
+                          <SidebarGroup
+                            item={item}
+                            isOpen={Boolean(openGroups[item.label])}
+                            isActive={isGroupActive(item)}
+                            onToggle={() => toggleGroup(item.label)}
+                            onClose={onClose}
+                            isChildActive={isParentPortfolioActive}
+                            isCollapsed={isCollapsed}
+                          />
+                        </li>
+                      );
+                    }
+
+                    const { to, label, icon: Icon } = item;
+
                     return (
-                      <li key={item.label}>
-                        <SidebarGroup
-                          item={item}
-                          isOpen={Boolean(openGroups[item.label])}
-                          isActive={isGroupActive(item)}
-                          onToggle={() => toggleGroup(item.label)}
-                          onClose={onClose}
-                          isChildActive={isParentPortfolioActive}
-                          isCollapsed={isCollapsed}
-                        />
+                      <li key={to}>
+                        <NavLink
+                          to={to}
+                          onClick={onClose}
+                          end
+                          title={isCollapsed ? label : undefined}
+                          className={({ isActive }) =>
+                            linkClass(
+                              {
+                                isActive: isActive || isParentPortfolioActive(to),
+                              },
+                              isCollapsed
+                            )
+                          }
+                        >
+                          <Icon size={18} className="shrink-0" aria-hidden="true" />
+                          <span className={`truncate ${isCollapsed ? 'inline lg:hidden' : ''}`}>{label}</span>
+                        </NavLink>
                       </li>
                     );
-                  }
-
-                  const { to, label, icon: Icon } = item;
-
-                  return (
-                    <li key={to}>
-                      <NavLink
-                        to={to}
-                        onClick={onClose}
-                        end
-                        title={isCollapsed ? label : undefined}
-                        className={({ isActive }) =>
-                          linkClass(
-                            {
-                              isActive: isActive || isParentPortfolioActive(to),
-                            },
-                            isCollapsed
-                          )
-                        }
-                      >
-                        <Icon size={18} className="shrink-0" aria-hidden="true" />
-                        <span className={`truncate ${isCollapsed ? 'inline lg:hidden' : ''}`}>{label}</span>
-                      </NavLink>
-                    </li>
-                  );
-                })}
+                  })}
               </ul>
             </div>
           ))}

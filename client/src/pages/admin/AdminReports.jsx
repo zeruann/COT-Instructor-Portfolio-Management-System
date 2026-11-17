@@ -13,7 +13,9 @@ const CATEGORY_PATHS = [
   'research',
   'extension-involvement',
   'production',
-  'other-requirements',
+  'professional-organization-membership',
+  'passed-licensure-examinations',
+  'ipcr',
 ];
 
 const computeCompletion = (summaries) => {

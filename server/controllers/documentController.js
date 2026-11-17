@@ -831,12 +831,12 @@ exports.getFacultyPortfolioSummary = async (req, res) => {
       'Research': 'research',
       'Extension Involvement': 'extension-involvement',
       'Production': 'production',
-      'Other Requirements': 'other-requirements',
-      'Membership to Professional Organization': 'other-requirements',
-      'Professional Organization Membership': 'other-requirements',
-      'Passed Licensure Examinations': 'other-requirements',
-      'IPCR': 'other-requirements',
-      'Other Documents': 'other-requirements',
+      'Other Requirements': 'professional-organization-membership',
+      'Membership to Professional Organization': 'professional-organization-membership',
+      'Professional Organization Membership': 'professional-organization-membership',
+      'Passed Licensure Examinations': 'passed-licensure-examinations',
+      'IPCR': 'ipcr',
+      'Other Documents': 'professional-organization-membership',
     };
 
     const summaries = {};

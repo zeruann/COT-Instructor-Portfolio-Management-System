@@ -46,6 +46,9 @@ const TOGGLE_LABELS = {
     googleSheetsEnabled: 'Google Sheets API',
 };
 
+const RECENT_ATTEMPT_WINDOW_MS = 3000;
+const recentSettingsAttempts = new Map();
+
 const logSettingAudit = async ({ req, action, outcome = 'success', targetLabel, details, meta }) => {
     await logAudit({
         actor: req.user,
@@ -305,12 +308,20 @@ exports.getSettings = async (req, res) => {
             accountType: adminUser.accountType || 'Administrator',
         } : null;
 
-        await logSettingAudit({
-            req,
-            action: ACTION.SETTING_ACCESS,
-            targetLabel: 'API & Integration Settings',
-            details: 'Opened API & Integration Settings',
-        });
+        if (req.query.silent !== '1') {
+            const actorKey = String(req.user?.id || req.ip || 'anon');
+            const now = Date.now();
+            const lastAttempt = recentSettingsAttempts.get(actorKey) || 0;
+            if (now - lastAttempt > RECENT_ATTEMPT_WINDOW_MS) {
+                recentSettingsAttempts.set(actorKey, now);
+                await logSettingAudit({
+                    req,
+                    action: ACTION.SETTING_ATTEMPT,
+                    targetLabel: 'API & Integration Settings',
+                    details: 'Attempted to access API & Integration Settings (OTP required)',
+                });
+            }
+        }
 
         res.json({
             success: true,
@@ -921,7 +932,14 @@ exports.verifySettingsOtp = async (req, res) => {
             req,
             action: ACTION.SETTING_OTP_VERIFY,
             targetLabel: 'API Settings OTP Verification',
-            details: 'Verified OTP and unlocked API & Integration Settings',
+            details: 'Verified email OTP for API & Integration Settings',
+        });
+
+        await logSettingAudit({
+            req,
+            action: ACTION.SETTING_ACCESS,
+            targetLabel: 'API & Integration Settings',
+            details: 'Opened API & Integration Settings after email OTP verification',
         });
 
         res.json({

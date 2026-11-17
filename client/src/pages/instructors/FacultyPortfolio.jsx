@@ -69,9 +69,21 @@ const requirementCards = [
     accent: '#6aaa64',
   },
   {
-    title: 'Other Requirements',
+    title: 'Professional Organization Membership',
     description: 'Upload proof of membership in your professional organizations, such as a membership certificate or form.',
-    path: 'other-requirements',
+    path: 'professional-organization-membership',
+    accent: '#6aaa64',
+  },
+  {
+    title: 'Passed Licensure Examinations',
+    description: 'Upload sample copies of your PRC ID or licensure examination certificates.',
+    path: 'passed-licensure-examinations',
+    accent: '#6aaa64',
+  },
+  {
+    title: 'IPCR',
+    description: 'Upload photocopy of IPCR from 1st and 2nd semester of the current school year.',
+    path: 'ipcr',
     accent: '#6aaa64',
   },
 ];
@@ -160,12 +172,12 @@ function PortfolioCard({ card, summary, menuOpen, onToggleMenu, onCloseMenu }) {
     <div className="relative flex h-full min-w-0 flex-col rounded-xl bg-[#f5f5f5] px-4 pt-5 pb-4 sm:px-5 sm:pt-6 sm:pb-5 min-h-[220px]">
       {/* Title row */}
       <div className="flex items-start justify-between gap-2">
-        <Link to={href} className="group flex min-w-0 items-start gap-3 no-underline hover:no-underline">
+        <Link to={href} className="group flex min-w-0 items-start gap-2.5 no-underline hover:no-underline">
           <span
-            className="mt-1.5 h-3 w-3 shrink-0 rounded-full"
+            className="mt-1 h-3 w-3 shrink-0 rounded-full"
             style={{ backgroundColor: card.accent }}
           />
-          <h3 className="min-w-0 break-words text-base font-semibold leading-tight text-gray-900 sm:text-lg">
+          <h3 className="min-w-0 break-words text-base font-bold leading-snug text-gray-900 group-hover:text-brand-orange transition sm:text-[17px]">
             {card.title}
           </h3>
         </Link>
@@ -176,16 +188,16 @@ function PortfolioCard({ card, summary, menuOpen, onToggleMenu, onCloseMenu }) {
             onClick={onToggleMenu}
             aria-label={`${card.title} options`}
             aria-expanded={menuOpen}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600 hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple transition cursor-pointer"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-gray-500 hover:bg-gray-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-purple transition cursor-pointer"
           >
-            <MoreVertical size={18} />
+            <MoreVertical size={16} />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-9 z-10 w-40 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+            <div className="absolute right-0 top-8 z-10 w-44 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
               <Link
                 to={href}
                 onClick={onCloseMenu}
-                className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
               >
                 Open requirement
               </Link>
@@ -195,33 +207,33 @@ function PortfolioCard({ card, summary, menuOpen, onToggleMenu, onCloseMenu }) {
       </div>
 
       {/* Accent underline */}
-      <div className="mt-3 h-[3px] w-full rounded-full" style={{ backgroundColor: card.accent }} />
+      <div className="mt-3 h-[2px] w-full rounded-full" style={{ backgroundColor: card.accent }} />
 
       {/* Description */}
       <Link
         to={href}
-        className="mt-4 flex-1 !no-underline sm:mt-5"
+        className="mt-3 flex-1 !no-underline"
         style={{ textDecoration: 'none' }}
       >
-        <p className="break-words text-sm leading-snug text-gray-500 no-underline hover:no-underline sm:text-[15px]">
+        <p className="break-words text-xs leading-relaxed text-gray-400 no-underline hover:no-underline sm:text-sm">
           {card.description}
         </p>
       </Link>
 
-      {/* Footer: wraps instead of overlapping on narrow cards */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 sm:mt-5">
+      {/* Footer */}
+      <div className="mt-5 flex items-center justify-between gap-2 pt-3 text-xs text-gray-500">
         <span
-          className={`whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium sm:text-sm ${status.className}`}
+          className={`whitespace-nowrap rounded-md px-3 py-1 text-xs font-medium ${status.className}`}
         >
           {status.label}
         </span>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 sm:text-sm">
-          <span className="flex items-center gap-1.5 whitespace-nowrap">
-            <MessageSquare size={15} className="shrink-0" />
+        <div className="flex items-center gap-3 text-xs text-gray-400">
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            <MessageSquare size={14} className="shrink-0" />
             {comments} {comments === 1 ? 'comment' : 'comments'}
           </span>
-          <span className="flex items-center gap-1.5 whitespace-nowrap">
-            <FileText size={15} className="shrink-0" />
+          <span className="flex items-center gap-1 whitespace-nowrap">
+            <FileText size={14} className="shrink-0" />
             {files} {files === 1 ? 'file' : 'files'}
           </span>
         </div>
@@ -340,7 +352,11 @@ function FacultyPortfolio() {
   const address = profile.address || '—';
   const educationList = Array.isArray(profile.education) ? profile.education : [];
 
-  const cardRows = [requirementCards.slice(0, 4), requirementCards.slice(4)];
+  const cardRows = [
+    requirementCards.slice(0, 4),
+    requirementCards.slice(4, 8),
+    requirementCards.slice(8),
+  ].filter((r) => r.length > 0);
 
   return (
     <div className="space-y-5">
