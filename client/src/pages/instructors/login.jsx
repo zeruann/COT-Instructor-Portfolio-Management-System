@@ -411,10 +411,9 @@ function Login() {
           >
             <div className={`absolute inset-0 bg-gray-900/40 ${captchaAnim.backdropAnim}`} />
             <div
-              className={`relative w-full max-w-sm rounded-[28px] bg-white p-6 shadow-2xl overflow-hidden ${captchaAnim.panelAnim}`}
+              className={`relative w-full max-w-sm rounded-[28px] bg-white p-6 shadow-2xl ${captchaAnim.panelAnim}`}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="h-1.5 w-full bg-gradient-to-r from-[#ff6900] via-amber-400 to-[#575488] absolute top-0 left-0" />
               {/* Close Button */}
               <button
                 type="button"
@@ -431,13 +430,8 @@ function Login() {
                 </svg>
               </button>
 
-              {/* Icon & Heading */}
+              {/* Heading */}
               <div className="flex flex-col items-center text-center pt-1">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-[#ff6900]">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                </div>
                 <h3 className="text-lg font-bold text-gray-900">Security Verification</h3>
                 <p className="mt-1 text-xs text-gray-500">
                   Please complete the check below to continue logging in.
