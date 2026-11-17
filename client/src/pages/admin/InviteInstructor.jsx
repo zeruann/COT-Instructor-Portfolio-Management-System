@@ -14,7 +14,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  ChevronUp,
   Search,
   UserPlus,
 } from 'lucide-react';
@@ -252,7 +251,17 @@ function InviteInstructor() {
   const [tableVisible, setTableVisible] = useState(true);
 
   // Smooth collapse/expand state for Invite Card
-  const [showInviteCard, setShowInviteCard] = useState(true);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [isClosingInviteModal, setIsClosingInviteModal] = useState(false);
+
+  const closeInviteModal = useCallback(() => {
+    if (isClosingInviteModal) return;
+    setIsClosingInviteModal(true);
+    setTimeout(() => {
+      setIsClosingInviteModal(false);
+      setShowInviteModal(false);
+    }, 150);
+  }, [isClosingInviteModal]);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -397,6 +406,7 @@ function InviteInstructor() {
 
       setInvitations((current) => [data, ...current]);
       setForm(EMPTY_FORM);
+      setShowInviteModal(false);
       notify(
         'success',
         'Invitation sent',
@@ -414,7 +424,19 @@ function InviteInstructor() {
     }
   };
 
-  const handleCancel = () => setForm(EMPTY_FORM);
+  const handleCancel = () => {
+    setForm(EMPTY_FORM);
+    closeInviteModal();
+  };
+
+  useEffect(() => {
+    if (!showInviteModal) return undefined;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape' && !modal) closeInviteModal();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showInviteModal, modal, closeInviteModal]);
 
   const handleResend = async (id) => {
     if (resendingIds.has(id)) return;
@@ -522,136 +544,12 @@ function InviteInstructor() {
 
         <button
           type="button"
-          onClick={() => setShowInviteCard((prev) => !prev)}
-          aria-expanded={showInviteCard}
-          className={`inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${showInviteCard
-            ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-            : 'bg-brand-orange text-white hover:bg-orange-600 shadow-sm'
-            }`}
+          onClick={() => setShowInviteModal(true)}
+          className="inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold bg-brand-orange text-white hover:bg-orange-600 shadow-sm transition-all duration-200 cursor-pointer"
         >
-          {showInviteCard ? (
-            <>
-              <ChevronUp size={16} className="text-gray-500 transition-transform duration-300" />
-              <span>Hide Invite Card</span>
-            </>
-          ) : (
-            <>
-              <UserPlus size={16} />
-              <span>Show Invite Card</span>
-            </>
-          )}
+          <UserPlus size={16} />
+          <span>Invite Instructor</span>
         </button>
-      </div>
-
-      {/* Smooth Animated Collapsible Invite Card */}
-      <div
-        className={`grid transition-all duration-300 ease-in-out ${showInviteCard
-          ? 'grid-rows-[1fr] opacity-100 mb-6'
-          : 'grid-rows-[0fr] opacity-0 mb-0 pointer-events-none'
-          }`}
-      >
-        <div className="overflow-hidden">
-          <div className="bg-white rounded-2xl shadow-[0_2px_20px_rgba(0,0,0,0.06)] p-6 border border-gray-100">
-            <div className="flex items-center justify-between gap-3 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="bg-orange-50 p-2.5 rounded-xl">
-                  <Mail className="text-orange-500" size={20} />
-                </div>
-                <h2 className="font-semibold text-lg text-gray-800">Invite New Instructor</h2>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowInviteCard(false)}
-                title="Hide invite form"
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
-              >
-                <ChevronUp size={18} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className="text-sm text-gray-500 block mb-1.5">First Name</label>
-                <input
-                  name="firstName"
-                  value={form.firstName}
-                  onChange={handleChange}
-                  placeholder="First name"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-500 block mb-1.5">
-                  Middle Name <span className="text-gray-300">(optional)</span>
-                </label>
-                <input
-                  name="middleName"
-                  value={form.middleName}
-                  onChange={handleChange}
-                  placeholder="Middle name"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-500 block mb-1.5">Last Name</label>
-                <input
-                  name="lastName"
-                  value={form.lastName}
-                  onChange={handleChange}
-                  placeholder="Last name"
-                  className={inputClass}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-              <div>
-                <label className="text-sm text-gray-500 block mb-1.5">Email Address</label>
-                <input
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="instructor@university.edu"
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <label className="text-sm text-gray-500 block mb-1.5">Department</label>
-                <select
-                  name="department"
-                  value={form.department}
-                  onChange={handleChange}
-                  className={`${inputClass} text-gray-500`}
-                >
-                  <option value="">Select Department</option>
-                  {DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={handleCancel}
-                className="border border-gray-200 rounded-full px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSend}
-                disabled={isSending}
-                className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:cursor-wait disabled:opacity-60 text-white rounded-full px-6 py-2.5 text-sm font-semibold shadow-lg shadow-orange-200 transition-all cursor-pointer"
-              >
-                {isSending ? 'Sending…' : 'Send Invitation'}
-              </button>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* FILTER BAR: Search | School Year | Department | View By */}
@@ -937,6 +835,142 @@ function InviteInstructor() {
           </div>
         )}
       </div>
+
+      {showInviteModal &&
+        createPortal(
+          <div
+            className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 sm:p-5 ${
+              isClosingInviteModal
+                ? 'animate-[modalBackdropOut_150ms_ease-in_forwards]'
+                : 'animate-[modalBackdropIn_150ms_ease-out_forwards]'
+            }`}
+            onClick={closeInviteModal}
+          >
+            <div
+              className={`relative flex flex-col w-full max-w-4xl max-h-[90vh] rounded-2xl bg-[#f8f9fc] shadow-2xl border border-gray-200 overflow-hidden ${
+                isClosingInviteModal
+                  ? 'animate-[modalPanelOut_150ms_ease-in_forwards]'
+                  : 'animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]'
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-4 bg-white">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="bg-orange-50 p-2 rounded-xl shrink-0">
+                    <Mail className="text-orange-500" size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-lg sm:text-xl font-bold text-[#2e2a72] truncate">
+                      Invite New Instructor
+                    </h2>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">
+                      Send an email invitation to a new faculty member.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeInviteModal}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer shrink-0"
+                  aria-label="Close modal"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Scrollable Modal Body */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-2xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+                    <div>
+                      <label className="text-sm text-gray-500 block mb-1.5">First Name</label>
+                      <input
+                        name="firstName"
+                        value={form.firstName}
+                        onChange={handleChange}
+                        placeholder="First name"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-500 block mb-1.5">
+                        Middle Name <span className="text-gray-300">(optional)</span>
+                      </label>
+                      <input
+                        name="middleName"
+                        value={form.middleName}
+                        onChange={handleChange}
+                        placeholder="Middle name"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-500 block mb-1.5">Last Name</label>
+                      <input
+                        name="lastName"
+                        value={form.lastName}
+                        onChange={handleChange}
+                        placeholder="Last name"
+                        className={inputClass}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm text-gray-500 block mb-1.5">Email Address</label>
+                      <input
+                        name="email"
+                        type="email"
+                        value={form.email}
+                        onChange={handleChange}
+                        placeholder="instructor@university.edu"
+                        className={inputClass}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-500 block mb-1.5">Department</label>
+                      <select
+                        name="department"
+                        value={form.department}
+                        onChange={handleChange}
+                        className={`${inputClass} text-gray-500`}
+                      >
+                        <option value="">Select Department</option>
+                        {DEPARTMENTS.map((dept) => (
+                          <option key={dept} value={dept}>
+                            {dept}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-end gap-3 border-t border-gray-200 px-6 py-4 bg-white">
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSend}
+                  disabled={isSending}
+                  className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 disabled:cursor-wait disabled:opacity-60 text-white rounded-lg px-5 py-2 text-sm font-semibold shadow-sm transition-all cursor-pointer"
+                >
+                  {isSending ? 'Sending…' : 'Send Invitation'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       <AppModal modal={modal} onClose={close} />
     </>

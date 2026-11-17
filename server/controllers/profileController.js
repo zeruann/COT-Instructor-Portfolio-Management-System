@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { logAudit } = require('../utils/auditLog');
 const { ACTION } = require('../constants/auditActions');
 const { isPasswordValid } = require('../utils/passwordRules');
+const { markStaleUsersOffline } = require('../utils/onlineStatus');
 
 const EDITABLE = [
   'firstName', 'middleName', 'lastName', 'gender', 'civilStatus', 'birthdate',
@@ -39,6 +40,8 @@ exports.getMyProfile = async (req, res) => {
 // GET /api/profile/:id (Admin view)
 exports.getProfileById = async (req, res) => {
   try {
+    await markStaleUsersOffline();
+
     const instructor = await Instructor.findById(req.params.id).select('fullName email department profile accountStatus onlineStatus createdAt googlePhotoUrl');
     if (!instructor) return res.status(404).json({ message: 'Instructor not found.' });
     res.json(instructor);

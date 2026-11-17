@@ -7,6 +7,15 @@ import { API_BASE as API_URL } from "../../api/config";
 
 const API_BASE = `${API_URL}/auth`;
 
+const formatCountdown = (seconds) => {
+  if (seconds >= 60) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  }
+  return `${seconds}s`;
+};
+
 function ResetPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -15,6 +24,7 @@ function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -27,9 +37,16 @@ function ResetPassword() {
     return () => clearTimeout(timer);
   }, [resendTimer]);
 
+  useEffect(() => {
+    if (rateLimitSeconds <= 0) return;
+    const timer = setTimeout(() => setRateLimitSeconds((prev) => Math.max(0, prev - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [rateLimitSeconds]);
+
   // Step 1: Send OTP to User's Email
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault();
+    if (loading || rateLimitSeconds > 0) return;
     setError("");
     setMessage("");
 
@@ -46,6 +63,10 @@ function ResetPassword() {
       setStep(2);
       setResendTimer(30);
     } catch (err) {
+      if (err.response?.status === 429) {
+        const retryAfter = Number(err.response?.data?.retryAfterSeconds) || 60;
+        setRateLimitSeconds(retryAfter);
+      }
       setError(err.response?.data?.message || "Something went wrong. Please check your email and try again.");
     } finally {
       setLoading(false);
@@ -54,7 +75,7 @@ function ResetPassword() {
 
   // Resend OTP
   const handleResendOtp = async () => {
-    if (resendTimer > 0 || resendLoading) return;
+    if (resendTimer > 0 || resendLoading || rateLimitSeconds > 0) return;
     setError("");
     setMessage("");
 
@@ -65,6 +86,10 @@ function ResetPassword() {
       setResendTimer(30);
       setOtpCode("");
     } catch (err) {
+      if (err.response?.status === 429) {
+        const retryAfter = Number(err.response?.data?.retryAfterSeconds) || 60;
+        setRateLimitSeconds(retryAfter);
+      }
       setError(err.response?.data?.message || "Failed to resend verification code. Please try again.");
     } finally {
       setResendLoading(false);
@@ -145,13 +170,18 @@ function ResetPassword() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+            disabled={loading || rateLimitSeconds > 0}
+            className="w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg transition flex items-center justify-center gap-2 cursor-pointer shadow-xs"
           >
             {loading ? (
               <>
                 <RefreshCw size={17} className="animate-spin" />
                 <span>Sending Verification Code…</span>
+              </>
+            ) : rateLimitSeconds > 0 ? (
+              <>
+                <Clock size={17} />
+                <span>Try again in {formatCountdown(rateLimitSeconds)}</span>
               </>
             ) : (
               <>
@@ -221,7 +251,14 @@ function ResetPassword() {
 
           {/* Resend Option with 30s Cooldown */}
           <div className="text-center text-xs text-gray-500 space-y-3">
-            {resendTimer > 0 ? (
+            {rateLimitSeconds > 0 ? (
+              <div className="flex items-center justify-center gap-1.5 text-red-500">
+                <Clock size={13} />
+                <span>
+                  Too many requests. Try again in <strong className="font-mono">{formatCountdown(rateLimitSeconds)}</strong>
+                </span>
+              </div>
+            ) : resendTimer > 0 ? (
               <div className="flex items-center justify-center gap-1.5 text-gray-400">
                 <Clock size={13} />
                 <span>

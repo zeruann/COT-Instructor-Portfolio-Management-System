@@ -2,26 +2,30 @@ const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 const {
-  login, logout, googleLogin, forgotPassword, verifyResetOtp, resetPassword,
+  login, logout, googleLogin, heartbeat, forgotPassword, verifyResetOtp, resetPassword,
 } = require("../controllers/authController");
+const auth = require("../middleware/auth");
+const { loginLimiter, forgotPasswordLimiter } = require("../middleware/rateLimiter");
 
 const optionalAuth = (req, res, next) => {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : (req.query.token || null);
   if (token) {
     try {
-      req.user = jwt.verify(token, process.env.JWT_SECRET);
+      // Allow expired tokens on logout so the user is still marked Offline
+      req.user = jwt.verify(token, process.env.JWT_SECRET, { ignoreExpiration: true });
     } catch {
-      // ignore invalid / expired token on logout
+      // ignore invalid token on logout
     }
   }
   next();
 };
 
-router.post("/login", login);
+router.post("/login", loginLimiter, login);
 router.post("/google", googleLogin);
 router.post("/logout", optionalAuth, logout);
-router.post("/forgot-password", forgotPassword);
+router.post("/heartbeat", auth, heartbeat);
+router.post("/forgot-password", forgotPasswordLimiter, forgotPassword);
 router.post("/verify-reset-otp", verifyResetOtp);
 router.post("/reset-password/:token", resetPassword);
 

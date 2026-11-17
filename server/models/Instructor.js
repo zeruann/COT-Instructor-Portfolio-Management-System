@@ -60,6 +60,10 @@ const instructorSchema = new mongoose.Schema({
     enum: ["Online", "Offline"],
     default: "Offline",
   },
+  lastSeenAt: {
+    type: Date,
+    default: null,
+  },
 
   // Invitation fields. No defaults on purpose: admins and Google
   // sign-ups were never invited, so these stay empty for them.

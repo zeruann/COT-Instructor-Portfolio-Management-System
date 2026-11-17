@@ -10,6 +10,15 @@ import { API_BASE as API_URL } from "../../api/config";
 const API_BASE = `${API_URL}/auth`;
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
+const formatCountdown = (seconds) => {
+  if (seconds >= 60) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  }
+  return `${seconds}s`;
+};
+
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,6 +26,7 @@ function Login() {
   const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
   const [showCaptchaModal, setShowCaptchaModal] = useState(false);
   const captchaAnim = useAnimatedModal(showCaptchaModal);
   const [emailFocused, setEmailFocused] = useState(false);
@@ -25,6 +35,12 @@ function Login() {
   const recaptchaRef = useRef(null);
   const [captchaToken, setCaptchaToken] = useState(null);
   const [apiConfig, setApiConfig] = useState({ recaptchaEnabled: true, googleAuthEnabled: true });
+
+  useEffect(() => {
+    if (rateLimitSeconds <= 0) return;
+    const timer = setTimeout(() => setRateLimitSeconds((prev) => Math.max(0, prev - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [rateLimitSeconds]);
 
   useEffect(() => {
     axios
@@ -75,6 +91,10 @@ function Login() {
         setError("Invalid account type.");
       }
     } catch (err) {
+      if (err.response?.status === 429) {
+        const retryAfter = Number(err.response?.data?.retryAfterSeconds) || 60;
+        setRateLimitSeconds(retryAfter);
+      }
       setError(err.response?.data?.message || "Login failed");
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
@@ -86,6 +106,7 @@ function Login() {
   // MANUAL LOGIN FORM SUBMIT
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (loading || rateLimitSeconds > 0) return;
     setError("");
 
     if (!email || !password) {
@@ -328,8 +349,8 @@ function Login() {
           {/* Gradient Orange Button */}
           <button
             type="submit"
-            disabled={loading}
-            className="group relative w-full mt-3 overflow-hidden bg-gradient-to-r from-[#ff7a1a] via-[#ff6900] to-[#f25c00] hover:from-[#ff8629] hover:via-[#ff7308] hover:to-[#e85600] disabled:opacity-60 text-white font-semibold py-3.5 px-5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-[0_10px_24px_-8px_rgba(255,105,0,0.6)] hover:shadow-[0_14px_30px_-8px_rgba(255,105,0,0.7)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] text-sm sm:text-base"
+            disabled={loading || rateLimitSeconds > 0}
+            className="group relative w-full mt-3 overflow-hidden bg-gradient-to-r from-[#ff7a1a] via-[#ff6900] to-[#f25c00] hover:from-[#ff8629] hover:via-[#ff7308] hover:to-[#e85600] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 px-5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-[0_10px_24px_-8px_rgba(255,105,0,0.6)] hover:shadow-[0_14px_30px_-8px_rgba(255,105,0,0.7)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] text-sm sm:text-base"
           >
             {/* Sheen sweep on hover */}
             <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
@@ -341,6 +362,8 @@ function Login() {
                 </svg>
                 <span>Logging in...</span>
               </>
+            ) : rateLimitSeconds > 0 ? (
+              <span>Try again in {formatCountdown(rateLimitSeconds)}</span>
             ) : (
               <>
                 <span>Log in</span>
