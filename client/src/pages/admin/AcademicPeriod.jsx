@@ -260,6 +260,22 @@ export default function AcademicPeriod() {
     setIsFormOpen(true);
   };
 
+  // Edit mode: typing one year auto-fills the other (To = From + 1, From = To - 1)
+  const handleYearChange = (field, raw) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 4);
+    let from = '';
+    let to = '';
+    if (field === 'from') {
+      from = digits;
+      to = digits.length === 4 ? String(parseInt(digits, 10) + 1) : '';
+    } else {
+      to = digits;
+      from = digits.length === 4 ? String(parseInt(digits, 10) - 1) : '';
+    }
+    setFormData((prev) => ({ ...prev, schoolYear: `${from}-${to}` }));
+    setFormError('');
+  };
+
   // Handle Form Submit
   const handleFormSubmit = async (e) => {
     e.preventDefault();
@@ -276,6 +292,21 @@ export default function AcademicPeriod() {
     if (endY !== startY + 1) {
       setFormError('End year must be the next consecutive year (e.g., 2026-2027).');
       return;
+    }
+
+    if (editingPeriod) {
+      const duplicate = periods.find(
+        (p) =>
+          p._id !== editingPeriod._id &&
+          p.schoolYear === formData.schoolYear &&
+          p.semester === formData.semester
+      );
+      if (duplicate) {
+        setFormError(
+          `AY ${formData.schoolYear} · ${formatSemName(formData.semester)} already exists. Please choose a different academic year or semester.`
+        );
+        return;
+      }
     }
 
     if (!editingPeriod) {
@@ -424,38 +455,6 @@ export default function AcademicPeriod() {
           if (!res.ok) throw new Error(data.message || 'Failed to close');
 
           showToast(`AY ${period.schoolYear} · ${formatSemName(period.semester)} is now Closed.`);
-          fetchPeriods();
-          window.dispatchEvent(new Event('academic-period-updated'));
-        } catch (err) {
-          showToast(err.message, 'error');
-        } finally {
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        }
-      },
-    });
-  };
-
-  // Archive Period (legacy action)
-  const handleArchive = (period) => {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Archive Academic Period?',
-      message: `Archiving AY ${period.schoolYear} · ${formatSemName(
-        period.semester
-      )} will move it into the Archive records. All portfolios and review records will be preserved in read-only mode.`,
-      confirmText: 'Archive Period',
-      confirmColor: 'bg-purple-600 hover:bg-purple-700',
-      onConfirm: async () => {
-        try {
-          const token = localStorage.getItem('token');
-          const res = await fetch(`/api/academic-periods/${period._id}/archive`, {
-            method: 'PATCH',
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.message || 'Failed to archive');
-
-          showToast(`AY ${period.schoolYear} · ${formatSemName(period.semester)} archived.`);
           fetchPeriods();
           window.dispatchEvent(new Event('academic-period-updated'));
         } catch (err) {
@@ -637,7 +636,7 @@ export default function AcademicPeriod() {
               Academic Period Management
             </h1>
             <p className="mt-1 text-sm font-medium text-gray-500">
-              Set up school years, manage semester dates, activate submission terms, and archive completed periods.
+              Set up school years, manage semester dates, activate submission terms, and close completed periods.
             </p>
           </div>
         </div>
@@ -800,7 +799,6 @@ export default function AcademicPeriod() {
                   const canActivate = item.status !== 'Active' && item.status !== 'Archived';
                   const canEdit = item.status !== 'Archived';
                   const canClose = item.status === 'Active';
-                  const canArchive = item.status === 'Closed';
 
                   const canDelete =
                     item.status === 'Upcoming' && (itemStats.classesCount || 0) === 0;
@@ -884,15 +882,8 @@ export default function AcademicPeriod() {
                               <EmptySlot />
                             )}
 
-                            {/* Slot 4: Archive (if Closed) or Delete (if Upcoming) */}
-                            {canArchive ? (
-                              <ActionButton
-                                label="Archive Period"
-                                icon={Archive}
-                                hover="hover:text-purple-600 hover:bg-purple-50 hover:border-purple-200"
-                                onClick={() => handleArchive(item)}
-                              />
-                            ) : canDelete ? (
+                            {/* Slot 4: Delete (if Upcoming) */}
+                            {canDelete ? (
                               <ActionButton
                                 label="Delete Period"
                                 icon={Trash2}
@@ -1057,7 +1048,7 @@ export default function AcademicPeriod() {
               )}
 
               <form onSubmit={handleFormSubmit} className="space-y-5">
-                {/* ROW 1: Academic Year (Year From / Year To, both disabled) */}
+                {/* ROW 1: Academic Year (editable in edit mode; the other year follows automatically) */}
                 <div>
                   <label className="block text-[13px] font-semibold text-gray-700 mb-2">
                     Academic Year
@@ -1065,17 +1056,33 @@ export default function AcademicPeriod() {
                   <div className="grid grid-cols-2 gap-4">
                     <input
                       type="text"
+                      inputMode="numeric"
+                      maxLength={4}
                       value={yearFrom}
-                      disabled
+                      disabled={!editingPeriod}
+                      onChange={(e) => handleYearChange('from', e.target.value)}
+                      placeholder="Year From"
                       aria-label="Year From"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-3 px-4 text-[14px] text-gray-500 cursor-not-allowed"
+                      className={`w-full border rounded-lg py-3 px-4 text-[14px] transition ${
+                        editingPeriod
+                          ? 'bg-white border-gray-200 text-gray-700 focus:outline-none focus:border-orange-500'
+                          : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                      }`}
                     />
                     <input
                       type="text"
+                      inputMode="numeric"
+                      maxLength={4}
                       value={yearTo}
-                      disabled
+                      disabled={!editingPeriod}
+                      onChange={(e) => handleYearChange('to', e.target.value)}
+                      placeholder="Year To"
                       aria-label="Year To"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-3 px-4 text-[14px] text-gray-500 cursor-not-allowed"
+                      className={`w-full border rounded-lg py-3 px-4 text-[14px] transition ${
+                        editingPeriod
+                          ? 'bg-white border-gray-200 text-gray-700 focus:outline-none focus:border-orange-500'
+                          : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                      }`}
                     />
                   </div>
                 </div>
