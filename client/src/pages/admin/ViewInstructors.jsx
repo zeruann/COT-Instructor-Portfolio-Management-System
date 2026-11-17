@@ -271,12 +271,11 @@ export default function ViewInstructors() {
   return (
     <>
       {/* PAGE HEADER */}
-      <div className="mb-6">
-        <div className="flex items-center gap-3 mb-1">
-
-          <h1 className="text-xl font-bold text-gray-900 tracking-tight">Instructors</h1>
-        </div>
-        <p className="text-sm text-gray-500">
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
+          Instructors
+        </h1>
+        <p className="text-sm text-gray-500 mt-0.5">
           Manage and monitor all registered faculty members.
         </p>
       </div>

@@ -184,50 +184,47 @@ function InstructorArchive() {
 
   return (
     <div className="space-y-6">
-      <PlaceholderPage title="Archive" />
-
-      {/* ARCHIVED CLASSES SECTION */}
-      <section className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-brand-purple tracking-tight sm:text-2xl">
-              Archived Classes
-            </h2>
-            <p className="text-xs text-gray-400 sm:text-sm mt-0.5">
-              Review previously archived class portfolios or restore them back to active classes.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Search Input */}
-            <div className="relative">
-              <Search
-                size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                type="text"
-                placeholder="Search archived classes..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-48 sm:w-64 rounded-lg border border-gray-200 bg-white py-1.5 pl-9 pr-3 text-xs sm:text-sm text-gray-800 placeholder-gray-400 focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X size={14} />
-                </button>
-              )}
-            </div>
-          </div>
+      {/* PAGE HEADER */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-brand-purple tracking-tight sm:text-2xl">
+            Archived Classes
+          </h1>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Review previously archived class portfolios or restore them back to active classes.
+          </p>
         </div>
 
+        {/* Search Input */}
+        <div className="relative">
+          <Search
+            size={16}
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            type="text"
+            placeholder="Search archived classes..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full sm:w-72 rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-sm text-gray-800 placeholder-gray-400 shadow-2xs transition focus:border-brand-orange focus:outline-none focus:ring-1 focus:ring-brand-orange"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ARCHIVED CLASSES CONTENT */}
+      <section>
         {/* Loading state, list of cards, or empty state */}
         {isLoading ? (
-          <div className="flex items-center justify-center rounded-2xl border border-gray-200 bg-white py-12 text-gray-400">
+          <div className="flex items-center justify-center rounded-2xl border border-gray-200 bg-white py-16 text-gray-400">
             <Loader2 size={24} className="animate-spin text-brand-purple mr-2" />
             <span className="text-sm">Loading archived classes...</span>
           </div>
@@ -243,14 +240,27 @@ function InstructorArchive() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white py-12 px-4 text-center">
-            <Archive size={36} className="text-gray-300" />
-            <h4 className="mt-3 text-base font-semibold text-gray-700">No archived classes found</h4>
-            <p className="mt-1 text-sm text-gray-400">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white/70 py-16 px-4 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-brand-orange mb-3">
+              <Archive size={28} />
+            </div>
+            <h3 className="text-base font-bold text-gray-800">
+              {searchQuery ? 'No matching archived classes' : 'No archived classes yet'}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500 max-w-sm">
               {searchQuery
                 ? `No archived class matching "${searchQuery}".`
                 : 'Classes you archive from your Class Portfolio will appear here.'}
             </p>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="mt-4 text-xs font-semibold text-brand-purple hover:underline cursor-pointer"
+              >
+                Clear search
+              </button>
+            )}
           </div>
         )}
       </section>

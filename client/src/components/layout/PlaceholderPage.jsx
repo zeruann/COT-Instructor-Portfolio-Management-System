@@ -10,7 +10,7 @@ function PlaceholderPage({ title, backTo }) {
   }, [title]);
 
   const heading = (
-    <h1 className="text-[24px] leading-[32px] font-medium text-brand-purple">
+    <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
       {title}
     </h1>
   );

@@ -599,15 +599,15 @@ export default function AcademicPeriod() {
       )}
 
       {/* PAGE HEADER */}
-      <div className="mb-6">
+      <div className="mb-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+              <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
                 Academic Period Management
               </h1>
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 mt-0.5">
               Set up school years, manage semester dates, activate submission terms, and archive completed periods.
             </p>
           </div>

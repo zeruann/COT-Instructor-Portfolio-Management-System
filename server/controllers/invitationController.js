@@ -279,7 +279,10 @@ exports.getInvitationByToken = async (req, res) => {
   try {
     const invitation = await Instructor.findOne({ token: req.params.token });
     if (!invitation) {
-      return res.status(404).json({ message: 'Invitation not found.' });
+      return res.status(404).json({
+        code: 'INVITATION_NOT_FOUND',
+        message: 'This invitation link is invalid or has already been completed.',
+      });
     }
 
     if (invitation.status === 'Pending' && invitation.expiresAt < new Date()) {
@@ -294,8 +297,12 @@ exports.getInvitationByToken = async (req, res) => {
     if (invitation.status !== 'Pending' && !needsSetup) {
       const message = awaitingSetup
         ? 'This setup link has expired. Ask the administrator for a new one.'
-        : STATUS_MESSAGES[invitation.status];
-      return res.status(410).json({ message });
+        : STATUS_MESSAGES[invitation.status] || 'This invitation is no longer active.';
+      return res.status(410).json({
+        code: `INVITATION_${invitation.status.toUpperCase()}`,
+        status: invitation.status,
+        message,
+      });
     }
 
     res.json({
@@ -316,7 +323,12 @@ const respondToInvitation = (newStatus) => async (req, res) => {
   try {
     const update = { status: newStatus, respondedAt: new Date() };
     // Give the instructor a fresh 7 days to finish account setup
-    if (newStatus === 'Accepted') update.expiresAt = newExpiry();
+    if (newStatus === 'Accepted') {
+      update.expiresAt = newExpiry();
+      // Record which Privacy Notice version the invitee acknowledged.
+      update.privacyAcknowledgedAt = new Date();
+      update.privacyNoticeVersion = req.body?.privacyNoticeVersion || null;
+    }
 
     const invitation = await Instructor.findOneAndUpdate(
       { token: req.params.token, status: 'Pending', expiresAt: { $gt: new Date() } },
@@ -325,7 +337,18 @@ const respondToInvitation = (newStatus) => async (req, res) => {
     );
 
     if (!invitation) {
-      return res.status(410).json({ message: 'This invitation is no longer valid.' });
+      // Check if it was already accepted or completed
+      const existing = await Instructor.findOne({ token: req.params.token });
+      if (existing && existing.status === 'Accepted') {
+        return res.status(409).json({
+          code: 'INVITATION_ALREADY_ACCEPTED',
+          message: 'This invitation has already been accepted.',
+        });
+      }
+      return res.status(410).json({
+        code: 'INVITATION_INVALID',
+        message: 'This invitation is no longer valid or has already been used.',
+      });
     }
 
     // Notify admins when an invitation is accepted or rejected
