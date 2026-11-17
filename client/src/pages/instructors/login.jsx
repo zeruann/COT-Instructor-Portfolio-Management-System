@@ -3,8 +3,9 @@ import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import AuthLayout from "../../components/AuthLayout";
 import ReCAPTCHA from "react-google-recaptcha";
+import { API_BASE as API_URL } from "../../api/config";
 
-const API_BASE = "http://localhost:5000/api/auth";
+const API_BASE = `${API_URL}/auth`;
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 function Login() {
@@ -24,7 +25,7 @@ function Login() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:5000/api/settings/public")
+      .get(`${API_URL}/settings/public`)
       .then((res) => {
         if (res.data) setApiConfig(res.data);
       })

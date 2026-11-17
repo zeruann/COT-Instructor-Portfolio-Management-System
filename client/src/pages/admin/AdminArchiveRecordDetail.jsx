@@ -22,9 +22,10 @@ import {
 import { fetchClasses } from '../../api/classes';
 import AdminViewClassPortfolio from './AdminViewClassPortfolio';
 import ClassRequirementDetail from '../instructors/ClassRequirementDetail';
+import { API_BASE } from '../../api/config';
 
-const API_PERIODS_URL = 'http://localhost:5000/api/academic-periods';
-const API_INSTRUCTORS_URL = 'http://localhost:5000/api/instructors';
+const API_PERIODS_URL = `${API_BASE}/academic-periods`;
+const API_INSTRUCTORS_URL = `${API_BASE}/instructors`;
 
 function MetricCard({ icon: Icon, label, value, note, tone }) {
   const tones = {

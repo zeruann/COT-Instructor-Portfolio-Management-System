@@ -13,6 +13,7 @@ import {
   Folder,
 } from 'lucide-react';
 import { fetchClasses } from '../../api/classes';
+import { API_BASE } from '../../api/config';
 
 export default function ReviewClassPortfolio() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -37,7 +38,7 @@ export default function ReviewClassPortfolio() {
 
   // Load instructor list
   useEffect(() => {
-    fetch('http://localhost:5000/api/instructors')
+    fetch(`${API_BASE}/instructors`)
       .then((res) => res.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : data.instructors || [];

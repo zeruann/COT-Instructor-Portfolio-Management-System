@@ -769,13 +769,13 @@ exports.sendSettingsOtp = async (req, res) => {
         // Always bypass googleMailEnabled toggle and fall back to default .env SMTP if needed
         sendEmail({
             to: admin.email,
-            subject: 'COT Portfolio - API Settings Security Verification Code',
+            subject: 'COT Instructor E-Portfolio - API Settings Security Verification Code',
             bypassToggle: true,
             fallbackToDefault: true,
             html: `
                 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
                     <div style="text-align: center; margin-bottom: 24px;">
-                        <h2 style="color: #4338ca; margin: 0; font-size: 20px; font-weight: 700;">COT Faculty Portfolio</h2>
+                        <h2 style="color: #4338ca; margin: 0; font-size: 20px; font-weight: 700;">COT Instructor E-Portfolio</h2>
                         <p style="color: #6b7280; font-size: 13px; margin: 4px 0 0 0;">Institutional System Administration</p>
                     </div>
 

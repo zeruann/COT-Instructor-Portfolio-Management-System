@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Search, ChevronDown } from 'lucide-react';
 import { fetchFacultySummary } from '../../api/documents';
 import InstructorReports from '../instructors/InstructorReports';
+import { API_BASE } from '../../api/config';
 
 const CATEGORY_PATHS = [
   'educational-attainment',
@@ -62,7 +63,7 @@ export default function AdminReports() {
 
   // Load list of instructors
   useEffect(() => {
-    fetch('http://localhost:5000/api/instructors')
+    fetch(`${API_BASE}/instructors`)
       .then((res) => res.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : data.instructors || [];

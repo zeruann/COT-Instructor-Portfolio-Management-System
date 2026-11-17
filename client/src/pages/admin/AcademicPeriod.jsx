@@ -619,14 +619,14 @@ export default function AcademicPeriod() {
         {/* Active Period Card (wide) */}
         <div className="md:col-span-2 bg-white rounded-2xl p-5 border border-gray-100 shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-orange-600 flex items-center gap-1.5">
+            <span className="text-xs font-semibold uppercase tracking-wider text-black flex items-center gap-1.5">
               Active Academic Period
             </span>
           </div>
 
           {activePeriod ? (
             <div>
-              <h3 className="text-xl font-bold text-emerald-600">
+              <h3 className="text-xl font-bold text-orange-600">
                 AY {activePeriod.schoolYear} · {formatSemName(activePeriod.semester)}
               </h3>
               <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">

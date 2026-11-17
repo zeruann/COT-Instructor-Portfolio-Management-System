@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, Plus, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AppModal, { useAppModal } from '../../components/common/AppModal';
+import { API_BASE } from '../../api/config';
 
 const PAGE_SIZE = 10;
 
-const API_URL = 'http://localhost:5000/api/instructors';
+const API_URL = `${API_BASE}/instructors`;
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All statuses' },

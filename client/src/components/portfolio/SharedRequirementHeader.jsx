@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Plus, ShieldCheck } from 'lucide-react';
 import { usePortfolio } from '../../context/usePortfolio';
+import { API_BASE } from '../../api/config';
 
 export default function SharedRequirementHeader({
   title,
@@ -30,7 +31,7 @@ export default function SharedRequirementHeader({
     if (selectedInstructor) {
       setInstructorInfo(selectedInstructor);
     } else if (isAdmin && instructorId) {
-      fetch(`http://localhost:5000/api/instructors/${instructorId}`)
+      fetch(`${API_BASE}/instructors/${instructorId}`)
         .then((res) => (res.ok ? res.json() : null))
         .then((data) => {
           if (data) setInstructorInfo(data);
