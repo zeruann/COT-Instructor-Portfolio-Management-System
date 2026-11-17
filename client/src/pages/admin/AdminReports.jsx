@@ -274,11 +274,10 @@ export default function AdminReports() {
             onClick={() => setDisplayMode('grid')}
             title="Grid view"
             aria-label="Grid view"
-            className={`rounded-lg p-2 transition cursor-pointer ${
-              displayMode === 'grid'
+            className={`rounded-lg p-2 transition cursor-pointer ${displayMode === 'grid'
                 ? 'bg-orange-500 text-white shadow-xs'
                 : 'text-gray-400 hover:text-gray-700'
-            }`}
+              }`}
           >
             <LayoutGrid size={18} />
           </button>
@@ -287,11 +286,10 @@ export default function AdminReports() {
             onClick={() => setDisplayMode('table')}
             title="Table view"
             aria-label="Table view"
-            className={`rounded-lg p-2 transition cursor-pointer ${
-              displayMode === 'table'
+            className={`rounded-lg p-2 transition cursor-pointer ${displayMode === 'table'
                 ? 'bg-orange-500 text-white shadow-xs'
                 : 'text-gray-400 hover:text-gray-700'
-            }`}
+              }`}
           >
             <List size={18} />
           </button>
