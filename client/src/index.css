@@ -1,1 +1,286 @@
 @import "tailwindcss";
+
+@layer base {
+
+  *,
+  *::before,
+  *::after {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  body {
+    @apply text-base font-normal text-gray-800 antialiased;
+  }
+
+  h1 {
+    @apply text-2xl font-bold text-brand-purple tracking-tight;
+  }
+
+  h2 {
+    @apply text-xl font-semibold text-gray-800;
+  }
+
+  h3 {
+    @apply text-lg font-semibold text-gray-800;
+  }
+
+  button {
+    @apply text-base font-semibold;
+  }
+
+  table {
+    @apply text-sm font-normal;
+  }
+}
+
+
+
+@theme {
+  /* Brand colors */
+  --color-brand-orange: #ff6900;
+  --color-brand-purple: #575488;
+  --color-brand-gray: #696969;
+  --color-brand-muted: #969292;
+  --color-brand-bg: #fbfbfb;
+
+  --spacing-header: 89px;
+
+
+  /* ========================================================================
+     BORDER RADIUS & SPACING OVERRIDES
+     ======================================================================== */
+  /* Base 4-point spacing scale unit */
+  --spacing: 4px;
+
+  /* Consistent 3px radius across default and size variants */
+  --radius: 6px;
+  --radius-xs: 6px;
+  --radius-sm: 6px;
+  --radius-md: 6px;
+  --radius-lg: 6px;
+  --radius-xl: 6px;
+  --radius-2xl: 6px;
+  --radius-3xl: 10px;
+}
+
+/* "short:" works like "lg:", but for screens that are not tall (under 700px).
+   Example: py-5 short:py-3 -> less padding on short screens. */
+@custom-variant short (@media (max-height: 700px));
+
+/* Smooth slide-in for custom date pickers when "Custom Range" is selected */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Auth pages: gentle entrance for the form card and hero content */
+@keyframes authFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Auth pages: slow drifting glow orbs in the purple panel */
+@keyframes authFloat {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -22px, 0) scale(1.06);
+  }
+}
+
+/* Landing page: slow ambient zoom on the hero background */
+@keyframes authKenBurns {
+  from {
+    transform: scale(1) translateY(0);
+  }
+  to {
+    transform: scale(1.07) translateY(-1.2%);
+  }
+}
+
+/* Landing page: soft pulse for decorative accents */
+@keyframes authPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-anim {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* Hides the scrollbar but keeps scrolling working (mouse wheel, touch). */
+@utility no-scrollbar {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Document Preview styles for converted Word (.docx) documents */
+.docx-preview-content {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  color: #1f2937;
+}
+.docx-preview-content h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: #111827;
+}
+.docx-preview-content h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #1f2937;
+}
+.docx-preview-content h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+  color: #374151;
+}
+.docx-preview-content p {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+}
+.docx-preview-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+.docx-preview-content table th,
+.docx-preview-content table td {
+  border: 1px solid #d1d5db;
+  padding: 8px 12px;
+  vertical-align: top;
+}
+.docx-preview-content table th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+}
+.docx-preview-content ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+.docx-preview-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+.docx-preview-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 0.5rem 0;
+}
+
+@keyframes modalBackdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalPanelIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalPageForward {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes modalPageBack {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-modal-backdrop {
+  animation: modalBackdropIn 200ms ease-out forwards;
+}
+
+.animate-modal-panel {
+  animation: modalPanelIn 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-modal-page-forward {
+  animation: modalPageForward 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-modal-page-back {
+  animation: modalPageBack 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Privacy Notice body copy */
+.privacy-prose ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.privacy-prose a {
+  color: #ff6900;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.privacy-prose a:hover {
+  color: #e05d00;
+}
+
+.privacy-prose strong {
+  color: #374151;
+  font-weight: 600;
+}

@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const mongoose = require('mongoose');
 const Instructor = require('../models/Instructor');
 const { sendInvitationEmail } = require('../utils/sendEmail');
+const { notifyAdmins } = require('../utils/adminNotificationService');
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -22,8 +23,9 @@ const withoutPrivate = (doc) => {
   return obj;
 };
 
-// Only people who were invited belong in the invitations table
-const INVITED = { invitedBy: { $exists: true } };
+// Only people who were invited belong in the invitations table.
+// Exclude administrators — they should never appear in the instructor list.
+const INVITED = { invitedBy: { $exists: true }, accountType: { $ne: 'Administrator' } };
 
 // Flip any Pending invitation past its expiry date to Expired
 const expireStale = () =>
@@ -127,9 +129,12 @@ exports.sendInvitation = async (req, res) => {
       } else {
         await Instructor.findByIdAndDelete(invitation._id);
       }
-      return res
-        .status(502)
-        .json({ message: 'The invitation email could not be sent. Check the email address and try again.' });
+      const mailDisabled = emailErr.code === 'GOOGLE_MAIL_DISABLED';
+      return res.status(mailDisabled ? 503 : 502).json({
+        message: mailDisabled
+          ? 'Google Mail is disabled. Enable it in Administrator Settings before sending invitations.'
+          : 'The invitation email could not be sent. Verify the Google Mail credentials in Administrator Settings and try again.',
+      });
     }
 
     res.status(201).json(withoutPrivate(invitation));
@@ -220,7 +225,12 @@ exports.resendInvitation = async (req, res) => {
           },
         }
       );
-      return res.status(502).json({ message: 'The invitation email could not be sent. Try again.' });
+      const mailDisabled = emailErr.code === 'GOOGLE_MAIL_DISABLED';
+      return res.status(mailDisabled ? 503 : 502).json({
+        message: mailDisabled
+          ? 'Google Mail is disabled. Enable it in Administrator Settings before resending invitations.'
+          : 'The invitation email could not be sent. Verify the Google Mail credentials in Administrator Settings and try again.',
+      });
     }
 
     const updated = await Instructor.findById(id);
@@ -269,7 +279,10 @@ exports.getInvitationByToken = async (req, res) => {
   try {
     const invitation = await Instructor.findOne({ token: req.params.token });
     if (!invitation) {
-      return res.status(404).json({ message: 'Invitation not found.' });
+      return res.status(404).json({
+        code: 'INVITATION_NOT_FOUND',
+        message: 'This invitation link is invalid or has already been completed.',
+      });
     }
 
     if (invitation.status === 'Pending' && invitation.expiresAt < new Date()) {
@@ -284,8 +297,12 @@ exports.getInvitationByToken = async (req, res) => {
     if (invitation.status !== 'Pending' && !needsSetup) {
       const message = awaitingSetup
         ? 'This setup link has expired. Ask the administrator for a new one.'
-        : STATUS_MESSAGES[invitation.status];
-      return res.status(410).json({ message });
+        : STATUS_MESSAGES[invitation.status] || 'This invitation is no longer active.';
+      return res.status(410).json({
+        code: `INVITATION_${invitation.status.toUpperCase()}`,
+        status: invitation.status,
+        message,
+      });
     }
 
     res.json({
@@ -306,7 +323,12 @@ const respondToInvitation = (newStatus) => async (req, res) => {
   try {
     const update = { status: newStatus, respondedAt: new Date() };
     // Give the instructor a fresh 7 days to finish account setup
-    if (newStatus === 'Accepted') update.expiresAt = newExpiry();
+    if (newStatus === 'Accepted') {
+      update.expiresAt = newExpiry();
+      // Record which Privacy Notice version the invitee acknowledged.
+      update.privacyAcknowledgedAt = new Date();
+      update.privacyNoticeVersion = req.body?.privacyNoticeVersion || null;
+    }
 
     const invitation = await Instructor.findOneAndUpdate(
       { token: req.params.token, status: 'Pending', expiresAt: { $gt: new Date() } },
@@ -315,7 +337,44 @@ const respondToInvitation = (newStatus) => async (req, res) => {
     );
 
     if (!invitation) {
-      return res.status(410).json({ message: 'This invitation is no longer valid.' });
+      // Check if it was already accepted or completed
+      const existing = await Instructor.findOne({ token: req.params.token });
+      if (existing && existing.status === 'Accepted') {
+        return res.status(409).json({
+          code: 'INVITATION_ALREADY_ACCEPTED',
+          message: 'This invitation has already been accepted.',
+        });
+      }
+      return res.status(410).json({
+        code: 'INVITATION_INVALID',
+        message: 'This invitation is no longer valid or has already been used.',
+      });
+    }
+
+    // Notify admins when an invitation is accepted or rejected
+    try {
+      const inviteeName = invitation.fullName || invitation.email;
+      if (newStatus === 'Accepted') {
+        await notifyAdmins({
+          type: 'notice',
+          title: 'Invitation Accepted',
+          message: `${inviteeName} accepted the invitation to join as an instructor.`,
+          actionLink: `/admin/instructors/${invitation._id}`,
+          senderId: invitation._id,
+          category: 'system',
+        });
+      } else {
+        await notifyAdmins({
+          type: 'reminder',
+          title: 'Invitation Declined',
+          message: `${inviteeName} declined the invitation to join.`,
+          actionLink: '/admin/invite-instructors',
+          senderId: invitation._id,
+          category: 'system',
+        });
+      }
+    } catch (notifErr) {
+      console.warn('Could not notify admins of invitation response:', notifErr.message);
     }
 
     res.json({
@@ -362,6 +421,21 @@ exports.completeSetup = async (req, res) => {
 
     if (!instructor) {
       return res.status(410).json({ message: 'This setup link is no longer valid.' });
+    }
+
+    // Notify administrators that account setup is finished and active
+    try {
+      const name = instructor.fullName || instructor.email;
+      await notifyAdmins({
+        type: 'approved',
+        title: 'Instructor Account Activated',
+        message: `${name} has completed account setup and is now an active instructor.`,
+        actionLink: `/admin/instructors/${instructor._id}`,
+        senderId: instructor._id,
+        category: 'system',
+      });
+    } catch (notifErr) {
+      console.warn('Could not notify admins of setup completion:', notifErr.message);
     }
 
     res.json({ message: 'Account created. You can now log in.' });
