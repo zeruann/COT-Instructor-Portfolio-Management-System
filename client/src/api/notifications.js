@@ -37,3 +37,13 @@ export async function markNotificationAsRead(id) {
   return res.data;
 }
 
+export async function deleteNotification(id) {
+  const res = await api.delete(`/notifications/${id}`);
+  return res.data;
+}
+
+export async function clearAllNotifications() {
+  const res = await api.delete('/notifications/clear-all');
+  return res.data;
+}
+

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, Link } from 'react-router-dom';
 import { useAnimatedModal } from '../../hooks/useAnimatedModal';
+import InstructorProfileModal from '../../components/admin/InstructorProfileModal';
 import {
   Mail,
   Ban,
@@ -250,7 +250,6 @@ function getInvitationSchoolYear(inv, periods = []) {
 }
 
 function InviteInstructor() {
-  const navigate = useNavigate();
   const [form, setForm] = useState(EMPTY_FORM);
   const [invitations, setInvitations] = useState([]);
   const [academicPeriods, setAcademicPeriods] = useState([]);
@@ -260,6 +259,7 @@ function InviteInstructor() {
   const { modal, close, notify, confirm } = useAppModal();
   const [invitePage, setInvitePage] = useState(1);
   const [tableVisible, setTableVisible] = useState(true);
+  const [selectedInstructor, setSelectedInstructor] = useState(null);
 
   // Smooth collapse/expand state for Invite Card
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -716,7 +716,7 @@ function InviteInstructor() {
                       <tr
                         key={inv._id}
                         onClick={() => {
-                          if (canViewProfile) navigate(`/admin/instructors/${inv._id}`);
+                          if (canViewProfile) setSelectedInstructor(inv);
                         }}
                         className={`border-b border-gray-100 last:border-0 hover:bg-gray-50/60 transition-colors duration-150 ${canViewProfile ? 'cursor-pointer' : ''
                           }`}
@@ -764,12 +764,13 @@ function InviteInstructor() {
                           <div className="flex items-center gap-3">
                             {inv.status === 'Accepted' &&
                               (inv.accountStatus === 'Active' ? (
-                                <Link
-                                  to={`/admin/instructors/${inv._id}`}
-                                  className="text-blue-500 text-xs font-medium hover:underline"
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedInstructor(inv)}
+                                  className="text-blue-500 text-xs font-medium hover:underline cursor-pointer"
                                 >
                                   View Profile
-                                </Link>
+                                </button>
                               ) : (
                                 <span className="text-xs font-medium text-gray-400">
                                   Setting up…
@@ -988,6 +989,25 @@ function InviteInstructor() {
           </div>,
           document.body
         )}
+
+      <InstructorProfileModal
+        instructor={selectedInstructor}
+        onClose={() => setSelectedInstructor(null)}
+        onStatusUpdated={(updatedId, newStatus) => {
+          setInvitations((prev) =>
+            prev.map((inv) =>
+              (inv._id || inv.id) === updatedId
+                ? { ...inv, accountStatus: newStatus }
+                : inv
+            )
+          );
+          setSelectedInstructor((prev) =>
+            prev && (prev._id || prev.id) === updatedId
+              ? { ...prev, accountStatus: newStatus }
+              : prev
+          );
+        }}
+      />
 
       <AppModal modal={modal} onClose={close} />
     </>
