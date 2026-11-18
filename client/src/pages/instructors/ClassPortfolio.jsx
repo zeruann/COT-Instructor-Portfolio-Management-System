@@ -172,6 +172,21 @@ const YEAR_LEVELS = [
   { value: '4', label: '4th Year' },
 ];
 
+// Keep these in sync with server/constants/classPolicy.js
+const CLASS_FIELD_LIMITS = {
+  subjectCode: 8,
+  subjectName: 50,
+  sectionCode: 6,
+  sectionGroup: 1,
+};
+
+const CLASS_FIELD_LABELS = {
+  subjectCode: 'Subject / Course Code',
+  subjectName: 'Subject / Course Description',
+  sectionCode: 'Section Code',
+  sectionGroup: 'Section Group / Suffix',
+};
+
 function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, existingClasses = [] }) {
   const [formData, setFormData] = useState({
     subjectCode: '',
@@ -221,8 +236,45 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
 
   if (!isOpen) return null;
 
+  const handleFieldChange = (field, value) => {
+    let nextValue = value;
+
+    if (field === 'sectionGroup') {
+      if (!/^[A-Za-z]*$/.test(value)) {
+        setError('Section Group / Suffix accepts letters only (A–Z).');
+        return;
+      }
+      nextValue = value.toUpperCase();
+      if (nextValue.length > 1) {
+        setError('Section Group / Suffix must be a single letter.');
+        return;
+      }
+    }
+
+    const limit = CLASS_FIELD_LIMITS[field];
+    if (limit && nextValue.length > limit) {
+      setError(`${CLASS_FIELD_LABELS[field]} must be ${limit} character${limit > 1 ? 's' : ''} or fewer.`);
+      return;
+    }
+    setError('');
+    setFormData((prev) => ({ ...prev, [field]: nextValue }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Block values that exceed the field limits (e.g. from pre-filled edit data).
+    if (formData.sectionGroup && !/^[A-Za-z]$/.test(formData.sectionGroup.trim())) {
+      setError('Section Group / Suffix must be a single letter (A–Z).');
+      return;
+    }
+    for (const [field, limit] of Object.entries(CLASS_FIELD_LIMITS)) {
+      if (formData[field].trim().length > limit) {
+        setError(`${CLASS_FIELD_LABELS[field]} must be ${limit} character${limit > 1 ? 's' : ''} or fewer.`);
+        return;
+      }
+    }
+
     const cleanSubjCode = formData.subjectCode.trim().toUpperCase();
     const cleanSubjDesc = formData.subjectName.trim();
     const cleanSecCode = formData.sectionCode.trim().toUpperCase();
@@ -264,13 +316,14 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
       return;
     }
 
-    const assembledSectionName = `${cleanProgram}-${cleanYear}${cleanGroup ? cleanGroup : ''}`;
+    const assembledSectionName = `${cleanProgram} ${cleanYear}${cleanGroup ? cleanGroup : ''}`;
 
     onSave(
       {
         subjectCode: cleanSubjCode,
         subjectName: cleanSubjDesc,
         sectionCode: cleanSecCode,
+        sectionGroup: cleanGroup,
         sectionName: assembledSectionName,
       },
       setError
@@ -328,8 +381,7 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
                 placeholder="e.g. IT 121"
                 value={formData.subjectCode}
                 onChange={(e) => {
-                  setError('');
-                  setFormData({ ...formData, subjectCode: e.target.value });
+                  handleFieldChange('subjectCode', e.target.value);
                 }}
                 className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
                 required
@@ -345,8 +397,7 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
                 placeholder="e.g. T142"
                 value={formData.sectionCode}
                 onChange={(e) => {
-                  setError('');
-                  setFormData({ ...formData, sectionCode: e.target.value });
+                  handleFieldChange('sectionCode', e.target.value);
                 }}
                 className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
                 required
@@ -365,12 +416,14 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
               placeholder="e.g. Data Structures and Algorithms"
               value={formData.subjectName}
               onChange={(e) => {
-                setError('');
-                setFormData({ ...formData, subjectName: e.target.value });
+                handleFieldChange('subjectName', e.target.value);
               }}
               className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
               required
             />
+            <span className="mt-1.5 block text-xs text-gray-400">
+              {formData.subjectName.length}/{CLASS_FIELD_LIMITS.subjectName} characters
+            </span>
           </div>
 
           {/* Program, Year Level, and Section Group (Same Row) */}
@@ -423,15 +476,14 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
               </label>
               <input
                 type="text"
-                placeholder="e.g. A, B, or 1"
+                placeholder="e.g. A"
                 value={formData.sectionGroup}
                 onChange={(e) => {
-                  setError('');
-                  setFormData({ ...formData, sectionGroup: e.target.value });
+                  handleFieldChange('sectionGroup', e.target.value);
                 }}
-                maxLength={4}
                 className="mt-1.5 w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-base uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
               />
+              <span className="mt-1.5 block text-xs text-gray-400">Single letter only (A–Z)</span>
             </div>
           </div>
 
@@ -439,7 +491,7 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
           <div className="flex items-center gap-2 text-sm text-gray-500 pt-1">
             <span>Generated Section Name:</span>
             <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-brand-orange font-bold text-sm tracking-wide">
-              {formData.program}-{formData.yearLevel}{formData.sectionGroup.toUpperCase()}
+              {formData.program} {formData.yearLevel}{formData.sectionGroup.toUpperCase()}
             </span>
           </div>
 

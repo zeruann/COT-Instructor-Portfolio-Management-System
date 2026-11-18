@@ -4,6 +4,10 @@ const mongoose = require('mongoose');
 const Instructor = require('../models/Instructor');
 const { sendInvitationEmail } = require('../utils/sendEmail');
 const { notifyAdmins } = require('../utils/adminNotificationService');
+const {
+  isAllowedInvitationEmail,
+  invitationDomainMessage,
+} = require('../constants/invitationPolicy');
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -58,6 +62,12 @@ exports.sendInvitation = async (req, res) => {
         .status(400)
         .json({ message: 'First name, last name, email, and department are required.' });
     }
+
+    // Only institutional accounts may receive invitations.
+    if (!isAllowedInvitationEmail(email)) {
+      return res.status(400).json({ message: invitationDomainMessage() });
+    }
+
     await expireStale();
 
     // One document per email. Only a Cancelled invitation can be re-invited.
@@ -180,6 +190,13 @@ exports.resendInvitation = async (req, res) => {
     const { id } = req.params;
     if (!mongoose.isValidObjectId(id)) {
       return res.status(400).json({ message: 'Invalid invitation id.' });
+    }
+
+    // Re-check the policy so old non-institutional invitations can't be resent.
+    const pending = await Instructor.findById(id).select('email');
+    if (!pending) return res.status(404).json({ message: 'Invitation not found.' });
+    if (!isAllowedInvitationEmail(pending.email)) {
+      return res.status(400).json({ message: invitationDomainMessage() });
     }
 
     const token = newToken();

@@ -36,6 +36,17 @@ const DEPARTMENTS = [
   'IT Department',
 ];
 
+// Invitations are limited to institutional accounts. The server re-checks this
+// and can disable the temporary @student.buksu.edu.ph domain via config.
+const INVITATION_EMAIL_DOMAINS = ['buksu.edu.ph', 'student.buksu.edu.ph'];
+
+const isAllowedInvitationEmail = (email) => {
+  const normalized = String(email || '').trim().toLowerCase();
+  const at = normalized.lastIndexOf('@');
+  if (at <= 0 || at === normalized.length - 1) return false;
+  return INVITATION_EMAIL_DOMAINS.includes(normalized.slice(at + 1));
+};
+
 const VIEW_BY_OPTIONS = [
   { value: 'newest', label: 'Newest First' },
   { value: 'oldest', label: 'Oldest First' },
@@ -382,6 +393,14 @@ function InviteInstructor() {
         'error',
         'Missing information',
         'Fill in the instructor’s first name, last name, email, and department before sending the invitation.'
+      );
+      return;
+    }
+    if (!isAllowedInvitationEmail(form.email)) {
+      notify(
+        'error',
+        'Institutional email required',
+        `Invitations can only be sent to ${INVITATION_EMAIL_DOMAINS.map((d) => `@${d}`).join(' or ')} accounts.`
       );
       return;
     }

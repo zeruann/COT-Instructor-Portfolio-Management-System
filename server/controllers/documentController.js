@@ -14,6 +14,7 @@ const { logAudit } = require('../utils/auditLog');
 const { ACTION } = require('../constants/auditActions');
 const { notifyAdmins } = require('../utils/adminNotificationService');
 const { checkLockConflict } = require('../utils/resourceLock');
+const { REJECT_COMMENT_MAX_WORDS, countWords } = require('../constants/reviewPolicy');
 
 /**
  * Helper to safely parse stringified JSON (from multipart/form-data)
@@ -531,6 +532,12 @@ exports.reviewDocument = async (req, res) => {
 
     if (decision === 'rejected' && (!comment || !comment.trim())) {
       return res.status(400).json({ message: 'A comment is required when rejecting a document.' });
+    }
+
+    if (decision === 'rejected' && countWords(comment) > REJECT_COMMENT_MAX_WORDS) {
+      return res.status(400).json({
+        message: `The reason for rejection must be ${REJECT_COMMENT_MAX_WORDS} words or fewer.`,
+      });
     }
 
     // Pessimistic lock check: block if another admin currently holds the review lock
