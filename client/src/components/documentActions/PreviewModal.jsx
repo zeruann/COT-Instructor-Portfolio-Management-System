@@ -11,11 +11,13 @@ import {
   Loader2,
   Calendar,
   Table,
+  Lock,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import mammoth from 'mammoth';
 import { formatDate } from '../../utils/formatDate';
 import { getDocumentFileUrl, downloadDocumentFile, reviewDocument } from '../../api/documents';
+import { useResourceLock } from '../../hooks/useResourceLock';
 import StatusBadge from './StatusBadge';
 import AppModal, { useAppModal } from '../common/AppModal';
 
@@ -42,6 +44,11 @@ export default function PreviewModal({
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  const { lockedByOther, lockedByName } = useResourceLock(
+    document?._id ? `document:${document._id}` : null,
+    { enabled: Boolean(isOpen && isAdmin && document?._id) }
+  );
 
   // Excel state
   const [excelWorkbook, setExcelWorkbook] = useState(null);
@@ -158,6 +165,10 @@ export default function PreviewModal({
   };
 
   const handleReview = async (decision) => {
+    if (lockedByOther) {
+      setError(`This document is currently being reviewed by ${lockedByName}.`);
+      return;
+    }
     if (decision === 'rejected' && !comment.trim()) {
       setError('Please provide a reason for rejection.');
       return;
@@ -169,6 +180,7 @@ export default function PreviewModal({
       const res = await reviewDocument(document._id, {
         decision,
         comment: comment.trim(),
+        expectedVersion: document.__v,
       });
 
       if (onReviewSuccess) {
@@ -437,6 +449,14 @@ export default function PreviewModal({
           {/* Admin Review Controls */}
           {isAdmin ? (
             <div>
+              {lockedByOther && (
+                <div className="flex items-center gap-2 mb-3 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs">
+                  <Lock className="w-4 h-4 shrink-0 text-amber-600" />
+                  <span>
+                    <strong>Locked:</strong> Currently being reviewed by <strong>{lockedByName}</strong>. Review buttons are disabled until they finish.
+                  </span>
+                </div>
+              )}
               {rejecting ? (
                 <div className="space-y-3">
                   <div>
@@ -448,7 +468,8 @@ export default function PreviewModal({
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
                       placeholder="Explain what needs to be corrected or re-uploaded..."
-                      className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-red-400"
+                      disabled={lockedByOther}
+                      className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-red-400 disabled:opacity-60"
                     />
                   </div>
                   <div className="flex items-center justify-end gap-2">
@@ -466,8 +487,8 @@ export default function PreviewModal({
                     <button
                       type="button"
                       onClick={() => handleReview('rejected')}
-                      disabled={submitting}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl disabled:opacity-50 transition"
+                      disabled={submitting || lockedByOther}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition"
                     >
                       {submitting ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -484,8 +505,8 @@ export default function PreviewModal({
                     <button
                       type="button"
                       onClick={() => setRejecting(true)}
-                      disabled={submitting || document.status === 'rejected'}
-                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl disabled:opacity-50 transition cursor-pointer"
+                      disabled={submitting || lockedByOther || document.status === 'rejected'}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
                     >
                       <XCircle className="w-3.5 h-3.5" />
                       Reject Document
@@ -493,8 +514,8 @@ export default function PreviewModal({
                     <button
                       type="button"
                       onClick={handleApproveClick}
-                      disabled={submitting || document.status === 'approved'}
-                      className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl disabled:opacity-50 transition cursor-pointer"
+                      disabled={submitting || lockedByOther || document.status === 'approved'}
+                      className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
                     >
                       {submitting ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -518,6 +539,6 @@ export default function PreviewModal({
 
       <AppModal modal={modal} onClose={closeModal} />
     </div>,
-    document.body
+    window.document.body
   );
 }

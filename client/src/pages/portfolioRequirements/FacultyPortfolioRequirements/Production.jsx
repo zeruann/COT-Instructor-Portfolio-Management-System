@@ -50,7 +50,7 @@ const REQUIREMENT = {
 // ─────────────────────────────────────────────────────────────
 const WORDS = {
   pageTitle: 'Production',
-  addButton: 'Add Production',
+  addButton: 'Upload Document',
   plural: 'production records',
 };
 

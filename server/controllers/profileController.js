@@ -8,6 +8,7 @@ const { markStaleUsersOffline } = require('../utils/onlineStatus');
 const EDITABLE = [
   'firstName', 'middleName', 'lastName', 'gender', 'civilStatus', 'birthdate',
   'contactNumber', 'alternateEmail', 'address', 'education', 'position', 'rank',
+  'photoUrl',
 ];
 
 const FIELD_LABELS = {
@@ -23,6 +24,7 @@ const FIELD_LABELS = {
   education: 'education',
   position: 'position',
   rank: 'academic rank',
+  photoUrl: 'profile photo',
 };
 
 // GET /api/profile/me
@@ -131,12 +133,23 @@ exports.updateMyProfile = async (req, res) => {
     const changedFields = [];
     const $set = {};
 
+    if (req.body.photoUrl !== undefined && req.body.photoUrl !== null && req.body.photoUrl !== '') {
+      const val = String(req.body.photoUrl);
+      const isValidImage =
+        /^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(val) ||
+        val.startsWith('https://');
+      if (!isValidImage || val.length > 750000) {
+        return res.status(400).json({ message: 'Invalid or oversized profile photo.' });
+      }
+    }
+
     for (const key of EDITABLE) {
       if (req.body[key] !== undefined) {
-        $set[`profile.${key}`] = req.body[key];
+        const value = key === 'photoUrl' && req.body[key] === null ? '' : req.body[key];
+        $set[`profile.${key}`] = value;
 
         const oldVal = JSON.stringify(meBefore.profile?.[key] ?? '');
-        const newVal = JSON.stringify(req.body[key] ?? '');
+        const newVal = JSON.stringify(value ?? '');
         if (oldVal !== newVal) {
           changedFields.push(FIELD_LABELS[key] || key);
         }
@@ -164,7 +177,7 @@ exports.updateMyProfile = async (req, res) => {
       req.user.id,
       { $set },
       { new: true, runValidators: true }
-    ).select('fullName email department profile');
+    ).select('fullName email department profile googlePhotoUrl');
 
     const details =
       changedFields.length > 0

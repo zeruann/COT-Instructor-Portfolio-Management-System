@@ -80,9 +80,8 @@ function SidebarGroup({ item, isOpen, isActive, onToggle, onClose, isChildActive
       <div
         id={panelId}
         aria-hidden={!isOpen}
-        className={`grid transition-all duration-200 ease-out ${
-          isOpen ? 'grid-rows-[1fr] opacity-100 mt-1' : 'grid-rows-[0fr] opacity-0'
-        } ${isCollapsed ? 'grid lg:hidden' : ''}`}
+        className={`grid transition-all duration-200 ease-out ${isOpen ? 'grid-rows-[1fr] opacity-100 mt-1' : 'grid-rows-[0fr] opacity-0'
+          } ${isCollapsed ? 'grid lg:hidden' : ''}`}
       >
         <div className="overflow-hidden">
           <ul className="flex flex-col gap-1 pl-6 py-0.5">

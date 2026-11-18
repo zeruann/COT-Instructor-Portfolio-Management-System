@@ -13,6 +13,7 @@ const driveNaming = require('../utils/driveNaming');
 const { logAudit } = require('../utils/auditLog');
 const { ACTION } = require('../constants/auditActions');
 const { notifyAdmins } = require('../utils/adminNotificationService');
+const { checkLockConflict } = require('../utils/resourceLock');
 
 /**
  * Helper to safely parse stringified JSON (from multipart/form-data)
@@ -377,12 +378,13 @@ exports.uploadDocument = async (req, res) => {
 
 exports.getDocuments = async (req, res) => {
   try {
-    const { requirementKey, instructorId, academicPeriodId, status, classId } = req.query;
+    const { requirementKey, instructorId, ownerId, academicPeriodId, status, classId } = req.query;
 
     const filter = { archivedAt: null };
+    const targetOwnerId = instructorId || ownerId;
     if (req.user.accountType === 'Administrator') {
-      if (instructorId) {
-        filter.ownerId = instructorId;
+      if (targetOwnerId) {
+        filter.ownerId = targetOwnerId;
       }
     } else {
       filter.ownerId = req.user.id;
@@ -521,7 +523,7 @@ exports.reviewDocument = async (req, res) => {
     }
 
     const { id } = req.params;
-    const { decision, comment } = req.body;
+    const { decision, comment, expectedVersion } = req.body;
 
     if (!['approved', 'rejected'].includes(decision)) {
       return res.status(400).json({ message: 'Decision must be "approved" or "rejected".' });
@@ -531,9 +533,23 @@ exports.reviewDocument = async (req, res) => {
       return res.status(400).json({ message: 'A comment is required when rejecting a document.' });
     }
 
+    // Pessimistic lock check: block if another admin currently holds the review lock
+    const lockConflict = await checkLockConflict(`document:${id}`, req.user.id);
+    if (lockConflict) {
+      return res.status(lockConflict.status).json(lockConflict.body);
+    }
+
     const doc = await Document.findById(id);
     if (!doc) {
       return res.status(404).json({ message: 'Document not found.' });
+    }
+
+    // Optimistic lock check: reject stale writes if document was already updated
+    if (expectedVersion !== undefined && expectedVersion !== null && Number(expectedVersion) !== doc.__v) {
+      return res.status(409).json({
+        message: 'This document was just updated by another reviewer. Please refresh and try again.',
+        code: 'VERSION_CONFLICT',
+      });
     }
 
     const targetStatus = decision === 'approved' ? STATUS.APPROVED : STATUS.REJECTED;
@@ -551,6 +567,7 @@ exports.reviewDocument = async (req, res) => {
 
     doc.status = targetStatus;
     doc.reviewedAt = new Date();
+    doc.increment();
     await doc.save();
 
     const reqDef = await Requirement.findOne({ key: doc.requirementKey });
@@ -642,6 +659,12 @@ exports.reviewDocument = async (req, res) => {
       document: doc,
     });
   } catch (err) {
+    if (err?.name === 'VersionError') {
+      return res.status(409).json({
+        message: 'This document was just updated by another reviewer. Please refresh and try again.',
+        code: 'VERSION_CONFLICT',
+      });
+    }
     console.error('Error in reviewDocument:', err);
     return res.status(500).json({ message: err.message || 'Failed to review document.' });
   }

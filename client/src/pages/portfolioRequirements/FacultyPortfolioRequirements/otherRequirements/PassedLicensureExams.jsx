@@ -53,7 +53,7 @@ const REQUIREMENT = {
 // ─────────────────────────────────────────────────────────────
 const WORDS = {
   pageTitle: 'Passed Licensure Examinations',
-  addButton: 'Add Document',
+  addButton: 'Upload Document',
   plural: 'licensure examinations',
 };
 

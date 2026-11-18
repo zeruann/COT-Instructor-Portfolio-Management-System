@@ -33,7 +33,7 @@ function getDisplayNameFromProfile(data) {
   return data.fullName || null;
 }
 
-export default function InstructorSecurity() {
+export default function InstructorSecurity({ embedded = false } = {}) {
   const [userData, setUserData] = useState(null);
   const [imgError, setImgError] = useState(false);
 
@@ -48,9 +48,12 @@ export default function InstructorSecurity() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Load instructor data matching AppLayout / TopBar
+  // Load instructor/admin data matching AppLayout / TopBar
   useEffect(() => {
-    const stored = localStorage.getItem('instructor') || localStorage.getItem('user');
+    const stored =
+      localStorage.getItem('admin') ||
+      localStorage.getItem('instructor') ||
+      localStorage.getItem('user');
     if (stored) {
       try {
         setUserData(JSON.parse(stored));
@@ -135,14 +138,16 @@ export default function InstructorSecurity() {
   return (
     <div className="w-full space-y-6">
       {/* PAGE HEADER */}
-      <div className="mb-6">
-        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
-          Security &amp; Password
-        </h1>
-        <p className="mt-1 text-sm font-medium text-gray-500">
-          Manage your account credentials and security preferences.
-        </p>
-      </div>
+      {!embedded && (
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
+            Security &amp; Password
+          </h1>
+          <p className="mt-1 text-sm font-medium text-gray-500">
+            Manage your account credentials and security preferences.
+          </p>
+        </div>
+      )}
 
       {/* TWO COLUMNS CONTAINER WITH MATCHING HEIGHT */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">

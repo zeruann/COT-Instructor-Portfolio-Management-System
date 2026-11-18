@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ChevronDown, Lock, LogOut, User } from 'lucide-react';
 import useLogout from '../../hooks/useLogout';
 import UserBadge from './UserBadge';
+import AdminAccountModal from '../admin/AdminAccountModal';
 
 const itemBase = 'flex w-full items-center gap-3 px-4 py-2 text-sm text-brand-gray';
 const linkItem = `${itemBase} hover:bg-gray-50 hover:text-brand-purple`;
@@ -11,6 +12,7 @@ const logoutItem = `${itemBase} border-t border-gray-200 hover:bg-red-50 hover:t
 // The profile button in the top bar. Click it to open: My Profile, Security, Logout.
 function ProfileMenu({ role, menu, name, avatarUrl }) {
   const [open, setOpen] = useState(false);
+  const [accountModalMode, setAccountModalMode] = useState(null);
   const wrapperRef = useRef(null);
   const { askToLogout, logoutModal } = useLogout(role);
 
@@ -53,14 +55,45 @@ function ProfileMenu({ role, menu, name, avatarUrl }) {
           role="menu"
           className="absolute right-0 top-full z-50 mt-2 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
         >
-          <Link role="menuitem" to={menu.profilePath} onClick={() => setOpen(false)} className={linkItem}>
-            <User size={18} aria-hidden="true" />
-            My Profile
-          </Link>
-          <Link role="menuitem" to={menu.securityPath} onClick={() => setOpen(false)} className={linkItem}>
-            <Lock size={18} aria-hidden="true" />
-            Security
-          </Link>
+          {role === 'admin' ? (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  setAccountModalMode('profile');
+                }}
+                className={`${linkItem} cursor-pointer`}
+              >
+                <User size={18} aria-hidden="true" />
+                My Profile
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  setAccountModalMode('security');
+                }}
+                className={`${linkItem} cursor-pointer`}
+              >
+                <Lock size={18} aria-hidden="true" />
+                Security
+              </button>
+            </>
+          ) : (
+            <>
+              <Link role="menuitem" to={menu.profilePath} onClick={() => setOpen(false)} className={linkItem}>
+                <User size={18} aria-hidden="true" />
+                My Profile
+              </Link>
+              <Link role="menuitem" to={menu.securityPath} onClick={() => setOpen(false)} className={linkItem}>
+                <Lock size={18} aria-hidden="true" />
+                Security
+              </Link>
+            </>
+          )}
           <button
             type="button"
             role="menuitem"
@@ -77,6 +110,12 @@ function ProfileMenu({ role, menu, name, avatarUrl }) {
       )}
 
       {logoutModal}
+      {role === 'admin' && (
+        <AdminAccountModal
+          mode={accountModalMode}
+          onClose={() => setAccountModalMode(null)}
+        />
+      )}
     </div>
   );
 }

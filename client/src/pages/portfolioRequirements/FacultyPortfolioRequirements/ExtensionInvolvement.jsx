@@ -50,7 +50,7 @@ const REQUIREMENT = {
 // ─────────────────────────────────────────────────────────────
 const WORDS = {
   pageTitle: 'Extension Involvement',
-  addButton: 'Certificates and Supporting Documents for Extension Involvement.',
+  addButton: 'Upload Document',
   plural: 'extension involvement records',
 };
 

@@ -61,14 +61,14 @@ export default function FacultyEvidenceSection({
           </p>
         </div>
 
-        {!isAdmin && onAdd && addLabel && (
+        {!isAdmin && onAdd && (
           <button
             type="button"
             onClick={onAdd}
             className="inline-flex items-center gap-2 self-start sm:self-auto rounded-xl bg-brand-orange px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-xs hover:bg-orange-600 transition cursor-pointer shrink-0"
           >
             <Plus size={16} />
-            <span>{addLabel}</span>
+            <span>Upload Document</span>
           </button>
         )}
       </div>

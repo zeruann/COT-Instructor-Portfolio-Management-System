@@ -348,7 +348,7 @@ export default function ReviewFacultyPortfolio({
       setPdsDoc(null);
       return Promise.resolve();
     }
-    return fetchDocuments({ requirementKey: 'FAC_A_PDS', ownerId: targetId })
+    return fetchDocuments({ requirementKey: 'FAC_A_PDS', instructorId: targetId })
       .then((docs) => {
         setPdsDoc(Array.isArray(docs) ? docs[0] || null : null);
       })
@@ -366,7 +366,7 @@ export default function ReviewFacultyPortfolio({
           if (isCurrent) setSummariesById((prev) => ({ ...prev, [instructorId]: sum || {} }));
         })
         .catch((err) => console.error('Failed to load portfolio summaries:', err));
-      fetchDocuments({ requirementKey: 'FAC_A_PDS', ownerId: instructorId })
+      fetchDocuments({ requirementKey: 'FAC_A_PDS', instructorId })
         .then((docs) => {
           if (isCurrent) setPdsDoc(Array.isArray(docs) ? docs[0] || null : null);
         })
