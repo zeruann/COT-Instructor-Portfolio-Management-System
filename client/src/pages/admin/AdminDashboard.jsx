@@ -105,7 +105,7 @@ function AdminDashboard() {
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-50 text-brand-purple"><BriefcaseBusiness size={23} /></span>
-            <div className="min-w-0"><h1 className="text-2xl font-semibold leading-8 text-gray-900 sm:text-3xl">Welcome, {getDisplayName(admin).split(' ')[0]}</h1><p className="mt-1 text-sm text-gray-600">Instructor accounts and portfolio reviews</p></div>
+            <div className="min-w-0"><h1 className="text-xl font-bold text-brand-purple sm:text-2xl">Welcome, {getDisplayName(admin).split(' ')[0]}</h1><p className="mt-1 text-sm font-medium text-gray-500">Instructor accounts and portfolio reviews</p></div>
           </div>
           <button type="button" onClick={loadDashboard} aria-label="Refresh dashboard" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"><RefreshCw size={17} /></button>
         </div>
@@ -134,26 +134,26 @@ function AdminDashboard() {
           <div className="mt-auto flex flex-wrap gap-x-5 gap-y-2 border-t border-gray-100 px-4 py-3 text-xs text-gray-500"><span className="inline-flex items-center gap-1"><UserRoundCheck size={14} className="text-[#5cab5f]" />{counts.activeInstructors} active</span><span className="inline-flex items-center gap-1"><UserRoundPlus size={14} className="text-amber-600" />{counts.pendingInstructors} pending</span><span className="inline-flex items-center gap-1"><BookOpen size={14} className="text-brand-purple" />{classes.length} classes</span></div>
         </section>
 
-          <section className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white">
-            <div className="flex items-center justify-between border-b border-gray-200 p-4"><div className="flex items-center gap-3"><span className="rounded-lg bg-orange-50 p-2 text-brand-orange"><ClipboardCheck size={18} /></span><div><h2 className="text-lg font-semibold text-indigo-900">Action center</h2><p className="mt-1 text-sm text-gray-500">Items worth a closer look</p></div></div><span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">{counts.pendingDocuments + counts.pendingInstructors}</span></div>
-            <div className="flex flex-1 flex-col space-y-3 p-5">
-              <button type="button" onClick={() => navigate('/admin/review/faculty-portfolio')} className="flex w-full items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/60 p-3 text-left hover:bg-amber-50"><span className="mt-0.5 text-amber-700"><FileClock size={18} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-800">Portfolio documents to review</span><span className="mt-0.5 block text-xs text-gray-600">{counts.pendingDocuments} submission{counts.pendingDocuments === 1 ? '' : 's'} awaiting an administrator decision.</span></span><ArrowRight size={16} className="mt-1 shrink-0 text-amber-700" /></button>
-              <button type="button" onClick={() => navigate('/admin/instructors')} className="flex w-full items-start gap-3 rounded-xl border border-gray-200 p-3 text-left hover:bg-gray-50"><span className="mt-0.5 text-brand-purple"><UserRoundPlus size={18} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-800">Instructor accounts</span><span className="mt-0.5 block text-xs text-gray-600">{counts.pendingInstructors} account{counts.pendingInstructors === 1 ? '' : 's'} pending setup or review.</span></span><ArrowRight size={16} className="mt-1 shrink-0 text-gray-400" /></button>
-              <button type="button" onClick={() => navigate('/admin/review/class-portfolio')} className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-semibold text-brand-purple hover:underline">Review class portfolios <ArrowRight size={15} /></button>
-            </div>
-          </section>
+        <section className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white">
+          <div className="flex items-center justify-between border-b border-gray-200 p-4"><div className="flex items-center gap-3"><span className="rounded-lg bg-orange-50 p-2 text-brand-orange"><ClipboardCheck size={18} /></span><div><h2 className="text-lg font-semibold text-indigo-900">Action center</h2><p className="mt-1 text-sm text-gray-500">Items worth a closer look</p></div></div><span className="rounded-full bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-700">{counts.pendingDocuments + counts.pendingInstructors}</span></div>
+          <div className="flex flex-1 flex-col space-y-3 p-5">
+            <button type="button" onClick={() => navigate('/admin/review/faculty-portfolio')} className="flex w-full items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/60 p-3 text-left hover:bg-amber-50"><span className="mt-0.5 text-amber-700"><FileClock size={18} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-800">Portfolio documents to review</span><span className="mt-0.5 block text-xs text-gray-600">{counts.pendingDocuments} submission{counts.pendingDocuments === 1 ? '' : 's'} awaiting an administrator decision.</span></span><ArrowRight size={16} className="mt-1 shrink-0 text-amber-700" /></button>
+            <button type="button" onClick={() => navigate('/admin/instructors')} className="flex w-full items-start gap-3 rounded-xl border border-gray-200 p-3 text-left hover:bg-gray-50"><span className="mt-0.5 text-brand-purple"><UserRoundPlus size={18} /></span><span className="min-w-0 flex-1"><span className="block text-sm font-semibold text-gray-800">Instructor accounts</span><span className="mt-0.5 block text-xs text-gray-600">{counts.pendingInstructors} account{counts.pendingInstructors === 1 ? '' : 's'} pending setup or review.</span></span><ArrowRight size={16} className="mt-1 shrink-0 text-gray-400" /></button>
+            <button type="button" onClick={() => navigate('/admin/review/class-portfolio')} className="mt-auto inline-flex items-center gap-1 pt-4 text-sm font-semibold text-brand-purple hover:underline">Review class portfolios <ArrowRight size={15} /></button>
+          </div>
+        </section>
 
-          <section className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white">
-            <div className="flex items-center gap-3 border-b border-gray-200 p-4"><span className="rounded-lg bg-orange-50 p-2 text-brand-orange"><RefreshCw size={18} /></span><div><h2 className="text-lg font-semibold text-indigo-900">Recent updates</h2><p className="mt-1 text-sm text-gray-500">Latest administrator notifications</p></div></div>
-            <div className="flex-1 divide-y divide-gray-100">
-              {notifications.length === 0 ? <p className="p-4 text-sm text-gray-500">No recent notifications.</p> : notifications.slice(0, 3).map((item, index) => {
-                const approved = item.type === 'approved' || item.type === 'document_approved';
-                const updated = item.type === 'resubmission' || item.type === 'document_rejected';
-                return <button type="button" key={item._id || item.id || index} onClick={() => item.actionLink ? navigate(item.actionLink) : navigate('/admin/notifications')} className="flex w-full items-start gap-3 p-4 text-left hover:bg-gray-50"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${approved ? 'bg-emerald-100 text-emerald-700' : updated ? 'bg-orange-100 text-orange-600' : 'bg-purple-100 text-purple-600'}`}>{approved ? <Check size={17} /> : updated ? <RefreshCw size={16} /> : <Info size={17} />}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-gray-800">{item.title || 'Notification'}</span><span className="mt-1 block line-clamp-2 text-xs text-gray-600">{item.message || ''}</span><span className="mt-1 block text-[11px] text-gray-400">{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</span></span></button>;
-              })}
-            </div>
-            <div className="mt-auto border-t border-gray-100 p-4"><button type="button" onClick={() => navigate('/admin/notifications')} className="text-sm font-semibold text-brand-purple hover:underline">See all notifications</button></div>
-          </section>
+        <section className="flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-gray-200/80 bg-white">
+          <div className="flex items-center gap-3 border-b border-gray-200 p-4"><span className="rounded-lg bg-orange-50 p-2 text-brand-orange"><RefreshCw size={18} /></span><div><h2 className="text-lg font-semibold text-indigo-900">Recent updates</h2><p className="mt-1 text-sm text-gray-500">Latest administrator notifications</p></div></div>
+          <div className="flex-1 divide-y divide-gray-100">
+            {notifications.length === 0 ? <p className="p-4 text-sm text-gray-500">No recent notifications.</p> : notifications.slice(0, 3).map((item, index) => {
+              const approved = item.type === 'approved' || item.type === 'document_approved';
+              const updated = item.type === 'resubmission' || item.type === 'document_rejected';
+              return <button type="button" key={item._id || item.id || index} onClick={() => item.actionLink ? navigate(item.actionLink) : navigate('/admin/notifications')} className="flex w-full items-start gap-3 p-4 text-left hover:bg-gray-50"><span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${approved ? 'bg-emerald-100 text-emerald-700' : updated ? 'bg-orange-100 text-orange-600' : 'bg-purple-100 text-purple-600'}`}>{approved ? <Check size={17} /> : updated ? <RefreshCw size={16} /> : <Info size={17} />}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-gray-800">{item.title || 'Notification'}</span><span className="mt-1 block line-clamp-2 text-xs text-gray-600">{item.message || ''}</span><span className="mt-1 block text-[11px] text-gray-400">{item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''}</span></span></button>;
+            })}
+          </div>
+          <div className="mt-auto border-t border-gray-100 p-4"><button type="button" onClick={() => navigate('/admin/notifications')} className="text-sm font-semibold text-brand-purple hover:underline">See all notifications</button></div>
+        </section>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import PreviewModal from '../../../components/documentActions/PreviewModal';
 import SharedRequirementHeader from '../../../components/portfolio/SharedRequirementHeader';
 import ComplianceCard from '../../../components/portfolio/ComplianceCard';
 import CompletionStatusCard from '../../../components/portfolio/CompletionStatusCard';
+import FacultyEvidenceSection from '../../../components/portfolio/FacultyEvidenceSection';
 import { fetchDocuments, deleteDocument } from '../../../api/documents';
 
 import './requirementStyle.css';
@@ -235,8 +236,6 @@ function Research() {
     <div className="space-y-5">
       <SharedRequirementHeader
         title={WORDS.pageTitle}
-        onAddClick={isAdmin ? null : () => openModal(null)}
-        addLabel={isAdmin ? null : WORDS.addButton}
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
@@ -244,156 +243,18 @@ function Research() {
         <CompletionStatusCard percent={percent} message={completionMessage} className="col-span-1" />
       </div>
 
-      <section className="doc-table-card" aria-label={WORDS.pageTitle}>
-        {/* SCROLL: the wrapper scrolls sideways; the table keeps a minimum
-            width so columns never squeeze. Raise minWidth if still too tight. */}
-        <div className="doc-table-scroll" style={{ overflowX: 'auto' }}>
-          <table
-            className="doc-table doc-table--entries"
-            style={{ tableLayout: 'auto', width: '100%', minWidth: '1100px' }}
-          >
-            <thead>
-              <tr>
-                {/* ► CHANGE 4: TABLE HEADINGS
-                    One <th> per column. Same order as the cells below.
-                    To remove a column: delete its <th> here AND its <td> below,
-                    then lower the colSpan numbers (search "colSpan"). */}
-                <th scope="col" className="whitespace-nowrap">Title</th>
-                <th scope="col" className="whitespace-nowrap">Date</th>
-                <th scope="col" className="whitespace-nowrap">Attached Evidence</th>
-
-                {/* Keep these two on every list page */}
-                <th scope="col" className="doc-table__status whitespace-nowrap">Status</th>
-                <th scope="col" className="whitespace-nowrap">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {/* colSpan = number of headings above (5 here) */}
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="doc-table__empty">Loading...</td>
-                </tr>
-              ) : records.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="doc-table__empty">
-                    No {WORDS.plural} yet. Click "{WORDS.addButton}" to add one.
-                  </td>
-                </tr>
-              ) : (
-                records.map((doc) => {
-                  const actions = getRowActions(doc.status);
-                  const title = doc.meta?.title || '—';
-
-                  return (
-                    <tr key={doc._id}>
-
-                      {/* ► CHANGE 5: TABLE CELLS
-                          One <td> per heading, SAME ORDER.
-                          doc.meta.<name> must match a "name" in REQUIREMENT.metaFields.
-                          Use formatDate(...) for dates -> "Mar 15, 2024". */}
-
-                      {/* Title + type (small gray line under the title) */}
-                      <td className="whitespace-nowrap">
-                        <div className="doc-table__type">
-                          <svg {...iconProps} className="doc-table__icon" width="26" height="26" strokeWidth="1.6">
-                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                            <path d="M14 3v5h5M9 13h6M9 17h6" />
-                          </svg>
-                          <div>
-                            <span className="doc-table__name">{title}</span>
-                            <p className="text-[13px] text-gray-400">{doc.meta?.type}</p>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="whitespace-nowrap">{formatDate(doc.meta?.date)}</td>
-
-                      {/* Current file name + version tag (full name, never cut off) */}
-                      <td className="whitespace-nowrap">
-                        <span
-                          className="doc-table__evidence"
-                          title={getCurrentFileName(doc)}
-                          style={{ display: 'inline', maxWidth: 'none', overflow: 'visible', textOverflow: 'clip', whiteSpace: 'nowrap' }}
-                        >
-                          {getCurrentFileName(doc)}
-                        </span>
-                        {doc.currentVersion > 1 && <span className="doc-table__hint"> v{doc.currentVersion}</span>}
-                      </td>
-
-                      {/* Keep these two on every list page ------------------- */}
-                      <td className="doc-table__status whitespace-nowrap">
-                        <span className={`doc-status doc-status--${STATUS_STYLE[doc.status] || 'pending'}`}>
-                          {STATUS_LABEL[doc.status] || doc.status}
-                        </span>
-                      </td>
-
-                      <td className="whitespace-nowrap">
-                        {isAdmin ? (
-                          doc.status === 'approved' || doc.status === 'rejected' ? (
-                            <span className="doc-badge--reviewed">
-                              <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                              Reviewed
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              className="doc-btn doc-btn--review"
-                              disabled={!doc}
-                              title="Review document"
-                              onClick={() => handleView(doc)}
-                            >
-                              <CheckSquare className="w-4 h-4" />
-                              Review
-                            </button>
-                          )
-                        ) : (
-                          <div className="doc-icon-actions">
-                            <IconButton
-                              variant="view"
-                              label={`View ${title}`}
-                              title="View"
-                              disabled={actions.view.disabled}
-                              onClick={() => handleView(doc)}
-                            >
-                              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-                              <circle cx="12" cy="12" r="3" />
-                            </IconButton>
-
-                            <IconButton
-                              variant="replace"
-                              label={`Reupload ${title}`}
-                              title="Reupload"
-                              disabled={actions.replace.disabled}
-                              onClick={() => openModal(doc)}
-                            >
-                              <path d="M21 12a9 9 0 1 1-3-6.7" />
-                              <path d="M21 4v5h-5" />
-                            </IconButton>
-
-                            <IconButton
-                              variant="delete"
-                              label={`Delete ${title}`}
-                              title={actions.remove.disabled ? actions.remove.tip : 'Delete'}
-                              disabled={actions.remove.disabled}
-                              onClick={() => handleDelete(doc)}
-                            >
-                              <path d="M3 6h18" />
-                              <path d="M8 6V4h8v2" />
-                              <path d="M19 6l-1 14H6L5 6" />
-                              <path d="M10 11v6M14 11v6" />
-                            </IconButton>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <FacultyEvidenceSection
+        records={records}
+        loading={loading}
+        isAdmin={isAdmin}
+        addLabel={WORDS.addButton}
+        onAdd={() => openModal(null)}
+        onView={handleView}
+        onReplace={(doc) => openModal(doc)}
+        onDelete={handleDelete}
+        emptyTitle={`No ${WORDS.plural} yet`}
+        emptyHint={`Click "${WORDS.addButton}" above to add your first entry.`}
+      />
 
       {/* Upload popup: Add / Edit / Replace. Uses REQUIREMENT from CHANGE 1 */}
 

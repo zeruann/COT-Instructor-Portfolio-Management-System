@@ -11,6 +11,8 @@ import {
   ChevronRight,
   Loader2,
   Folder,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import { fetchClasses } from '../../api/classes';
 import { API_BASE } from '../../api/config';
@@ -30,6 +32,7 @@ export default function ReviewClassPortfolio() {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [viewBy, setViewBy] = useState('all');
+  const [displayMode, setDisplayMode] = useState('grid'); // 'grid' | 'table'
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
 
@@ -197,10 +200,10 @@ export default function ReviewClassPortfolio() {
               <ArrowLeft size={16} />
             </button>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-[#2e2a72] tracking-tight">
+              <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
                 {instName}&apos;s Class Portfolios
               </h1>
-              <p className="text-xs sm:text-sm text-gray-500">{dept} · Select a class to review documents</p>
+              <p className="mt-1 text-sm font-medium text-gray-500">{dept} · Select a class to review documents</p>
             </div>
           </div>
         </div>
@@ -348,9 +351,39 @@ export default function ReviewClassPortfolio() {
           </select>
           <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
+
+        {/* Cards vs Table Switcher */}
+        <div className="flex items-center shrink-0 rounded-xl border border-gray-200 bg-white p-1 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setDisplayMode('grid')}
+            title="Grid view"
+            aria-label="Grid view"
+            className={`rounded-lg p-2 transition cursor-pointer ${
+              displayMode === 'grid'
+                ? 'bg-orange-500 text-white shadow-xs'
+                : 'text-gray-400 hover:text-gray-700'
+            }`}
+          >
+            <LayoutGrid size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setDisplayMode('table')}
+            title="Table view"
+            aria-label="Table view"
+            className={`rounded-lg p-2 transition cursor-pointer ${
+              displayMode === 'table'
+                ? 'bg-orange-500 text-white shadow-xs'
+                : 'text-gray-400 hover:text-gray-700'
+            }`}
+          >
+            <List size={18} />
+          </button>
+        </div>
       </div>
 
-      {/* Cards Grid */}
+      {/* Cards Grid or Table View */}
       {loadingInstructors ? (
         <div className={instructorGridClass}>
           {[...Array(6)].map((_, i) => (
@@ -388,6 +421,116 @@ export default function ReviewClassPortfolio() {
               Reset Filters
             </button>
           )}
+        </div>
+      ) : displayMode === 'table' ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-2xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100 text-xs font-bold uppercase tracking-wider text-gray-600">
+                  <th className="pb-3 pr-4 pl-2">LOG ID</th>
+                  <th className="pb-3 px-4">INSTRUCTOR</th>
+                  <th className="pb-3 px-4">DEPARTMENT</th>
+                  <th className="pb-3 px-4">CLASSES</th>
+                  <th className="pb-3 pl-4 pr-2 text-right">ACTION</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm">
+                {paginatedInstructors.map((inst) => {
+                  const id = inst._id || inst.id;
+                  const name = getDisplayName(inst) || 'Instructor';
+                  const email = inst.email || '';
+                  const department = inst.department || 'IT Department';
+                  const photoUrl = inst.profile?.photoUrl || inst.googlePhotoUrl;
+                  const classCount = classCounts[String(id)];
+                  const displayId =
+                    inst.instructorId || inst.employeeId || String(id).slice(-8).toUpperCase();
+
+                  return (
+                    <tr
+                      key={id}
+                      onClick={() => selectInstructor(inst)}
+                      className="group cursor-pointer hover:bg-gray-50/70 transition-colors duration-150"
+                    >
+                      {/* LOG ID / INSTRUCTOR ID */}
+                      <td className="py-4 pr-4 pl-2 text-[14px] font-medium text-gray-700 whitespace-nowrap">
+                        {displayId}
+                      </td>
+
+                      {/* INSTRUCTOR (Avatar + Name + Email) */}
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0 overflow-hidden border border-orange-100">
+                            {photoUrl ? (
+                              <img
+                                src={photoUrl}
+                                alt={name}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover rounded-full"
+                              />
+                            ) : (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="#fb923c"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="h-5 w-5"
+                                aria-hidden="true"
+                              >
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[16px] font-semibold text-gray-800 leading-tight group-hover:text-brand-orange transition-colors truncate">
+                              {name}
+                            </p>
+                            <p className="text-[14px] text-gray-400 leading-tight truncate mt-0.5">
+                              {email}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* DEPARTMENT */}
+                      <td className="py-4 px-4 text-gray-500 text-[14px] whitespace-nowrap">
+                        {department || '—'}
+                      </td>
+
+                      {/* ACTIVE CLASSES */}
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5 rounded-md bg-orange-50 px-2.5 py-1 text-xs font-semibold text-brand-orange">
+                          <BookOpen size={13} />
+                          {loadingClassCounts
+                            ? '…'
+                            : `${classCount || 0} ${classCount === 1 ? 'class' : 'classes'}`}
+                        </span>
+                      </td>
+
+                      {/* ACTION */}
+                      <td className="py-4 pl-4 pr-2 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            selectInstructor(inst);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-orange text-white text-xs font-bold uppercase tracking-wider shadow-2xs hover:bg-orange-600 transition cursor-pointer"
+                        >
+                          <span>View Classes</span>
+                          <ChevronRight size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className={instructorGridClass}>

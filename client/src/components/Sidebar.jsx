@@ -76,27 +76,36 @@ function SidebarGroup({ item, isOpen, isActive, onToggle, onClose, isChildActive
         />
       </button>
 
-      {/* Normal expanded dropdown */}
-      {isOpen && (
-        <ul id={panelId} className={`mt-1 flex flex-col gap-1 pl-6 ${isCollapsed ? 'flex lg:hidden' : ''}`}>
-          {children.map((child) => (
-            <li key={child.to}>
-              <NavLink
-                to={child.to}
-                onClick={onClose}
-                end
-                className={({ isActive: childIsActive }) =>
-                  childLinkClass({
-                    isActive: childIsActive || isChildActive(child.to),
-                  })
-                }
-              >
-                {child.label}
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Normal expanded dropdown with smooth transition */}
+      <div
+        id={panelId}
+        aria-hidden={!isOpen}
+        className={`grid transition-all duration-200 ease-out ${
+          isOpen ? 'grid-rows-[1fr] opacity-100 mt-1' : 'grid-rows-[0fr] opacity-0'
+        } ${isCollapsed ? 'grid lg:hidden' : ''}`}
+      >
+        <div className="overflow-hidden">
+          <ul className="flex flex-col gap-1 pl-6 py-0.5">
+            {children.map((child) => (
+              <li key={child.to}>
+                <NavLink
+                  to={child.to}
+                  onClick={onClose}
+                  tabIndex={isOpen ? undefined : -1}
+                  end
+                  className={({ isActive: childIsActive }) =>
+                    childLinkClass({
+                      isActive: childIsActive || isChildActive(child.to),
+                    })
+                  }
+                >
+                  {child.label}
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
 
       {/* Flyout dropdown when sidebar is collapsed on desktop */}
       {isCollapsed && (

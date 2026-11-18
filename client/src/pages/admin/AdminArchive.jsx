@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
+import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 import {
   Archive,
   CalendarDays,
@@ -155,6 +157,7 @@ export default function AdminArchive() {
     onConfirm: null,
     loading: false,
   });
+  const confirmAnim = useAnimatedModal(confirmModal.isOpen);
 
   // Feedback toast
   const [toast, setToast] = useState(null);
@@ -461,8 +464,8 @@ export default function AdminArchive() {
         <div className="fixed top-6 right-6 z-50 animate-in fade-in slide-in-from-top-4 duration-200">
           <div
             className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold ${toast.type === 'error'
-                ? 'bg-red-50 text-red-800 border-red-200'
-                : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              ? 'bg-red-50 text-red-800 border-red-200'
+              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
               }`}
           >
             {toast.type === 'error' ? (
@@ -485,14 +488,14 @@ export default function AdminArchive() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
+            <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
               System Archive &amp; Records
             </h1>
-            <span className="rounded-lg bg-purple-50 border border-purple-200/80 px-2.5 py-0.5 text-xs font-bold text-brand-purple">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200">
               Read-Only
             </span>
           </div>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="mt-1 text-sm font-medium text-gray-500">
             Preserved historical academic periods, completed course portfolios, and faculty compliance records.
           </p>
         </div>
@@ -607,16 +610,16 @@ export default function AdminArchive() {
           type="button"
           onClick={() => setActiveTab('classes')}
           className={`flex items-center gap-2 py-3 px-4 border-b-2 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer ${activeTab === 'classes'
-              ? 'border-brand-orange text-brand-orange'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ? 'border-brand-orange text-brand-orange'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
         >
           <BookOpen size={16} />
           <span>Archived Classes</span>
           <span
             className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${activeTab === 'classes'
-                ? 'bg-orange-100 text-brand-orange'
-                : 'bg-gray-100 text-gray-600'
+              ? 'bg-orange-100 text-brand-orange'
+              : 'bg-gray-100 text-gray-600'
               }`}
           >
             {filteredClasses.length}
@@ -627,16 +630,16 @@ export default function AdminArchive() {
           type="button"
           onClick={() => setActiveTab('faculty')}
           className={`flex items-center gap-2 py-3 px-4 border-b-2 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer ${activeTab === 'faculty'
-              ? 'border-brand-orange text-brand-orange'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ? 'border-brand-orange text-brand-orange'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
         >
           <Layers size={16} />
           <span>Faculty Portfolios</span>
           <span
             className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${activeTab === 'faculty'
-                ? 'bg-orange-100 text-brand-orange'
-                : 'bg-gray-100 text-gray-600'
+              ? 'bg-orange-100 text-brand-orange'
+              : 'bg-gray-100 text-gray-600'
               }`}
           >
             {filteredFaculty.length}
@@ -647,16 +650,16 @@ export default function AdminArchive() {
           type="button"
           onClick={() => setActiveTab('periods')}
           className={`flex items-center gap-2 py-3 px-4 border-b-2 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer ${activeTab === 'periods'
-              ? 'border-brand-orange text-brand-orange'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ? 'border-brand-orange text-brand-orange'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
         >
           <CalendarDays size={16} />
           <span>Academic Periods</span>
           <span
             className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${activeTab === 'periods'
-                ? 'bg-orange-100 text-brand-orange'
-                : 'bg-gray-100 text-gray-600'
+              ? 'bg-orange-100 text-brand-orange'
+              : 'bg-gray-100 text-gray-600'
               }`}
           >
             {filteredPeriods.length}
@@ -667,16 +670,16 @@ export default function AdminArchive() {
           type="button"
           onClick={() => setActiveTab('instructors')}
           className={`flex items-center gap-2 py-3 px-4 border-b-2 font-semibold text-xs sm:text-sm whitespace-nowrap transition-all cursor-pointer ${activeTab === 'instructors'
-              ? 'border-brand-orange text-brand-orange'
-              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            ? 'border-brand-orange text-brand-orange'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
         >
           <Users size={16} />
           <span>Inactive Faculty</span>
           <span
             className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${activeTab === 'instructors'
-                ? 'bg-orange-100 text-brand-orange'
-                : 'bg-gray-100 text-gray-600'
+              ? 'bg-orange-100 text-brand-orange'
+              : 'bg-gray-100 text-gray-600'
               }`}
           >
             {filteredInactiveFaculty.length}
@@ -1175,26 +1178,34 @@ export default function AdminArchive() {
       )}
 
       {/* ── REUSABLE CONFIRMATION MODAL ── */}
-      {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs transition-all">
-          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-100 text-center space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-brand-orange border border-orange-100 shadow-2xs">
-              <RotateCcw size={26} />
+      {confirmAnim.rendered && createPortal(
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className={`absolute inset-0 bg-gray-900/40 ${confirmAnim.backdropAnim}`}
+            onClick={() => !confirmModal.loading && setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+          />
+          <div className={`relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ring-amber-100 p-6 ${confirmAnim.panelAnim}`}>
+            <div className="absolute inset-x-6 top-0 h-1 rounded-full bg-amber-500" />
+
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-amber-50 text-amber-500">
+              <RotateCcw size={24} strokeWidth={2} />
             </div>
 
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">{confirmModal.title}</h3>
-              <p className="mt-1.5 text-xs text-gray-500 leading-relaxed">
-                {confirmModal.message}
-              </p>
-            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1.5">{confirmModal.title}</h3>
+            <p className="text-sm leading-relaxed text-gray-500 mb-6">
+              {confirmModal.message}
+            </p>
 
-            <div className="flex items-center gap-2.5 pt-2">
+            <div className="flex gap-2.5">
               <button
                 type="button"
                 onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
                 disabled={confirmModal.loading}
-                className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold transition cursor-pointer"
+                className="flex-1 rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1202,7 +1213,7 @@ export default function AdminArchive() {
                 type="button"
                 onClick={confirmModal.onConfirm}
                 disabled={confirmModal.loading}
-                className={`flex-1 py-2.5 px-4 rounded-xl text-white text-xs font-semibold shadow-xs transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 ${confirmModal.confirmColor}`}
+                className={`flex-1 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60 ${confirmModal.confirmColor}`}
               >
                 {confirmModal.loading ? (
                   <>
@@ -1210,15 +1221,13 @@ export default function AdminArchive() {
                     <span>Processing…</span>
                   </>
                 ) : (
-                  <>
-                    <Check size={14} />
-                    <span>{confirmModal.confirmText}</span>
-                  </>
+                  <span>{confirmModal.confirmText}</span>
                 )}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

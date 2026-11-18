@@ -15,10 +15,10 @@ import { fetchClassById } from '../../api/classes';
 import { CLASS_REQUIREMENT_CARDS } from '../instructors/ViewClassPortfolio';
 
 const statusStyles = {
-  completed: { label: 'Completed', className: 'bg-[#dcefd6] text-[#5d9a54]' },
-  review: { label: 'For review', className: 'bg-amber-100 text-amber-700' },
-  rejected: { label: 'Needs revision', className: 'bg-red-100 text-red-600' },
-  empty: { label: 'No documents', className: 'bg-gray-200 text-gray-500' },
+  completed: { label: 'Completed', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  review: { label: 'For review', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  rejected: { label: 'Needs revision', className: 'bg-red-50 text-red-700 border-red-200' },
+  empty: { label: 'No documents', className: 'bg-gray-50 text-gray-600 border-gray-200' },
 };
 
 function RequirementCard({ card, basePath, summary = {}, onSelectRequirement, compact = false }) {
@@ -45,9 +45,8 @@ function RequirementCard({ card, basePath, summary = {}, onSelectRequirement, co
 
   return (
     <div
-      className={`relative flex h-full min-w-0 flex-col rounded-xl bg-[#f5f5f5] ${
-        compact ? 'px-4 pt-4 pb-3.5 min-h-[165px]' : 'px-4 pt-5 pb-4 sm:px-5 sm:pt-6 sm:pb-5 min-h-[220px]'
-      }`}
+      className={`relative flex h-full min-w-0 flex-col rounded-xl bg-[#f5f5f5] ${compact ? 'px-4 pt-4 pb-3.5 min-h-[165px]' : 'px-4 pt-5 pb-4 sm:px-5 sm:pt-6 sm:pb-5 min-h-[220px]'
+        }`}
     >
       <div className="flex items-start justify-between gap-2">
         {onSelectRequirement ? (
@@ -126,7 +125,7 @@ function RequirementCard({ card, basePath, summary = {}, onSelectRequirement, co
       )}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 pt-2">
-        <span className={`whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold ${status.className}`}>
+        <span className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium border ${status.className}`}>
           {status.label}
         </span>
         <div className="flex items-center gap-3 text-xs text-gray-400">
@@ -236,10 +235,10 @@ export default function AdminViewClassPortfolio({
               <ArrowLeft size={16} />
             </Link>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-[#2e2a72] tracking-tight">
+              <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
                 {headingTitle}
               </h1>
-              <p className="mt-0.5 text-xs sm:text-sm font-medium text-gray-500">
+              <p className="mt-1 text-sm font-medium text-gray-500">
                 {headingSubtitle}
               </p>
             </div>
@@ -340,8 +339,8 @@ export default function AdminViewClassPortfolio({
               type="button"
               onClick={() => setViewMode('grid')}
               className={`flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer ${viewMode === 'grid'
-                  ? 'bg-brand-purple/10 text-brand-purple'
-                  : 'text-gray-400 hover:text-gray-700'
+                ? 'bg-brand-purple/10 text-brand-purple'
+                : 'text-gray-400 hover:text-gray-700'
                 }`}
               title="Grid View"
             >
@@ -351,8 +350,8 @@ export default function AdminViewClassPortfolio({
               type="button"
               onClick={() => setViewMode('list')}
               className={`flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer ${viewMode === 'list'
-                  ? 'bg-brand-purple/10 text-brand-purple'
-                  : 'text-gray-400 hover:text-gray-700'
+                ? 'bg-brand-purple/10 text-brand-purple'
+                : 'text-gray-400 hover:text-gray-700'
                 }`}
               title="List View"
             >

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../Sidebar';
 import TopBar from './TopBar';
 import Breadcrumb from './Breadcrumb';
@@ -43,6 +43,7 @@ function readStoredUser(role) {
 
 // The frame around every signed-in page: sidebar, top bar, breadcrumb, and the page itself.
 function AppLayout({ role }) {
+  const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false); // the sidebar on phones and tablets
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem('sidebar_collapsed') === 'true';
@@ -157,7 +158,9 @@ function AppLayout({ role }) {
         />
         <Breadcrumb role={role} />
         <main className="flex-1 overflow-y-auto p-5">
-          <Outlet />
+          <div key={pathname} className="motion-safe:animate-page-fade-in">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

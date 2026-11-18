@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { LogIn } from "lucide-react";
 
 const NAV_LINKS = [
@@ -11,10 +11,11 @@ const NAV_LINKS = [
 const GRADIENT = "linear-gradient(140deg, #423ca6 0%, #575488 48%, #7f8bf3 100%)";
 
 function AuthLayout({ children }) {
+  const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col overflow-x-hidden font-sans bg-[#f6f5fb]">
+    <div key={pathname} className="relative min-h-screen w-full flex flex-col overflow-x-hidden font-sans bg-[#f6f5fb] motion-safe:animate-page-fade-in">
       {/* Mobile: compact purple hero backdrop */}
       <div
         className="lg:hidden absolute top-0 inset-x-0 h-[430px] sm:h-[470px] overflow-hidden pointer-events-none z-0"

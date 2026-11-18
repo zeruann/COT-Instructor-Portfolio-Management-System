@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useAnimatedModal } from "../../hooks/useAnimatedModal";
 import {
   Mail,
   ShieldCheck,
@@ -242,6 +244,7 @@ export default function AdminSettings() {
   // Restore to Default Modal State
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [restoringDefaults, setRestoringDefaults] = useState(false);
+  const restoreAnim = useAnimatedModal(showRestoreModal);
 
   // Custom API Save, Test Connection & OTP Modal State
   const [showCustomSaveModal, setShowCustomSaveModal] = useState(false);
@@ -344,6 +347,15 @@ export default function AdminSettings() {
       if (res.data?.customCredentials) {
         setCustomCredentials(res.data.customCredentials);
         setInitialCustomCredentials(res.data.customCredentials);
+        setUnmaskedCustomCredentials((prev) => {
+          const next = { ...prev };
+          Object.keys(res.data.customCredentials).forEach((k) => {
+            if (!res.data.customCredentials[k]) {
+              delete next[k];
+            }
+          });
+          return next;
+        });
       }
       if (res.data?.defaultCredentials) {
         setDefaultCredentials(res.data.defaultCredentials);
@@ -763,6 +775,14 @@ export default function AdminSettings() {
     });
 
     if (target === "custom") {
+      const isClearingAll = group.fields.every(
+        (f) => String(payload[f.key] ?? "").trim() === ""
+      );
+      if (isClearingAll) {
+        commitSaveGroup(group, target, payload);
+        return;
+      }
+
       // Trigger modal: automatically test connection, then on success send OTP & show OTP form
       setPendingCustomSave({ group, target, payload });
       setCustomSaveStage("testing");
@@ -775,8 +795,6 @@ export default function AdminSettings() {
       runCustomConnectionTest(group, payload);
       return;
     }
-
-    commitSaveGroup(group, target, payload);
 
     commitSaveGroup(group, target, payload);
   };
@@ -803,6 +821,20 @@ export default function AdminSettings() {
           message: `${target === "custom" ? "Custom" : "Default"} ${group.title} credentials saved successfully!`,
         },
       }));
+
+      if (
+        target === "custom" &&
+        group.fields.every((f) => String(payload[f.key] ?? "").trim() === "")
+      ) {
+        setApiModes((prev) => ({ ...prev, [groupKey]: "default" }));
+        setRevealedFields((prev) => {
+          const next = { ...prev };
+          group.fields.forEach((f) => {
+            delete next[`custom_${f.key}`];
+          });
+          return next;
+        });
+      }
 
       await fetchSettings({ silent: true });
       setEditingGroup(null);
@@ -865,10 +897,10 @@ export default function AdminSettings() {
         {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-gray-200 pb-4">
           <div>
-            <h1 className="text-2xl font-bold text-brand-purple tracking-tight">
+            <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
               API &amp; Integration Settings
             </h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="mt-1 text-sm font-medium text-gray-500">
               Configure institutional API credentials or use the built-in system defaults.
             </p>
           </div>
@@ -1062,8 +1094,8 @@ export default function AdminSettings() {
                                     </h4>
                                     <label
                                       className={`flex items-center select-none ${hasCustom
-                                          ? "cursor-pointer"
-                                          : "cursor-not-allowed opacity-50"
+                                        ? "cursor-pointer"
+                                        : "cursor-not-allowed opacity-50"
                                         }`}
                                       title={
                                         hasCustom
@@ -1115,11 +1147,12 @@ export default function AdminSettings() {
                                 {group.fields.map((field) => {
                                   const val = customCredentials[field.key] || "";
                                   const isRevealed = revealedFields[`custom_${field.key}`];
-                                  const unmasked = unmaskedCustomCredentials[field.key];
+                                  const unmasked = val ? unmaskedCustomCredentials[field.key] : "";
+                                  const hasValue = Boolean(val);
                                   const isSet = Boolean(val && val !== MASK);
 
                                   let displayVal = "Not configured";
-                                  if (isSet || unmasked) {
+                                  if (hasValue) {
                                     if (field.isEmail || field.key === "emailUser") {
                                       displayVal = censorEmail(unmasked || val);
                                     } else if (field.sensitive) {
@@ -1130,7 +1163,7 @@ export default function AdminSettings() {
                                   }
 
                                   const isEmailField = field.isEmail || field.key === "emailUser";
-                                  const showEyeToggle = field.sensitive && isSet;
+                                  const showEyeToggle = field.sensitive && hasValue;
 
                                   return (
                                     <div key={field.key} className="space-y-1.5">
@@ -1148,6 +1181,7 @@ export default function AdminSettings() {
                                                   ? "password"
                                                   : "text"
                                               }
+                                              autoComplete="new-password"
                                               value={
                                                 isEmailField && !isRevealed
                                                   ? censorEmail(val)
@@ -1191,7 +1225,7 @@ export default function AdminSettings() {
                                       ) : (
                                         <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200/80">
                                           <span
-                                            className={`text-sm font-mono truncate select-all ${!isSet && !unmasked
+                                            className={`text-sm font-mono truncate select-all ${!hasValue
                                               ? "text-gray-400 italic"
                                               : "text-gray-800"
                                               }`}
@@ -1414,9 +1448,9 @@ export default function AdminSettings() {
       </div>
 
       {/* ── SECURITY VERIFICATION OVERLAY COVER (Dark backdrop blur, centered across the whole screen) ── */}
-      {!isUnlocked && (
+      {!isUnlocked && createPortal(
         <div
-          className={`fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm transition-all duration-500 ease-out overflow-y-auto ${isFadingOut
+          className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/50 transition-all duration-500 ease-out overflow-y-auto ${isFadingOut
             ? "opacity-0 scale-[0.98] pointer-events-none"
             : "opacity-100 scale-100"
             }`}
@@ -1622,32 +1656,41 @@ export default function AdminSettings() {
               </form>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── RESTORE TO DEFAULT CONFIRMATION MODAL ── */}
-      {showRestoreModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs transition-all">
-          <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-100 text-center space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-brand-orange border border-orange-100">
-              <RotateCcw size={28} />
+      {restoreAnim.rendered && createPortal(
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className={`absolute inset-0 bg-gray-900/40 ${restoreAnim.backdropAnim}`}
+            onClick={() => !restoringDefaults && setShowRestoreModal(false)}
+          />
+          <div className={`relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ring-amber-100 p-6 ${restoreAnim.panelAnim}`}>
+            <div className="absolute inset-x-6 top-0 h-1 rounded-full bg-amber-500" />
+
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-amber-50 text-brand-orange">
+              <RotateCcw size={24} strokeWidth={2} />
             </div>
 
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">
-                Restore Default APIs?
-              </h3>
-              <p className="mt-1.5 text-xs text-gray-500 leading-relaxed">
-                This will switch all connected services to use institutional system defaults. Your saved Custom API credentials will <strong>not</strong> be deleted and remain safely preserved.
-              </p>
-            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1.5">
+              Restore Default APIs?
+            </h3>
+            <p className="text-sm leading-relaxed text-gray-500 mb-6">
+              This will switch all connected services to use institutional system defaults. Your saved Custom API credentials will <strong>not</strong> be deleted and remain safely preserved.
+            </p>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex gap-2.5">
               <button
                 type="button"
                 onClick={() => setShowRestoreModal(false)}
                 disabled={restoringDefaults}
-                className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 text-xs font-semibold transition-all cursor-pointer"
+                className="flex-1 rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1655,7 +1698,7 @@ export default function AdminSettings() {
                 type="button"
                 onClick={handleRestoreDefaults}
                 disabled={restoringDefaults}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-brand-orange hover:bg-orange-600 text-white text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                className="flex-1 rounded-full bg-brand-orange hover:bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-orange-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
               >
                 {restoringDefaults ? (
                   <>
@@ -1663,21 +1706,20 @@ export default function AdminSettings() {
                     <span>Restoring…</span>
                   </>
                 ) : (
-                  <>
-                    <RotateCcw size={14} />
-                    <span>Confirm Restore</span>
-                  </>
+                  <span>Confirm Restore</span>
                 )}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ── CUSTOM API SAVE: CONNECTION TEST & OTP MODAL ── */}
-      {showCustomSaveModal && pendingCustomSave && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs transition-all">
-          <div className="relative w-full max-w-[500px] rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border border-gray-100 text-center animate-in fade-in zoom-in-95 duration-200">
+      {showCustomSaveModal && pendingCustomSave && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 animate-[modalBackdropIn_150ms_ease-out_forwards]" />
+          <div className="relative w-full max-w-[500px] rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border border-gray-100 text-center animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]">
             {/* Top Close 'X' Button */}
             <button
               type="button"
@@ -1948,7 +1990,8 @@ export default function AdminSettings() {
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

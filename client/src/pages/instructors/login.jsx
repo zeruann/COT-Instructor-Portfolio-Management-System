@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import AuthLayout from "../../components/AuthLayout";
 import ReCAPTCHA from "react-google-recaptcha";
+import { useAnimatedModal } from "../../hooks/useAnimatedModal";
 import { API_BASE as API_URL } from "../../api/config";
 
 const API_BASE = `${API_URL}/auth`;
@@ -16,6 +17,7 @@ function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showCaptchaModal, setShowCaptchaModal] = useState(false);
+  const captchaAnim = useAnimatedModal(showCaptchaModal);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const navigate = useNavigate();
@@ -203,19 +205,17 @@ function Login() {
           <div className="relative">
             <label
               htmlFor="email"
-              className={`absolute left-11 transition-all duration-200 ease-out pointer-events-none z-10 px-1.5 bg-white select-none ${
-                isEmailActive
-                  ? "-top-2.5 text-xs font-semibold text-[#575488]"
-                  : "top-1/2 -translate-y-1/2 text-sm sm:text-base text-gray-400"
-              }`}
+              className={`absolute left-11 transition-all duration-200 ease-out pointer-events-none z-10 px-1.5 bg-white select-none ${isEmailActive
+                ? "-top-2.5 text-xs font-semibold text-[#575488]"
+                : "top-1/2 -translate-y-1/2 text-sm sm:text-base text-gray-400"
+                }`}
             >
               Email
             </label>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className={`pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 transition-colors duration-200 ${
-                emailFocused ? "text-[#575488]" : "text-gray-400"
-              }`}
+              className={`pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 transition-colors duration-200 ${emailFocused ? "text-[#575488]" : "text-gray-400"
+                }`}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -235,11 +235,10 @@ function Login() {
               onFocus={() => setEmailFocused(true)}
               onBlur={() => setEmailFocused(false)}
               onChange={(e) => setEmail(e.target.value)}
-              className={`w-full border rounded-xl pl-11 pr-4 py-3 sm:py-3.5 text-sm sm:text-base text-gray-700 leading-normal focus:outline-none transition-all duration-200 ${
-                emailFocused
-                  ? "border-[#575488] ring-1 ring-[#575488] shadow-xs"
-                  : "border-gray-300 hover:border-gray-400"
-              }`}
+              className={`w-full border rounded-xl pl-11 pr-4 py-3 sm:py-3.5 text-sm sm:text-base text-gray-700 leading-normal focus:outline-none transition-all duration-200 ${emailFocused
+                ? "border-[#575488] ring-1 ring-[#575488] shadow-xs"
+                : "border-gray-300 hover:border-gray-400"
+                }`}
               placeholder={emailFocused && !email ? "2401117072@faculty.buksu.edu.ph" : ""}
             />
           </div>
@@ -248,19 +247,17 @@ function Login() {
           <div className="relative">
             <label
               htmlFor="password"
-              className={`absolute left-11 transition-all duration-200 ease-out pointer-events-none z-10 px-1.5 bg-white select-none ${
-                isPasswordActive
-                  ? "-top-2.5 text-xs font-semibold text-[#575488]"
-                  : "top-1/2 -translate-y-1/2 text-sm sm:text-base text-gray-400"
-              }`}
+              className={`absolute left-11 transition-all duration-200 ease-out pointer-events-none z-10 px-1.5 bg-white select-none ${isPasswordActive
+                ? "-top-2.5 text-xs font-semibold text-[#575488]"
+                : "top-1/2 -translate-y-1/2 text-sm sm:text-base text-gray-400"
+                }`}
             >
               Password
             </label>
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className={`pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 transition-colors duration-200 ${
-                passwordFocused ? "text-[#575488]" : "text-gray-400"
-              }`}
+              className={`pointer-events-none absolute left-4 top-1/2 z-10 h-5 w-5 -translate-y-1/2 transition-colors duration-200 ${passwordFocused ? "text-[#575488]" : "text-gray-400"
+                }`}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -280,11 +277,10 @@ function Login() {
               onFocus={() => setPasswordFocused(true)}
               onBlur={() => setPasswordFocused(false)}
               onChange={(e) => setPassword(e.target.value)}
-              className={`w-full border rounded-xl pl-11 pr-12 py-3 sm:py-3.5 text-sm sm:text-base text-gray-700 leading-normal focus:outline-none transition-all duration-200 ${
-                passwordFocused
-                  ? "border-[#575488] ring-1 ring-[#575488] shadow-xs"
-                  : "border-gray-300 hover:border-gray-400"
-              }`}
+              className={`w-full border rounded-xl pl-11 pr-12 py-3 sm:py-3.5 text-sm sm:text-base text-gray-700 leading-normal focus:outline-none transition-all duration-200 ${passwordFocused
+                ? "border-[#575488] ring-1 ring-[#575488] shadow-xs"
+                : "border-gray-300 hover:border-gray-400"
+                }`}
               placeholder={passwordFocused && !password ? "Enter your password" : ""}
             />
             <button
@@ -403,17 +399,18 @@ function Login() {
         )}
 
         {/* Security Verification Modal */}
-        {showCaptchaModal && (
+        {captchaAnim.rendered && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
             onClick={() => {
               setShowCaptchaModal(false);
               recaptchaRef.current?.reset();
               setCaptchaToken(null);
             }}
           >
+            <div className={`absolute inset-0 bg-gray-900/40 ${captchaAnim.backdropAnim}`} />
             <div
-              className="relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl transition-all"
+              className={`relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl ${captchaAnim.panelAnim}`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close Button */}

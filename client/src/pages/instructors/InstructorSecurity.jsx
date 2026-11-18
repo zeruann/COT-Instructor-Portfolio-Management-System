@@ -135,11 +135,11 @@ export default function InstructorSecurity() {
   return (
     <div className="w-full space-y-6">
       {/* PAGE HEADER */}
-      <div className="mb-5">
-        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
+      <div className="mb-6">
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
           Security &amp; Password
         </h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <p className="mt-1 text-sm font-medium text-gray-500">
           Manage your account credentials and security preferences.
         </p>
       </div>

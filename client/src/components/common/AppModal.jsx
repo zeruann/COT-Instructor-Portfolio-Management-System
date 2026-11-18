@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { CircleAlert, TriangleAlert, CircleCheck, X } from 'lucide-react';
+import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 
 const MODAL_STYLES = {
   error: {
@@ -33,6 +35,13 @@ const MODAL_STYLES = {
 };
 
 export function AppModal({ modal, onClose }) {
+  const { rendered, backdropAnim, panelAnim } = useAnimatedModal(Boolean(modal));
+  const [lastModal, setLastModal] = useState(modal);
+
+  useEffect(() => {
+    if (modal) setLastModal(modal);
+  }, [modal]);
+
   useEffect(() => {
     if (!modal) return;
     const onKey = (e) => {
@@ -42,28 +51,29 @@ export function AppModal({ modal, onClose }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [modal, onClose]);
 
-  if (!modal) return null;
+  const activeModal = modal || lastModal;
+  if (!rendered || !activeModal) return null;
 
-  const isConfirm = modal.kind === 'confirm';
-  const style = MODAL_STYLES[modal.tone] || MODAL_STYLES.error;
+  const isConfirm = activeModal.kind === 'confirm';
+  const style = MODAL_STYLES[activeModal.tone] || MODAL_STYLES.error;
   const Icon = style.icon;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[120] flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="app-modal-title"
     >
       {/* Scrim */}
       <div
-        className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm animate-[fadeIn_.15s_ease-out]"
+        className={`absolute inset-0 bg-gray-900/40 ${backdropAnim}`}
         onClick={isConfirm ? undefined : onClose}
       />
 
       {/* Card */}
       <div
-        className={`relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ${style.ring} p-6 animate-[modalIn_.18s_cubic-bezier(0.16,1,0.3,1)]`}
+        className={`relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ${style.ring} p-6 ${panelAnim}`}
       >
         <div className={`absolute inset-x-6 top-0 h-1 rounded-full ${style.accent}`} />
 
@@ -82,9 +92,9 @@ export function AppModal({ modal, onClose }) {
         </div>
 
         <h3 id="app-modal-title" className="text-base font-semibold text-gray-900 mb-1.5">
-          {modal.title}
+          {activeModal.title}
         </h3>
-        <p className="text-sm leading-relaxed text-gray-500 mb-6">{modal.message}</p>
+        <p className="text-sm leading-relaxed text-gray-500 mb-6">{activeModal.message}</p>
 
         {isConfirm ? (
           <div className="flex gap-2.5">
@@ -93,23 +103,22 @@ export function AppModal({ modal, onClose }) {
               onClick={onClose}
               className="flex-1 rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
             >
-              {modal.cancelLabel || 'Cancel'}
+              {activeModal.cancelLabel || 'Cancel'}
             </button>
             <button
               type="button"
               onClick={() => {
-                modal.onConfirm?.();
+                activeModal.onConfirm?.();
                 onClose();
               }}
-              className={`flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer ${
-                modal.tone === 'approve'
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200'
-                  : modal.tone === 'warning' || modal.tone === 'error' || !modal.tone
+              className={`flex-1 rounded-full px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer ${activeModal.tone === 'approve'
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200'
+                : activeModal.tone === 'warning' || activeModal.tone === 'error' || !activeModal.tone
                   ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200'
                   : 'bg-brand-orange hover:bg-orange-600 text-white shadow-lg shadow-orange-200'
-              }`}
+                }`}
             >
-              {modal.confirmLabel || 'Confirm'}
+              {activeModal.confirmLabel || 'Confirm'}
             </button>
           </div>
         ) : (
@@ -118,7 +127,7 @@ export function AppModal({ modal, onClose }) {
             onClick={onClose}
             className={`w-full rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 cursor-pointer ${style.accent}`}
           >
-            {modal.confirmLabel || 'Got it'}
+            {activeModal.confirmLabel || 'Got it'}
           </button>
         )}
       </div>
@@ -130,7 +139,8 @@ export function AppModal({ modal, onClose }) {
           to   { opacity: 1; transform: translateY(0) scale(1); }
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 }
 

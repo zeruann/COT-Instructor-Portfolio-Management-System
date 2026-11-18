@@ -13,6 +13,7 @@ const driveNaming = require('../utils/driveNaming');
 const { logAudit } = require('../utils/auditLog');
 const { ACTION } = require('../constants/auditActions');
 const { notifyAdmins } = require('../utils/adminNotificationService');
+const { REJECT_COMMENT_MAX_WORDS, countWords } = require('../constants/reviewPolicy');
 
 /**
  * Helper to safely parse stringified JSON (from multipart/form-data)
@@ -73,14 +74,18 @@ exports.uploadDocument = async (req, res) => {
         ({ message: `Requirement "${requirementKey}" not found.` });
     }
 
-    // Check academic period status: if specified or default active period is closed/archived
+    const isClassDoc = Boolean(
+      requirementKey?.startsWith('CLASS_') || (Array.isArray(classIds) && classIds.length > 0)
+    );
+
+    // Check academic period status for Class Portfolio documents only (Faculty Portfolio is independent of academic year)
     let targetPeriodId = academicPeriodId;
     if (!targetPeriodId) {
       const activePeriod = await AcademicPeriod.findOne({ isCurrent: true });
       if (activePeriod) targetPeriodId = activePeriod._id;
     }
 
-    if (targetPeriodId) {
+    if (isClassDoc && targetPeriodId) {
       const targetPeriod = await AcademicPeriod.findById(targetPeriodId);
       if (targetPeriod && (targetPeriod.status === 'Closed' || targetPeriod.status === 'Archived')) {
         return res.status(403).json({
@@ -527,6 +532,12 @@ exports.reviewDocument = async (req, res) => {
       return res.status(400).json({ message: 'A comment is required when rejecting a document.' });
     }
 
+    if (decision === 'rejected' && countWords(comment) > REJECT_COMMENT_MAX_WORDS) {
+      return res.status(400).json({
+        message: `The reason for rejection must be ${REJECT_COMMENT_MAX_WORDS} words or fewer.`,
+      });
+    }
+
     const doc = await Document.findById(id);
     if (!doc) {
       return res.status(404).json({ message: 'Document not found.' });
@@ -663,8 +674,11 @@ exports.deleteDocument = async (req, res) => {
       return res.status(403).json({ message: 'Access denied.' });
     }
 
-    // Check if period is closed or archived
-    if (doc.academicPeriodId) {
+    // Check if period is closed or archived (Class Portfolio only; Faculty Portfolio is independent of academic year)
+    const isClassDoc = Boolean(
+      doc.requirementKey?.startsWith('CLASS_') || (Array.isArray(doc.classIds) && doc.classIds.length > 0)
+    );
+    if (isClassDoc && doc.academicPeriodId) {
       const period = await AcademicPeriod.findById(doc.academicPeriodId);
       if (period && (period.status === 'Closed' || period.status === 'Archived')) {
         return res.status(403).json({
@@ -743,8 +757,11 @@ exports.updateDocument = async (req, res) => {
       return res.status(403).json({ message: 'Access denied.' });
     }
 
-    // Check if period is closed or archived
-    if (doc.academicPeriodId) {
+    // Check if period is closed or archived (Class Portfolio only; Faculty Portfolio is independent of academic year)
+    const isClassDoc = Boolean(
+      doc.requirementKey?.startsWith('CLASS_') || (Array.isArray(doc.classIds) && doc.classIds.length > 0)
+    );
+    if (isClassDoc && doc.academicPeriodId) {
       const period = await AcademicPeriod.findById(doc.academicPeriodId);
       if (period && (period.status === 'Closed' || period.status === 'Archived')) {
         return res.status(403).json({

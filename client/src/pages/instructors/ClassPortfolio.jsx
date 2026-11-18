@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Plus, ChevronRight, X, Search, BookOpen, AlertCircle, Loader2, MoreVertical, Archive, Edit3, ChevronUp, ChevronDown } from 'lucide-react';
 import PlaceholderPage from '../../components/layout/PlaceholderPage';
@@ -171,6 +172,21 @@ const YEAR_LEVELS = [
   { value: '4', label: '4th Year' },
 ];
 
+// Keep these in sync with server/constants/classPolicy.js
+const CLASS_FIELD_LIMITS = {
+  subjectCode: 8,
+  subjectName: 50,
+  sectionCode: 6,
+  sectionGroup: 1,
+};
+
+const CLASS_FIELD_LABELS = {
+  subjectCode: 'Subject / Course Code',
+  subjectName: 'Subject / Course Description',
+  sectionCode: 'Section Code',
+  sectionGroup: 'Section Group / Suffix',
+};
+
 function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, existingClasses = [] }) {
   const [formData, setFormData] = useState({
     subjectCode: '',
@@ -220,8 +236,45 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
 
   if (!isOpen) return null;
 
+  const handleFieldChange = (field, value) => {
+    let nextValue = value;
+
+    if (field === 'sectionGroup') {
+      if (!/^[A-Za-z]*$/.test(value)) {
+        setError('Section Group / Suffix accepts letters only (A–Z).');
+        return;
+      }
+      nextValue = value.toUpperCase();
+      if (nextValue.length > 1) {
+        setError('Section Group / Suffix must be a single letter.');
+        return;
+      }
+    }
+
+    const limit = CLASS_FIELD_LIMITS[field];
+    if (limit && nextValue.length > limit) {
+      setError(`${CLASS_FIELD_LABELS[field]} must be ${limit} character${limit > 1 ? 's' : ''} or fewer.`);
+      return;
+    }
+    setError('');
+    setFormData((prev) => ({ ...prev, [field]: nextValue }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Block values that exceed the field limits (e.g. from pre-filled edit data).
+    if (formData.sectionGroup && !/^[A-Za-z]$/.test(formData.sectionGroup.trim())) {
+      setError('Section Group / Suffix must be a single letter (A–Z).');
+      return;
+    }
+    for (const [field, limit] of Object.entries(CLASS_FIELD_LIMITS)) {
+      if (formData[field].trim().length > limit) {
+        setError(`${CLASS_FIELD_LABELS[field]} must be ${limit} character${limit > 1 ? 's' : ''} or fewer.`);
+        return;
+      }
+    }
+
     const cleanSubjCode = formData.subjectCode.trim().toUpperCase();
     const cleanSubjDesc = formData.subjectName.trim();
     const cleanSecCode = formData.sectionCode.trim().toUpperCase();
@@ -263,13 +316,14 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
       return;
     }
 
-    const assembledSectionName = `${cleanProgram}-${cleanYear}${cleanGroup ? cleanGroup : ''}`;
+    const assembledSectionName = `${cleanProgram} ${cleanYear}${cleanGroup ? cleanGroup : ''}`;
 
     onSave(
       {
         subjectCode: cleanSubjCode,
         subjectName: cleanSubjDesc,
         sectionCode: cleanSecCode,
+        sectionGroup: cleanGroup,
         sectionName: assembledSectionName,
       },
       setError
@@ -278,9 +332,10 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
 
   const isEdit = Boolean(initialData);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 sm:p-6 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl rounded-2xl bg-white p-7 sm:p-8 shadow-2xl transition-all">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+      <div className="absolute inset-0 bg-black/50 animate-[modalBackdropIn_150ms_ease-out_forwards]" />
+      <div className="relative w-full max-w-2xl rounded-2xl bg-white p-7 sm:p-8 shadow-2xl animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 pb-5">
           <div className="flex items-center gap-3.5">
@@ -326,8 +381,7 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
                 placeholder="e.g. IT 121"
                 value={formData.subjectCode}
                 onChange={(e) => {
-                  setError('');
-                  setFormData({ ...formData, subjectCode: e.target.value });
+                  handleFieldChange('subjectCode', e.target.value);
                 }}
                 className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
                 required
@@ -343,8 +397,7 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
                 placeholder="e.g. T142"
                 value={formData.sectionCode}
                 onChange={(e) => {
-                  setError('');
-                  setFormData({ ...formData, sectionCode: e.target.value });
+                  handleFieldChange('sectionCode', e.target.value);
                 }}
                 className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
                 required
@@ -363,12 +416,14 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
               placeholder="e.g. Data Structures and Algorithms"
               value={formData.subjectName}
               onChange={(e) => {
-                setError('');
-                setFormData({ ...formData, subjectName: e.target.value });
+                handleFieldChange('subjectName', e.target.value);
               }}
               className="mt-1.5 w-full rounded-xl border border-gray-300 px-4 py-2.5 text-base focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
               required
             />
+            <span className="mt-1.5 block text-xs text-gray-400">
+              {formData.subjectName.length}/{CLASS_FIELD_LIMITS.subjectName} characters
+            </span>
           </div>
 
           {/* Program, Year Level, and Section Group (Same Row) */}
@@ -421,15 +476,14 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
               </label>
               <input
                 type="text"
-                placeholder="e.g. A, B, or 1"
+                placeholder="e.g. A"
                 value={formData.sectionGroup}
                 onChange={(e) => {
-                  setError('');
-                  setFormData({ ...formData, sectionGroup: e.target.value });
+                  handleFieldChange('sectionGroup', e.target.value);
                 }}
-                maxLength={4}
                 className="mt-1.5 w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-base uppercase focus:border-brand-purple focus:outline-none focus:ring-1 focus:ring-brand-purple"
               />
+              <span className="mt-1.5 block text-xs text-gray-400">Single letter only (A–Z)</span>
             </div>
           </div>
 
@@ -437,7 +491,7 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
           <div className="flex items-center gap-2 text-sm text-gray-500 pt-1">
             <span>Generated Section Name:</span>
             <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-orange-50 border border-orange-200 text-brand-orange font-bold text-sm tracking-wide">
-              {formData.program}-{formData.yearLevel}{formData.sectionGroup.toUpperCase()}
+              {formData.program} {formData.yearLevel}{formData.sectionGroup.toUpperCase()}
             </span>
           </div>
 
@@ -461,7 +515,8 @@ function ClassModal({ isOpen, onClose, onSave, loading, initialData = null, exis
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -576,17 +631,19 @@ function ClassPortfolio() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <PlaceholderPage title="Class Portfolio" />
+        <PlaceholderPage
+          title="Class Portfolio"
+          subtitle="Manage your assigned classes and submit course requirement documents."
+        />
 
         <button
           type="button"
           onClick={() => setShowStatusCards((prev) => !prev)}
           aria-expanded={showStatusCards}
-          className={`inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${
-            showStatusCards
-              ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-              : 'bg-brand-orange text-white hover:bg-orange-600 shadow-sm'
-          }`}
+          className={`inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${showStatusCards
+            ? 'border border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+            : 'bg-brand-orange text-white hover:bg-orange-600 shadow-sm'
+            }`}
         >
           {showStatusCards ? (
             <>
@@ -604,11 +661,10 @@ function ClassPortfolio() {
 
       {/* TOP SUMMARY STATS COLLAPSIBLE WRAPPER */}
       <div
-        className={`grid transition-all duration-300 ease-in-out ${
-          showStatusCards
-            ? 'grid-rows-[1fr] opacity-100'
-            : 'grid-rows-[0fr] opacity-0 pointer-events-none'
-        }`}
+        className={`grid transition-all duration-300 ease-in-out ${showStatusCards
+          ? 'grid-rows-[1fr] opacity-100'
+          : 'grid-rows-[0fr] opacity-0 pointer-events-none'
+          }`}
       >
         <div className="overflow-hidden">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Pencil } from "lucide-react";
+import {
+  NAME_MAX_LENGTH,
+  ALTERNATE_EMAIL_MAX_LENGTH,
+  getMaxBirthdate,
+  normalizePhoneInput,
+  validateProfileForm,
+} from "../../utils/profileValidation";
+import SelectField from "../../components/common/SelectField";
 
 function getInitials(name = "") {
   return name
@@ -17,10 +25,10 @@ const show = (value) =>
 const formatDate = (value) =>
   value
     ? new Date(value).toLocaleDateString("en-PH", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
     : "—";
 
 function Info({ label, value, className = "" }) {
@@ -160,14 +168,23 @@ export default function AdminProfile() {
   // Normal input handler
   const handleChange = (e) => {
     const { name, value } = e.target;
+    const nextValue = name === "contactNumber" ? normalizePhoneInput(value) : value;
     setForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
     }));
+    if (saveError) setSaveError("");
   };
 
   // Save profile to server & local state
   const handleSave = async () => {
+    const validationError = validateProfileForm(form);
+    if (validationError) {
+      setSaveError(validationError);
+      setSaveSuccess("");
+      return;
+    }
+
     setSaving(true);
     setSaveError("");
     setSaveSuccess("");
@@ -199,6 +216,9 @@ export default function AdminProfile() {
       let data = {};
       if (response.ok) {
         data = await response.json();
+      } else {
+        const errorBody = await response.json().catch(() => ({}));
+        throw new Error(errorBody.message || "Failed to save profile changes.");
       }
 
       const updatedProfile = data.profile || {
@@ -265,6 +285,16 @@ export default function AdminProfile() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto p-2 sm:p-6">
+      {/* PAGE HEADER */}
+      <div>
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
+          Profile
+        </h1>
+        <p className="mt-1 text-sm font-medium text-gray-500">
+          View and manage your administrator profile and contact details.
+        </p>
+      </div>
+
       {/* PROFILE HEADER CARD */}
       <div className="bg-white rounded-2xl shadow p-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -327,6 +357,7 @@ export default function AdminProfile() {
                   name="firstName"
                   value={form.firstName}
                   onChange={handleChange}
+                  maxLength={NAME_MAX_LENGTH}
                   className="w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
@@ -339,6 +370,7 @@ export default function AdminProfile() {
                   name="middleName"
                   value={form.middleName}
                   onChange={handleChange}
+                  maxLength={NAME_MAX_LENGTH}
                   className="w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
@@ -351,6 +383,7 @@ export default function AdminProfile() {
                   name="lastName"
                   value={form.lastName}
                   onChange={handleChange}
+                  maxLength={NAME_MAX_LENGTH}
                   className="w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
@@ -358,34 +391,34 @@ export default function AdminProfile() {
               {/* Gender */}
               <div>
                 <label className="text-sm font-medium text-gray-500">Gender</label>
-                <select
+                <SelectField
                   name="gender"
                   value={form.gender}
                   onChange={handleChange}
-                  className="w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                   <option value="Prefer not to say">Prefer not to say</option>
-                </select>
+                </SelectField>
               </div>
 
               {/* Civil Status */}
               <div>
                 <label className="text-sm font-medium text-gray-500">Civil Status</label>
-                <select
+                <SelectField
                   name="civilStatus"
                   value={form.civilStatus}
                   onChange={handleChange}
-                  className="w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   <option value="">Select Civil Status</option>
                   <option value="Single">Single</option>
                   <option value="Married">Married</option>
                   <option value="Widowed">Widowed</option>
                   <option value="Separated">Separated</option>
-                </select>
+                </SelectField>
               </div>
 
               {/* Birthdate */}
@@ -396,6 +429,7 @@ export default function AdminProfile() {
                   name="birthdate"
                   value={form.birthdate}
                   onChange={handleChange}
+                  max={getMaxBirthdate()}
                   className="w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
@@ -422,10 +456,12 @@ export default function AdminProfile() {
               <div>
                 <label className="text-sm font-medium text-gray-500">Contact Number</label>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="numeric"
                   name="contactNumber"
                   value={form.contactNumber}
                   onChange={handleChange}
+                  placeholder="e.g. 09123456789"
                   className="w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
@@ -438,6 +474,8 @@ export default function AdminProfile() {
                   name="alternateEmail"
                   value={form.alternateEmail}
                   onChange={handleChange}
+                  maxLength={ALTERNATE_EMAIL_MAX_LENGTH}
+                  placeholder="name@example.com"
                   className="w-full mt-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>

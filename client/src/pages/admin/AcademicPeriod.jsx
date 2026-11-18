@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 import {
   Calendar,
   Plus,
@@ -155,6 +157,9 @@ export default function AcademicPeriod() {
     confirmColor: 'bg-orange-500',
     onConfirm: null,
   });
+  const formAnim = useAnimatedModal(isFormOpen);
+  const confirmAnim = useAnimatedModal(confirmModal.isOpen);
+  const detailsAnim = useAnimatedModal(Boolean(detailsPeriodId));
 
   // Toast message
   const [toast, setToast] = useState(null);
@@ -205,22 +210,37 @@ export default function AcademicPeriod() {
 
   // Open Create Modal
   const handleOpenCreate = () => {
-    // Default to the school year after the latest one that already exists
-    const latestStartYear = periods.reduce((max, p) => {
-      const m = p.schoolYear?.match(/^(\d{4})-(\d{4})$/);
-      return m ? Math.max(max, parseInt(m[1], 10)) : max;
-    }, 0);
+    const activeFirstSem = periods.find(
+      (p) => p.isCurrent && !p.isArchived && p.semester === '1st'
+    );
 
-    const yearFrom = latestStartYear ? latestStartYear + 1 : new Date().getFullYear();
+    if (activeFirstSem) {
+      setFormData({
+        schoolYear: activeFirstSem.schoolYear,
+        semester: '2nd',
+        startDate: '',
+        endDate: '',
+        status: 'Upcoming',
+        setActive: false,
+      });
+    } else {
+      // Default to the school year after the latest one that already exists
+      const latestStartYear = periods.reduce((max, p) => {
+        const m = p.schoolYear?.match(/^(\d{4})-(\d{4})$/);
+        return m ? Math.max(max, parseInt(m[1], 10)) : max;
+      }, 0);
 
-    setFormData({
-      schoolYear: `${yearFrom}-${yearFrom + 1}`,
-      semester: '1st',
-      startDate: '',
-      endDate: '',
-      status: 'Upcoming',
-      setActive: false,
-    });
+      const yearFrom = latestStartYear ? latestStartYear + 1 : new Date().getFullYear();
+
+      setFormData({
+        schoolYear: `${yearFrom}-${yearFrom + 1}`,
+        semester: '1st',
+        startDate: '',
+        endDate: '',
+        status: 'Upcoming',
+        setActive: false,
+      });
+    }
     setEditingPeriod(null);
     setFormError('');
     setIsFormOpen(true);
@@ -241,6 +261,22 @@ export default function AcademicPeriod() {
     setIsFormOpen(true);
   };
 
+  // Edit mode: typing one year auto-fills the other (To = From + 1, From = To - 1)
+  const handleYearChange = (field, raw) => {
+    const digits = raw.replace(/\D/g, '').slice(0, 4);
+    let from = '';
+    let to = '';
+    if (field === 'from') {
+      from = digits;
+      to = digits.length === 4 ? String(parseInt(digits, 10) + 1) : '';
+    } else {
+      to = digits;
+      from = digits.length === 4 ? String(parseInt(digits, 10) - 1) : '';
+    }
+    setFormData((prev) => ({ ...prev, schoolYear: `${from}-${to}` }));
+    setFormError('');
+  };
+
   // Handle Form Submit
   const handleFormSubmit = async (e) => {
     e.preventDefault();
@@ -257,6 +293,33 @@ export default function AcademicPeriod() {
     if (endY !== startY + 1) {
       setFormError('End year must be the next consecutive year (e.g., 2026-2027).');
       return;
+    }
+
+    if (editingPeriod) {
+      const duplicate = periods.find(
+        (p) =>
+          p._id !== editingPeriod._id &&
+          p.schoolYear === formData.schoolYear &&
+          p.semester === formData.semester
+      );
+      if (duplicate) {
+        setFormError(
+          `AY ${formData.schoolYear} · ${formatSemName(formData.semester)} already exists. Please choose a different academic year or semester.`
+        );
+        return;
+      }
+    }
+
+    if (!editingPeriod) {
+      const activeFirstSem = periods.find(
+        (p) => p.isCurrent && !p.isArchived && p.semester === '1st'
+      );
+      if (activeFirstSem && formData.schoolYear !== activeFirstSem.schoolYear) {
+        setFormError(
+          `Cannot add a new academic year while AY ${activeFirstSem.schoolYear} is still in 1st Semester.`
+        );
+        return;
+      }
     }
 
     if (!formData.startDate || !formData.endDate) {
@@ -393,38 +456,6 @@ export default function AcademicPeriod() {
           if (!res.ok) throw new Error(data.message || 'Failed to close');
 
           showToast(`AY ${period.schoolYear} · ${formatSemName(period.semester)} is now Closed.`);
-          fetchPeriods();
-          window.dispatchEvent(new Event('academic-period-updated'));
-        } catch (err) {
-          showToast(err.message, 'error');
-        } finally {
-          setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-        }
-      },
-    });
-  };
-
-  // Archive Period (legacy action)
-  const handleArchive = (period) => {
-    setConfirmModal({
-      isOpen: true,
-      title: 'Archive Academic Period?',
-      message: `Archiving AY ${period.schoolYear} · ${formatSemName(
-        period.semester
-      )} will move it into the Archive records. All portfolios and review records will be preserved in read-only mode.`,
-      confirmText: 'Archive Period',
-      confirmColor: 'bg-purple-600 hover:bg-purple-700',
-      onConfirm: async () => {
-        try {
-          const token = localStorage.getItem('token');
-          const res = await fetch(`/api/academic-periods/${period._id}/archive`, {
-            method: 'PATCH',
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.message || 'Failed to archive');
-
-          showToast(`AY ${period.schoolYear} · ${formatSemName(period.semester)} archived.`);
           fetchPeriods();
           window.dispatchEvent(new Event('academic-period-updated'));
         } catch (err) {
@@ -602,13 +633,11 @@ export default function AcademicPeriod() {
       <div className="mb-5">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
-                Academic Period Management
-              </h1>
-            </div>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Set up school years, manage semester dates, activate submission terms, and archive completed periods.
+            <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
+              Academic Period Management
+            </h1>
+            <p className="mt-1 text-sm font-medium text-gray-500">
+              Set up school years, manage semester dates, activate submission terms, and close completed periods.
             </p>
           </div>
         </div>
@@ -771,7 +800,6 @@ export default function AcademicPeriod() {
                   const canActivate = item.status !== 'Active' && item.status !== 'Archived';
                   const canEdit = item.status !== 'Archived';
                   const canClose = item.status === 'Active';
-                  const canArchive = item.status === 'Closed';
 
                   const canDelete =
                     item.status === 'Upcoming' && (itemStats.classesCount || 0) === 0;
@@ -855,15 +883,8 @@ export default function AcademicPeriod() {
                               <EmptySlot />
                             )}
 
-                            {/* Slot 4: Archive (if Closed) or Delete (if Upcoming) */}
-                            {canArchive ? (
-                              <ActionButton
-                                label="Archive Period"
-                                icon={Archive}
-                                hover="hover:text-purple-600 hover:bg-purple-50 hover:border-purple-200"
-                                onClick={() => handleArchive(item)}
-                              />
-                            ) : canDelete ? (
+                            {/* Slot 4: Delete (if Upcoming) */}
+                            {canDelete ? (
                               <ActionButton
                                 label="Delete Period"
                                 icon={Trash2}
@@ -988,12 +1009,13 @@ export default function AcademicPeriod() {
       </div>
 
       {/* CREATE / EDIT MODAL */}
-      {isFormOpen && (() => {
+      {formAnim.rendered && (() => {
         const [yearFrom = '', yearTo = ''] = (formData.schoolYear || '').split('-');
 
-        return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-            <div className="bg-white rounded-2xl max-w-2xl w-full p-8 shadow-xl relative">
+        return createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className={`absolute inset-0 bg-gray-900/40 ${formAnim.backdropAnim}`} />
+            <div className={`relative bg-white rounded-2xl max-w-2xl w-full p-8 shadow-xl ${formAnim.panelAnim}`}>
               {/* Header */}
               <div className="flex items-center justify-between pb-5 border-b border-gray-100 mb-6">
                 <div className="flex items-center gap-3">
@@ -1027,7 +1049,7 @@ export default function AcademicPeriod() {
               )}
 
               <form onSubmit={handleFormSubmit} className="space-y-5">
-                {/* ROW 1: Academic Year (Year From / Year To, both disabled) */}
+                {/* ROW 1: Academic Year (editable in edit mode; the other year follows automatically) */}
                 <div>
                   <label className="block text-[13px] font-semibold text-gray-700 mb-2">
                     Academic Year
@@ -1035,17 +1057,33 @@ export default function AcademicPeriod() {
                   <div className="grid grid-cols-2 gap-4">
                     <input
                       type="text"
+                      inputMode="numeric"
+                      maxLength={4}
                       value={yearFrom}
-                      disabled
+                      disabled={!editingPeriod}
+                      onChange={(e) => handleYearChange('from', e.target.value)}
+                      placeholder="Year From"
                       aria-label="Year From"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-3 px-4 text-[14px] text-gray-500 cursor-not-allowed"
+                      className={`w-full border rounded-lg py-3 px-4 text-[14px] transition ${
+                        editingPeriod
+                          ? 'bg-white border-gray-200 text-gray-700 focus:outline-none focus:border-orange-500'
+                          : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                      }`}
                     />
                     <input
                       type="text"
+                      inputMode="numeric"
+                      maxLength={4}
                       value={yearTo}
-                      disabled
+                      disabled={!editingPeriod}
+                      onChange={(e) => handleYearChange('to', e.target.value)}
+                      placeholder="Year To"
                       aria-label="Year To"
-                      className="w-full bg-gray-50 border border-gray-200 rounded-lg py-3 px-4 text-[14px] text-gray-500 cursor-not-allowed"
+                      className={`w-full border rounded-lg py-3 px-4 text-[14px] transition ${
+                        editingPeriod
+                          ? 'bg-white border-gray-200 text-gray-700 focus:outline-none focus:border-orange-500'
+                          : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                      }`}
                     />
                   </div>
                 </div>
@@ -1146,63 +1184,58 @@ export default function AcademicPeriod() {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         );
       })()}
 
       {/* CONFIRMATION MODAL */}
-      {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-8 shadow-xl relative">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-5 border-b border-gray-100 mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-orange-50 text-orange-600 rounded-xl">
-                  <AlertTriangle className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">{confirmModal.title}</h3>
-                  <p className="text-sm text-gray-400">Please confirm that you want to continue.</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
-                aria-label="Close"
-                className="text-gray-400 hover:text-gray-600 p-1 rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      {confirmAnim.rendered && createPortal(
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className={`absolute inset-0 bg-gray-900/40 ${confirmAnim.backdropAnim}`}
+            onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+          />
+          <div className={`relative w-full max-w-sm rounded-[28px] bg-white shadow-[0_24px_60px_-12px_rgba(15,23,42,0.35)] ring-1 ring-amber-100 p-6 ${confirmAnim.panelAnim}`}>
+            <div className="absolute inset-x-6 top-0 h-1 rounded-full bg-amber-500" />
+
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-amber-50 text-amber-500">
+              <AlertTriangle size={24} strokeWidth={2} />
             </div>
 
-            {/* Message */}
-            <p className="text-sm text-gray-600 leading-relaxed">{confirmModal.message}</p>
+            <h3 className="text-base font-semibold text-gray-900 mb-1.5">{confirmModal.title}</h3>
+            <p className="text-sm leading-relaxed text-gray-500 mb-6">{confirmModal.message}</p>
 
-            {/* Buttons */}
-            <div className="flex items-center justify-end gap-3 pt-5 mt-6 border-t border-gray-100">
+            <div className="flex gap-2.5">
               <button
                 type="button"
                 onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
-                className="px-6 py-3 border border-gray-200 text-gray-600 rounded-lg text-[14px] font-semibold hover:bg-gray-50 transition cursor-pointer"
+                className="flex-1 rounded-full border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={confirmModal.onConfirm}
-                className={`px-8 py-3 text-white rounded-lg text-[14px] font-semibold transition cursor-pointer ${confirmModal.confirmColor}`}
+                className={`flex-1 rounded-full px-4 py-2.5 text-sm font-semibold text-white transition-colors cursor-pointer ${confirmModal.confirmColor}`}
               >
                 {confirmModal.confirmText}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* PERIOD DETAILS MODAL */}
-      {detailsPeriodId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl relative">
+      {detailsAnim.rendered && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className={`absolute inset-0 bg-gray-900/40 ${detailsAnim.backdropAnim}`} />
+          <div className={`relative bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-xl ${detailsAnim.panelAnim}`}>
             {/* Header */}
             <div className="flex items-center justify-between px-8 pt-8 pb-5 border-b border-gray-100 shrink-0">
               <div className="flex items-center gap-3">
@@ -1399,7 +1432,8 @@ export default function AcademicPeriod() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

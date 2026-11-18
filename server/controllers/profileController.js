@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const { logAudit } = require('../utils/auditLog');
 const { ACTION } = require('../constants/auditActions');
 const { isPasswordValid } = require('../utils/passwordRules');
+const { validateProfileFields, formatValidationError } = require('../constants/profilePolicy');
 
 const EDITABLE = [
   'firstName', 'middleName', 'lastName', 'gender', 'civilStatus', 'birthdate',
@@ -75,6 +76,11 @@ exports.createMyProfile = async (req, res) => {
       });
     }
 
+    const fieldError = validateProfileFields(req.body);
+    if (fieldError) {
+      return res.status(400).json({ message: fieldError });
+    }
+
     const $set = {};
 
     for (const key of EDITABLE) {
@@ -110,7 +116,7 @@ exports.createMyProfile = async (req, res) => {
 
   } catch (err) {
     if (err.name === 'ValidationError') {
-      return res.status(400).json({ message: err.message });
+      return res.status(400).json({ message: formatValidationError(err) });
     }
 
     console.error('createMyProfile error:', err);
@@ -127,6 +133,11 @@ exports.updateMyProfile = async (req, res) => {
 
     const changedFields = [];
     const $set = {};
+
+    const fieldError = validateProfileFields(req.body);
+    if (fieldError) {
+      return res.status(400).json({ message: fieldError });
+    }
 
     for (const key of EDITABLE) {
       if (req.body[key] !== undefined) {
@@ -182,7 +193,7 @@ exports.updateMyProfile = async (req, res) => {
     res.json(me);
   } catch (err) {
     if (err.name === 'ValidationError') {
-      return res.status(400).json({ message: err.message });
+      return res.status(400).json({ message: formatValidationError(err) });
     }
 
     console.error('updateMyProfile error:', err);

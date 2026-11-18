@@ -156,17 +156,17 @@ export const CLASS_REQUIREMENT_CARDS = [
 ];
 
 const statusStyles = {
-  completed: { label: 'Completed', className: 'bg-[#dcefd6] text-[#5d9a54]' },
-  review: { label: 'For review', className: 'bg-amber-100 text-amber-700' },
-  rejected: { label: 'Needs revision', className: 'bg-red-100 text-red-600' },
-  empty: { label: 'No documents', className: 'bg-gray-200 text-gray-500' },
+  completed: { label: 'Completed', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  review: { label: 'For review', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  rejected: { label: 'Needs revision', className: 'bg-red-50 text-red-700 border-red-200' },
+  empty: { label: 'No documents', className: 'bg-gray-50 text-gray-600 border-gray-200' },
 };
 
 function RequirementCard({ card, basePath, summary = {} }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const comments = summary.comments ?? 0;
   const files = summary.totalFiles ?? 0;
-  
+
   let status = statusStyles.empty;
   if (summary.rejected > 0) {
     status = statusStyles.rejected;
@@ -223,7 +223,7 @@ function RequirementCard({ card, basePath, summary = {} }) {
 
       {/* Footer */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-x-2 gap-y-2 pt-2">
-        <span className={`whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold ${status.className}`}>
+        <span className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium border ${status.className}`}>
           {status.label}
         </span>
         <div className="flex items-center gap-3 text-xs text-gray-400">
@@ -394,11 +394,10 @@ function ViewClassPortfolio() {
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              className={`flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer ${
-                viewMode === 'grid'
+              className={`flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer ${viewMode === 'grid'
                   ? 'bg-brand-purple/10 text-brand-purple'
                   : 'text-gray-400 hover:text-gray-700'
-              }`}
+                }`}
               title="Grid View"
             >
               <LayoutGrid size={18} />
@@ -406,11 +405,10 @@ function ViewClassPortfolio() {
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer ${
-                viewMode === 'list'
+              className={`flex h-8 w-8 items-center justify-center rounded-md transition cursor-pointer ${viewMode === 'list'
                   ? 'bg-brand-purple/10 text-brand-purple'
                   : 'text-gray-400 hover:text-gray-700'
-              }`}
+                }`}
               title="List View"
             >
               <List size={18} />

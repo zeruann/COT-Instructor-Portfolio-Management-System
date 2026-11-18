@@ -1,5 +1,6 @@
 // client/src/components/documentActions/PreviewModal.jsx
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Download,
@@ -28,6 +29,11 @@ function getColLabel(index) {
   }
   return label;
 }
+
+// Rejection reasons are capped so notifications and history stay readable.
+const MAX_REJECT_COMMENT_WORDS = 100;
+
+const countWords = (text) => (text.trim() ? text.trim().split(/\s+/).length : 0);
 
 export default function PreviewModal({
   isOpen,
@@ -162,6 +168,11 @@ export default function PreviewModal({
       return;
     }
 
+    if (decision === 'rejected' && countWords(comment) > MAX_REJECT_COMMENT_WORDS) {
+      setError(`The reason for rejection must be ${MAX_REJECT_COMMENT_WORDS} words or fewer.`);
+      return;
+    }
+
     try {
       setSubmitting(true);
       setError('');
@@ -213,9 +224,10 @@ export default function PreviewModal({
   }
   const maxCols = sheetRows.reduce((max, r) => Math.max(max, Array.isArray(r) ? r.length : 0), 0);
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs">
-      <div className="relative w-full max-w-5xl h-[92vh] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col">
+  return createPortal(
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-3 sm:p-6">
+      <div className="absolute inset-0 bg-black/60 animate-[modalBackdropIn_150ms_ease-out_forwards]" />
+      <div className="relative w-full max-w-5xl h-[92vh] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]">
         {/* Header
             Row 1: Document Preview + Status ............ X
             Row 2: File Name: ...   Date Uploaded: ... */}
@@ -448,6 +460,15 @@ export default function PreviewModal({
                       placeholder="Explain what needs to be corrected or re-uploaded..."
                       className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-red-400"
                     />
+                    <div
+                      className={`mt-1 text-right text-[11px] font-medium ${
+                        countWords(comment) > MAX_REJECT_COMMENT_WORDS
+                          ? 'text-red-600'
+                          : 'text-gray-400'
+                      }`}
+                    >
+                      {countWords(comment)} / {MAX_REJECT_COMMENT_WORDS} words
+                    </div>
                   </div>
                   <div className="flex items-center justify-end gap-2">
                     <button
@@ -464,7 +485,7 @@ export default function PreviewModal({
                     <button
                       type="button"
                       onClick={() => handleReview('rejected')}
-                      disabled={submitting}
+                      disabled={submitting || countWords(comment) > MAX_REJECT_COMMENT_WORDS}
                       className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl disabled:opacity-50 transition"
                     >
                       {submitting ? (
@@ -515,6 +536,8 @@ export default function PreviewModal({
       </div>
 
       <AppModal modal={modal} onClose={closeModal} />
-    </div>
+    </div>,
+    // `document` here is the file record prop, so use window.document for the portal target.
+    window.document.body
   );
 }

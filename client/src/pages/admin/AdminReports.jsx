@@ -1,7 +1,7 @@
 // client/src/pages/admin/AdminReports.jsx
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, ChevronDown } from 'lucide-react';
+import { Search, ChevronDown, LayoutGrid, List } from 'lucide-react';
 import { fetchFacultySummary } from '../../api/documents';
 import InstructorReports from '../instructors/InstructorReports';
 import { API_BASE } from '../../api/config';
@@ -62,6 +62,7 @@ export default function AdminReports() {
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [viewBy, setViewBy] = useState('all');
+  const [displayMode, setDisplayMode] = useState('grid'); // 'grid' | 'table'
 
   // Load list of instructors
   useEffect(() => {
@@ -207,10 +208,10 @@ export default function AdminReports() {
     <div className="min-w-0 space-y-4 sm:space-y-6">
       {/* Title & Subtitle */}
       <div>
-        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl tracking-tight">
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
           Reports
         </h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <p className="mt-1 text-sm font-medium text-gray-500">
           Select an instructor to view, print, or export their Faculty Compliance Checklist
         </p>
       </div>
@@ -265,9 +266,37 @@ export default function AdminReports() {
           </select>
           <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
+
+        {/* Cards vs Table Switcher */}
+        <div className="flex items-center shrink-0 rounded-xl border border-gray-200 bg-white p-1 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setDisplayMode('grid')}
+            title="Grid view"
+            aria-label="Grid view"
+            className={`rounded-lg p-2 transition cursor-pointer ${displayMode === 'grid'
+                ? 'bg-orange-500 text-white shadow-xs'
+                : 'text-gray-400 hover:text-gray-700'
+              }`}
+          >
+            <LayoutGrid size={18} />
+          </button>
+          <button
+            type="button"
+            onClick={() => setDisplayMode('table')}
+            title="Table view"
+            aria-label="Table view"
+            className={`rounded-lg p-2 transition cursor-pointer ${displayMode === 'table'
+                ? 'bg-orange-500 text-white shadow-xs'
+                : 'text-gray-400 hover:text-gray-700'
+              }`}
+          >
+            <List size={18} />
+          </button>
+        </div>
       </div>
 
-      {/* Cards Grid */}
+      {/* Cards Grid or Table View */}
       {loading ? (
         <div className={instructorGridClass}>
           {[...Array(6)].map((_, i) => (
@@ -305,6 +334,122 @@ export default function AdminReports() {
               Reset Filters
             </button>
           )}
+        </div>
+      ) : displayMode === 'table' ? (
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-2xs">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-gray-100 text-xs font-bold uppercase tracking-wider text-gray-600">
+                  <th className="pb-3 pr-4 pl-2">LOG ID</th>
+                  <th className="pb-3 px-4">INSTRUCTOR</th>
+                  <th className="pb-3 px-4">DEPARTMENT</th>
+                  <th className="pb-3 px-4 min-w-[280px]">COMPLETION STATUS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 text-sm">
+                {filteredInstructors.map((inst) => {
+                  const id = inst._id || inst.id;
+                  const name = getDisplayName(inst) || 'Instructor';
+                  const email = inst.email || '';
+                  const department = inst.department || 'IT Department';
+                  const photoUrl = inst.profile?.photoUrl || inst.googlePhotoUrl;
+                  const completion = getCompletion(inst);
+                  const percent = completion?.percent;
+                  const displayId =
+                    inst.instructorId || inst.employeeId || String(id).slice(-8).toUpperCase();
+
+                  return (
+                    <tr
+                      key={id}
+                      onClick={() => selectInstructor(inst)}
+                      className="group cursor-pointer hover:bg-gray-50/70 transition-colors duration-150"
+                    >
+                      <td className="py-4 pr-4 pl-2 text-[14px] font-medium text-gray-700 whitespace-nowrap">
+                        {displayId}
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0 overflow-hidden border border-orange-100">
+                            {photoUrl ? (
+                              <img
+                                src={photoUrl}
+                                alt={name}
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover rounded-full"
+                              />
+                            ) : (
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="#fb923c"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="h-5 w-5"
+                                aria-hidden="true"
+                              >
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
+                              </svg>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[16px] font-semibold text-gray-800 leading-tight group-hover:text-brand-orange transition-colors truncate">
+                              {name}
+                            </p>
+                            <p className="text-[14px] text-gray-400 leading-tight truncate mt-0.5">
+                              {email}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="py-4 px-4 text-gray-500 text-[14px] whitespace-nowrap">
+                        {department || '—'}
+                      </td>
+
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3 w-full max-w-[280px]">
+                          <div className="flex-1 flex h-2.5 overflow-hidden rounded-full bg-gray-100">
+                            {completion?.approvedPct > 0 && (
+                              <div
+                                style={{ width: `${completion.approvedPct}%` }}
+                                className="bg-[#10b981] transition-all duration-300"
+                                title={`Approved: ${Math.round(completion.approvedPct)}%`}
+                              />
+                            )}
+                            {completion?.pendingPct > 0 && (
+                              <div
+                                style={{ width: `${completion.pendingPct}%` }}
+                                className="bg-amber-400 transition-all duration-300"
+                                title={`Pending: ${Math.round(completion.pendingPct)}%`}
+                              />
+                            )}
+                            {completion?.rejectedPct > 0 && (
+                              <div
+                                style={{ width: `${completion.rejectedPct}%` }}
+                                className="bg-red-400 transition-all duration-300"
+                                title={`Rejected: ${Math.round(completion.rejectedPct)}%`}
+                              />
+                            )}
+                            {(!percent || percent === 0) &&
+                              !completion?.pendingPct &&
+                              !completion?.rejectedPct && <div className="w-full bg-gray-200" />}
+                          </div>
+                          <span className="shrink-0 text-sm font-bold text-[#10b981] w-10 text-right">
+                            {percent != null ? `${percent}%` : '—'}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className={instructorGridClass}>

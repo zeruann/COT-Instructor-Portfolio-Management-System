@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  NAME_MAX_LENGTH,
+  ADDRESS_MAX_LENGTH,
+  ALTERNATE_EMAIL_MAX_LENGTH,
+  DEGREE_MAX_LENGTH,
+  SCHOOL_MAX_LENGTH,
+  getMaxBirthdate,
+  normalizePhoneInput,
+  validateProfileForm,
+} from "../../utils/profileValidation";
+import SelectField from "../../components/common/SelectField";
 
 // Academic ranks shown in the "Academic Rank" dropdown (same list as the Instructor model)
 const RANKS = [
@@ -204,21 +215,29 @@ function Profile() {
   // Normal input change
   const handleChange = (e) => {
     const { name, value } = e.target;
+    const nextValue = name === "contactNumber" ? normalizePhoneInput(value) : value;
 
     setForm((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
     }));
+
+    if (saveError) setSaveError("");
   };
 
   // Education change
   const handleEducationChange = (index, field, value) => {
+    const nextValue =
+      field === "yearGraduated"
+        ? String(value).replace(/\D/g, "").slice(0, 4)
+        : value;
+
     setForm((prev) => {
       const updatedEducation = [...prev.education];
 
       updatedEducation[index] = {
         ...updatedEducation[index],
-        [field]: value,
+        [field]: nextValue,
       };
 
       return {
@@ -226,6 +245,8 @@ function Profile() {
         education: updatedEducation,
       };
     });
+
+    if (saveError) setSaveError("");
   };
 
   // Add education
@@ -254,6 +275,13 @@ function Profile() {
 
   // Save profile
   const handleSave = async () => {
+    const validationError = validateProfileForm(form);
+    if (validationError) {
+      setSaveError(validationError);
+      setSaveSuccess("");
+      return;
+    }
+
     setSaving(true);
     setSaveError("");
     setSaveSuccess("");
@@ -375,6 +403,15 @@ function Profile() {
 
   return (
     <div className="space-y-6">
+      {/* PAGE HEADER */}
+      <div>
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
+          Profile
+        </h1>
+        <p className="mt-1 text-sm font-medium text-gray-500">
+          View and manage your personal information, academic rank, and educational background.
+        </p>
+      </div>
 
       {/* PROFILE CARD */}
       <div className="bg-white rounded-2xl shadow p-6 flex flex-wrap items-center justify-between gap-4">
@@ -460,6 +497,7 @@ function Profile() {
                       name="firstName"
                       value={form.firstName}
                       onChange={handleChange}
+                      maxLength={NAME_MAX_LENGTH}
                       className="w-full mt-1 border rounded-lg px-3 py-2"
                     />
                   </div>
@@ -475,6 +513,7 @@ function Profile() {
                       name="middleName"
                       value={form.middleName}
                       onChange={handleChange}
+                      maxLength={NAME_MAX_LENGTH}
                       className="w-full mt-1 border rounded-lg px-3 py-2"
                     />
                   </div>
@@ -490,6 +529,7 @@ function Profile() {
                       name="lastName"
                       value={form.lastName}
                       onChange={handleChange}
+                      maxLength={NAME_MAX_LENGTH}
                       className="w-full mt-1 border rounded-lg px-3 py-2"
                     />
                   </div>
@@ -500,17 +540,16 @@ function Profile() {
                       Gender
                     </label>
 
-                    <select
+                    <SelectField
                       name="gender"
                       value={form.gender}
                       onChange={handleChange}
-                      className="w-full mt-1 border rounded-lg px-3 py-2"
                     >
                       <option value="">Select Gender</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
                       <option value="Prefer not to say">Prefer not to say</option>
-                    </select>
+                    </SelectField>
                   </div>
 
                   {/* Civil Status */}
@@ -519,18 +558,17 @@ function Profile() {
                       Civil Status
                     </label>
 
-                    <select
+                    <SelectField
                       name="civilStatus"
                       value={form.civilStatus}
                       onChange={handleChange}
-                      className="w-full mt-1 border rounded-lg px-3 py-2"
                     >
                       <option value="">Select Civil Status</option>
                       <option value="Single">Single</option>
                       <option value="Married">Married</option>
                       <option value="Widowed">Widowed</option>
                       <option value="Separated">Separated</option>
-                    </select>
+                    </SelectField>
                   </div>
 
                   {/* Birthdate */}
@@ -544,6 +582,7 @@ function Profile() {
                       name="birthdate"
                       value={form.birthdate}
                       onChange={handleChange}
+                      max={getMaxBirthdate()}
                       className="w-full mt-1 border rounded-lg px-3 py-2"
                     />
                   </div>
@@ -577,10 +616,12 @@ function Profile() {
                     </label>
 
                     <input
-                      type="text"
+                      type="tel"
+                      inputMode="numeric"
                       name="contactNumber"
                       value={form.contactNumber}
                       onChange={handleChange}
+                      placeholder="e.g. 09123456789"
                       className="w-full mt-1 border rounded-lg px-3 py-2"
                     />
                   </div>
@@ -596,6 +637,8 @@ function Profile() {
                       name="alternateEmail"
                       value={form.alternateEmail}
                       onChange={handleChange}
+                      maxLength={ALTERNATE_EMAIL_MAX_LENGTH}
+                      placeholder="name@example.com"
                       className="w-full mt-1 border rounded-lg px-3 py-2"
                     />
                   </div>
@@ -610,9 +653,13 @@ function Profile() {
                       name="address"
                       value={form.address}
                       onChange={handleChange}
+                      maxLength={ADDRESS_MAX_LENGTH}
                       rows="3"
                       className="w-full mt-1 border rounded-lg px-3 py-2"
                     />
+                    <span className="mt-1 block text-xs text-gray-400">
+                      {form.address.length}/{ADDRESS_MAX_LENGTH} characters
+                    </span>
                   </div>
                 </>
               ) : (
@@ -682,18 +729,17 @@ function Profile() {
                             Level
                           </label>
 
-                          <select
+                          <SelectField
                             value={ed.level}
                             onChange={(e) =>
                               handleEducationChange(index, "level", e.target.value)
                             }
-                            className="w-full mt-1 border rounded-lg px-3 py-2"
                           >
                             <option value="">Select Level</option>
                             <option value="Bachelor's">Bachelor's</option>
                             <option value="Master's">Master's</option>
                             <option value="Doctorate">Doctorate</option>
-                          </select>
+                          </SelectField>
                         </div>
 
                         {/* Degree */}
@@ -708,6 +754,7 @@ function Profile() {
                             onChange={(e) =>
                               handleEducationChange(index, "degree", e.target.value)
                             }
+                            maxLength={DEGREE_MAX_LENGTH}
                             className="w-full mt-1 border rounded-lg px-3 py-2"
                           />
                         </div>
@@ -724,6 +771,7 @@ function Profile() {
                             onChange={(e) =>
                               handleEducationChange(index, "school", e.target.value)
                             }
+                            maxLength={SCHOOL_MAX_LENGTH}
                             className="w-full mt-1 border rounded-lg px-3 py-2"
                           />
                         </div>
@@ -735,11 +783,14 @@ function Profile() {
                           </label>
 
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             value={ed.yearGraduated}
                             onChange={(e) =>
                               handleEducationChange(index, "yearGraduated", e.target.value)
                             }
+                            maxLength={4}
+                            placeholder="e.g. 2020"
                             className="w-full mt-1 border rounded-lg px-3 py-2"
                           />
                         </div>
@@ -808,11 +859,10 @@ function Profile() {
                       Position
                     </label>
 
-                    <select
+                    <SelectField
                       name="position"
                       value={form.position}
                       onChange={handleChange}
-                      className="w-full mt-1 border rounded-lg px-3 py-2 bg-white"
                     >
                       <option value="">Select Position</option>
                       {POSITIONS.map((pos) => (
@@ -820,7 +870,7 @@ function Profile() {
                           {pos}
                         </option>
                       ))}
-                    </select>
+                    </SelectField>
                   </div>
 
                   {/* Academic Rank */}
@@ -829,11 +879,10 @@ function Profile() {
                       Academic Rank
                     </label>
 
-                    <select
+                    <SelectField
                       name="rank"
                       value={form.rank}
                       onChange={handleChange}
-                      className="w-full mt-1 border rounded-lg px-3 py-2"
                     >
                       <option value="">Select Academic Rank</option>
                       {RANKS.map((rank) => (
@@ -841,7 +890,7 @@ function Profile() {
                           {rank}
                         </option>
                       ))}
-                    </select>
+                    </SelectField>
                   </div>
                 </>
               ) : (

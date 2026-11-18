@@ -7,7 +7,7 @@ import StatusBadge from '../../../components/documentActions/StatusBadge';
 import UploadModal from '../../../components/documentActions/UploadModal';
 import PreviewModal from '../../../components/documentActions/PreviewModal';
 import { fetchDocuments, deleteDocument } from '../../../api/documents';
-import { Eye, RefreshCw, Upload, CheckSquare, Trash2 } from 'lucide-react';
+import { Eye, FileText, RefreshCw, Upload, CheckSquare, Trash2 } from 'lucide-react';
 import AppModal, { useAppModal } from '../../../components/common/AppModal';
 
 import './requirementStyle.css';
@@ -144,134 +144,109 @@ export default function EducationalAttainment() {
         <CompletionStatusCard percent={percent} message={completionMessage} className="col-span-1" />
       </div>
 
-      <section className="doc-table-card" aria-label="Required documents">
-        <div className="doc-table-scroll">
-          <table className="doc-table">
-            <colgroup>
-              <col className="doc-table__col-type" />
-              <col className="doc-table__col-status" />
-              <col className="doc-table__col-action" />
-            </colgroup>
-
-            <thead>
-              <tr>
-                <th scope="col">Document Type</th>
-                <th scope="col" className="doc-table__status">Status</th>
-                <th scope="col">Action</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {slotRows.map((row) => (
-                <tr key={row.key}>
-                  <td>
-                    <div className="doc-table__type">
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="doc-table__icon"
-                        width="26"
-                        height="26"
-                        strokeWidth="1.6"
-                        fill="none"
-                        stroke="currentColor"
-                      >
-                        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                        <path d="M14 3v5h5M9 13h6M9 17h6" />
-                      </svg>
-
-                      <div>
-                        <div className="doc-table__name-row">
-                          <span className="doc-table__name">{row.label}</span>
-                          <span className="doc-table__required rounded-sm border border-gray-200 px-1">
-                            {REQUIRED_LABEL[row.required]}
-                          </span>
-                        </div>
-                        <p className="text-[12px] text-gray-400">
-                          {row.fileName || 'PDF, DOCX, JPEG, PNG · Maximum 25 MB'}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-
-                  <td className="doc-table__status">
-                    <StatusBadge status={row.status} />
-                  </td>
-
-                  <td>
-                    <div className="doc-actions flex items-center gap-2">
-                      {isAdmin ? (
-                        row.status === 'approved' || row.status === 'rejected' ? (
-                          <span className="doc-badge--reviewed">
-                            <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                            Reviewed
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            className="doc-btn doc-btn--review"
-                            disabled={!row.hasRecord}
-                            title={row.hasRecord ? 'Review document' : 'No document submitted yet'}
-                            onClick={() => openPreview(row.attachedDoc)}
-                          >
-                            <CheckSquare className="w-4 h-4" />
-                            Review
-                          </button>
-                        )
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            className="doc-btn doc-btn--view"
-                            disabled={!row.hasRecord}
-                            title={row.hasRecord ? 'View document' : 'Upload a file first'}
-                            onClick={() => openPreview(row.attachedDoc)}
-                          >
-                            <Eye className="w-4 h-4" />
-                            View
-                          </button>
-
-                          {!row.hasRecord ? (
-                            <button
-                              type="button"
-                              className="doc-btn doc-btn--upload"
-                              title="Upload document"
-                              onClick={() => openUpload(row.slot)}
-                            >
-                              <Upload className="w-4 h-4" />
-                              Upload
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="doc-btn doc-btn--reupload"
-                              title="Upload replacement version"
-                              onClick={() => openUpload(row.slot)}
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              Reupload
-                            </button>
-                          )}
-
-                          {row.hasRecord && row.status !== 'approved' && (
-                            <button
-                              type="button"
-                              className="doc-btn border-red-200 text-red-600 hover:bg-red-50 p-2 rounded"
-                              title="Delete document"
-                              onClick={() => handleDelete(row.attachedDoc)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-xs">
+        <div className="border-b border-gray-100 pb-5">
+          <h2 className="text-xl font-bold text-brand-purple">Submitted Evidence</h2>
+          <p className="mt-1 text-sm text-gray-400">
+            {isAdmin
+              ? 'Review submitted educational attainment documents and provide feedback or approval.'
+              : 'Upload your TOR, Diploma, or Certificate of Units Earned for each degree level.'}
+          </p>
         </div>
-      </section>
+
+        <div className="mt-6 space-y-3">
+          {slotRows.map((row) => (
+            <div
+              key={row.key}
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-xl border border-gray-200 bg-gray-50"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 text-brand-purple shrink-0">
+                  <FileText size={24} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-bold text-gray-900">
+                      {row.label}
+                    </h3>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-600 border-gray-200">
+                      {REQUIRED_LABEL[row.required]}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500">
+                    <StatusBadge status={row.status} />
+                    <span className="truncate max-w-[300px]" title={row.fileName || undefined}>
+                      {row.fileName || 'PDF, DOCX, JPEG, PNG · Maximum 25 MB'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {isAdmin ? (
+                  <button
+                    type="button"
+                    disabled={!row.hasRecord}
+                    onClick={() => openPreview(row.attachedDoc)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-brand-orange px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-orange-600 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <CheckSquare size={16} />
+                    <span>Review Document</span>
+                  </button>
+                ) : (
+                  <>
+                    {row.hasRecord && (
+                      <button
+                        type="button"
+                        onClick={() => openPreview(row.attachedDoc)}
+                        className="inline-flex items-center gap-2 rounded-xl bg-brand-purple px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-opacity-90 transition cursor-pointer"
+                      >
+                        <Eye size={16} />
+                        <span>View Document</span>
+                      </button>
+                    )}
+
+                    {row.status !== 'approved' && (
+                      <button
+                        type="button"
+                        onClick={() => openUpload(row.slot)}
+                        className={
+                          row.hasRecord
+                            ? 'inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition cursor-pointer'
+                            : 'inline-flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-orange-600 transition cursor-pointer'
+                        }
+                      >
+                        {row.hasRecord ? (
+                          <>
+                            <RefreshCw size={15} />
+                            <span>Replace</span>
+                          </>
+                        ) : (
+                          <>
+                            <Upload size={16} />
+                            <span>Upload Document</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {row.hasRecord && row.status !== 'approved' && (
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(row.attachedDoc)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100 transition cursor-pointer"
+                      >
+                        <Trash2 size={16} />
+                        <span>Delete</span>
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
 
       <UploadModal
