@@ -859,15 +859,15 @@ function InviteInstructor() {
         createPortal(
           <div
             className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 sm:p-5 ${isClosingInviteModal
-                ? 'animate-[modalBackdropOut_150ms_ease-in_forwards]'
-                : 'animate-[modalBackdropIn_150ms_ease-out_forwards]'
+              ? 'animate-[modalBackdropOut_150ms_ease-in_forwards]'
+              : 'animate-[modalBackdropIn_150ms_ease-out_forwards]'
               }`}
             onClick={closeInviteModal}
           >
             <div
               className={`relative flex flex-col w-full max-w-4xl max-h-[90vh] rounded-2xl bg-[#f8f9fc] shadow-2xl border border-gray-200 overflow-hidden ${isClosingInviteModal
-                  ? 'animate-[modalPanelOut_150ms_ease-in_forwards]'
-                  : 'animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]'
+                ? 'animate-[modalPanelOut_150ms_ease-in_forwards]'
+                : 'animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]'
                 }`}
               onClick={(e) => e.stopPropagation()}
             >

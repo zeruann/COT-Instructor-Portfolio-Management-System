@@ -482,11 +482,10 @@ export default function PreviewModal({
                       className="w-full text-xs p-3 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:border-red-400 disabled:opacity-60"
                     />
                     <div
-                      className={`mt-1 text-right text-[11px] font-medium ${
-                        countWords(comment) > MAX_REJECT_COMMENT_WORDS
+                      className={`mt-1 text-right text-[11px] font-medium ${countWords(comment) > MAX_REJECT_COMMENT_WORDS
                           ? 'text-red-600'
                           : 'text-gray-400'
-                      }`}
+                        }`}
                     >
                       {countWords(comment)} / {MAX_REJECT_COMMENT_WORDS} words
                     </div>
