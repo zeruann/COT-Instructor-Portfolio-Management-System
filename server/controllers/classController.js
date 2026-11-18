@@ -4,6 +4,7 @@ const AcademicPeriod = require('../models/AcademicPeriod');
 const Document = require('../models/Document');
 const Requirement = require('../models/Requirement');
 const { STATUS } = require('../constants/documentStatus');
+const { validateClassFields } = require('../constants/classPolicy');
 
 /**
  * GET /api/classes
@@ -262,10 +263,15 @@ exports.getClassById = async (req, res) => {
 exports.createClass = async (req, res) => {
   try {
     const ownerId = req.user.id;
-    const { subjectCode, subjectName, sectionCode, sectionName, academicPeriodId } = req.body;
+    const { subjectCode, subjectName, sectionCode, sectionName, sectionGroup, academicPeriodId } = req.body;
 
     if (!subjectCode || !sectionCode) {
       return res.status(400).json({ message: 'Subject code and section code are required.' });
+    }
+
+    const fieldError = validateClassFields({ subjectCode, subjectName, sectionCode, sectionName, sectionGroup });
+    if (fieldError) {
+      return res.status(400).json({ message: fieldError });
     }
 
     let targetPeriodId = academicPeriodId;
@@ -359,11 +365,16 @@ exports.updateClass = async (req, res) => {
   try {
     const ownerId = req.user.id;
     const { id } = req.params;
-    const { subjectCode, subjectName, sectionCode, sectionName } = req.body;
+    const { subjectCode, subjectName, sectionCode, sectionName, sectionGroup } = req.body;
 
     const classDoc = await Class.findOne({ _id: id, ownerId, archivedAt: null });
     if (!classDoc) {
       return res.status(404).json({ message: 'Class not found.' });
+    }
+
+    const fieldError = validateClassFields({ subjectCode, subjectName, sectionCode, sectionName, sectionGroup });
+    if (fieldError) {
+      return res.status(400).json({ message: fieldError });
     }
 
     const newSubjCode = subjectCode ? subjectCode.trim().toUpperCase() : classDoc.subject.code;
