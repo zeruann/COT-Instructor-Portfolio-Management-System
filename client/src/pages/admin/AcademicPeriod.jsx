@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAnimatedModal } from '../../hooks/useAnimatedModal';
+import { useResourceLock } from '../../hooks/useResourceLock';
 import {
   Calendar,
   Plus,
@@ -180,6 +181,11 @@ export default function AcademicPeriod() {
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const { lockedByOther: periodLockedByOther, lockedByName: periodLockedByName } = useResourceLock(
+    editingPeriod?._id ? `academic-period:${editingPeriod._id}` : null,
+    { enabled: Boolean(isFormOpen && editingPeriod?._id) }
+  );
+
   // Fetch Academic Periods
   const fetchPeriods = useCallback(async () => {
     try {
@@ -332,6 +338,11 @@ export default function AcademicPeriod() {
       return;
     }
 
+    if (periodLockedByOther) {
+      setFormError(`This academic period is currently being edited by ${periodLockedByName}.`);
+      return;
+    }
+
     try {
       setSubmitting(true);
       const token = localStorage.getItem('token');
@@ -339,6 +350,9 @@ export default function AcademicPeriod() {
         ? `/api/academic-periods/${editingPeriod._id}`
         : '/api/academic-periods';
       const method = editingPeriod ? 'PUT' : 'POST';
+      const payload = editingPeriod
+        ? { ...formData, expectedUpdatedAt: editingPeriod.updatedAt }
+        : formData;
 
       const res = await fetch(url, {
         method,
@@ -346,7 +360,7 @@ export default function AcademicPeriod() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -1161,6 +1175,16 @@ export default function AcademicPeriod() {
                   </div>
                 )}
 
+                {/* Lock Banner */}
+                {periodLockedByOther && (
+                  <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-xs">
+                    <Lock className="w-4 h-4 shrink-0 text-amber-600" />
+                    <span>
+                      <strong>Locked:</strong> Currently being edited by <strong>{periodLockedByName}</strong>. Saving is disabled until they finish.
+                    </span>
+                  </div>
+                )}
+
                 {/* Buttons */}
                 <div className="flex items-center justify-end gap-3 pt-5 border-t border-gray-100">
                   <button
@@ -1172,8 +1196,8 @@ export default function AcademicPeriod() {
                   </button>
                   <button
                     type="submit"
-                    disabled={submitting}
-                    className="px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-[14px] font-semibold transition disabled:opacity-50 cursor-pointer"
+                    disabled={submitting || periodLockedByOther}
+                    className="px-8 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg text-[14px] font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                   >
                     {submitting
                       ? 'Saving...'

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import AuthLayout from "../../components/AuthLayout";
@@ -9,6 +10,15 @@ import { API_BASE as API_URL } from "../../api/config";
 const API_BASE = `${API_URL}/auth`;
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
+const formatCountdown = (seconds) => {
+  if (seconds >= 60) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  }
+  return `${seconds}s`;
+};
+
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,6 +26,7 @@ function Login() {
   const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
   const [showCaptchaModal, setShowCaptchaModal] = useState(false);
   const captchaAnim = useAnimatedModal(showCaptchaModal);
   const [emailFocused, setEmailFocused] = useState(false);
@@ -24,6 +35,12 @@ function Login() {
   const recaptchaRef = useRef(null);
   const [captchaToken, setCaptchaToken] = useState(null);
   const [apiConfig, setApiConfig] = useState({ recaptchaEnabled: true, googleAuthEnabled: true });
+
+  useEffect(() => {
+    if (rateLimitSeconds <= 0) return;
+    const timer = setTimeout(() => setRateLimitSeconds((prev) => Math.max(0, prev - 1)), 1000);
+    return () => clearTimeout(timer);
+  }, [rateLimitSeconds]);
 
   useEffect(() => {
     axios
@@ -74,6 +91,10 @@ function Login() {
         setError("Invalid account type.");
       }
     } catch (err) {
+      if (err.response?.status === 429) {
+        const retryAfter = Number(err.response?.data?.retryAfterSeconds) || 60;
+        setRateLimitSeconds(retryAfter);
+      }
       setError(err.response?.data?.message || "Login failed");
       recaptchaRef.current?.reset();
       setCaptchaToken(null);
@@ -85,6 +106,7 @@ function Login() {
   // MANUAL LOGIN FORM SUBMIT
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (loading || rateLimitSeconds > 0) return;
     setError("");
 
     if (!email || !password) {
@@ -327,8 +349,8 @@ function Login() {
           {/* Gradient Orange Button */}
           <button
             type="submit"
-            disabled={loading}
-            className="group relative w-full mt-3 overflow-hidden bg-gradient-to-r from-[#ff7a1a] via-[#ff6900] to-[#f25c00] hover:from-[#ff8629] hover:via-[#ff7308] hover:to-[#e85600] disabled:opacity-60 text-white font-semibold py-3.5 px-5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-[0_10px_24px_-8px_rgba(255,105,0,0.6)] hover:shadow-[0_14px_30px_-8px_rgba(255,105,0,0.7)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] text-sm sm:text-base"
+            disabled={loading || rateLimitSeconds > 0}
+            className="group relative w-full mt-3 overflow-hidden bg-gradient-to-r from-[#ff7a1a] via-[#ff6900] to-[#f25c00] hover:from-[#ff8629] hover:via-[#ff7308] hover:to-[#e85600] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3.5 px-5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-[0_10px_24px_-8px_rgba(255,105,0,0.6)] hover:shadow-[0_14px_30px_-8px_rgba(255,105,0,0.7)] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.99] text-sm sm:text-base"
           >
             {/* Sheen sweep on hover */}
             <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
@@ -340,6 +362,8 @@ function Login() {
                 </svg>
                 <span>Logging in...</span>
               </>
+            ) : rateLimitSeconds > 0 ? (
+              <span>Try again in {formatCountdown(rateLimitSeconds)}</span>
             ) : (
               <>
                 <span>Log in</span>
@@ -398,8 +422,8 @@ function Login() {
           </div>
         )}
 
-        {/* Security Verification Modal */}
-        {captchaAnim.rendered && (
+        {/* Security Verification Modal (portaled to body so AuthLayout transforms/backdrop-blur don't trap fixed positioning) */}
+        {captchaAnim.rendered && createPortal(
           <div
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
             onClick={() => {
@@ -410,7 +434,7 @@ function Login() {
           >
             <div className={`absolute inset-0 bg-gray-900/40 ${captchaAnim.backdropAnim}`} />
             <div
-              className={`relative w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl ${captchaAnim.panelAnim}`}
+              className={`relative w-full max-w-sm rounded-[28px] bg-white p-6 shadow-2xl ${captchaAnim.panelAnim}`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close Button */}
@@ -429,13 +453,8 @@ function Login() {
                 </svg>
               </button>
 
-              {/* Icon & Heading */}
-              <div className="flex flex-col items-center text-center">
-                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 text-[#ff6900]">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                </div>
+              {/* Heading */}
+              <div className="flex flex-col items-center text-center pt-1">
                 <h3 className="text-lg font-bold text-gray-900">Security Verification</h3>
                 <p className="mt-1 text-xs text-gray-500">
                   Please complete the check below to continue logging in.
@@ -456,7 +475,8 @@ function Login() {
                 This dialog will close automatically once verified.
               </p>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </AuthLayout>

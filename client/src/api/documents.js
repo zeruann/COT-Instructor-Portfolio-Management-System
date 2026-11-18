@@ -102,8 +102,8 @@ export async function downloadDocumentFile(id, version) {
 
 
 //Review a document (Admin only)
-export async function reviewDocument(id, { decision, comment }) {
-  const res = await api.patch(`/documents/${id}/review`, { decision, comment });
+export async function reviewDocument(id, { decision, comment, expectedVersion }) {
+  const res = await api.patch(`/documents/${id}/review`, { decision, comment, expectedVersion });
   return res.data;
 }
 

@@ -87,20 +87,6 @@ function OtherRequirements({ embedded = false, onBack } = {}) {
             })}
           </div>
         </nav>
-
-        {/* ADD BUTTON: instructors only. Uploads a file for whichever tab is open. */}
-        {!isAdmin && (
-          <button
-            type="button"
-            className="entry-add-btn"
-            onClick={() => setAddTrigger((n) => n + 1)}
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Add Document
-          </button>
-        )}
       </div>
 
       {/* ACTIVE TAB PAGE (ProfessionalOrgs, PassedLicensureExams or IPCR) */}
@@ -123,25 +109,19 @@ export function StandaloneOtherRequirement({
   title,
   subtitle,
   Component,
-  addLabel = 'Add Document',
   embedded = false,
   onBack,
 }) {
-  const location = useLocation();
-  const isAdmin = location.pathname.startsWith('/admin');
-  const [addTrigger, setAddTrigger] = useState(0);
-
   return (
     <div className="space-y-5">
       <SharedRequirementHeader
         title={title}
         subtitle={subtitle}
-        onAddClick={isAdmin ? null : () => setAddTrigger((n) => n + 1)}
-        addLabel={addLabel}
+        onAddClick={null}
         onBack={onBack}
         embedded={embedded}
       />
-      <Component addTrigger={addTrigger} />
+      <Component />
     </div>
   );
 }

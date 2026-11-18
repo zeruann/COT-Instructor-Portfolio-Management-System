@@ -78,6 +78,7 @@ exports.login = async (req, res) => {
     const token = signToken(instructor);
 
     instructor.onlineStatus = 'Online';
+    instructor.lastSeenAt = new Date();
     await instructor.save();
 
     await logAudit({
@@ -166,6 +167,7 @@ exports.googleLogin = async (req, res) => {
     }
 
     instructor.onlineStatus = 'Online';
+    instructor.lastSeenAt = new Date();
     await instructor.save();
 
     const token = signToken(instructor);
@@ -194,6 +196,7 @@ exports.logout = async (req, res) => {
       const instructor = await Instructor.findById(req.user.id);
       if (instructor) {
         instructor.onlineStatus = 'Offline';
+        instructor.lastSeenAt = null;
         await instructor.save();
 
         await logAudit({
@@ -211,6 +214,21 @@ exports.logout = async (req, res) => {
   } catch (err) {
     console.error('Logout error:', err);
     res.json({ message: 'Logged out successfully' });
+  }
+};
+
+exports.heartbeat = async (req, res) => {
+  try {
+    if (req.user?.id) {
+      await Instructor.findByIdAndUpdate(req.user.id, {
+        onlineStatus: 'Online',
+        lastSeenAt: new Date(),
+      });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Heartbeat error:', err);
+    res.status(500).json({ message: 'Heartbeat failed' });
   }
 };
 

@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Camera, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  resizeProfileImage,
+  isCustomPhotoUrl,
+  resolveAvatarUrl,
+} from "../../utils/profilePhoto";
 import {
   NAME_MAX_LENGTH,
   ADDRESS_MAX_LENGTH,
@@ -128,9 +133,9 @@ function Profile() {
         return res.json();
       })
       .then((me) => {
-        const prof = me.profile || {};
-        if (me.googlePhotoUrl && !prof.photoUrl) {
-          prof.photoUrl = me.googlePhotoUrl;
+        const prof = { ...(me.profile || {}) };
+        if (prof.photoUrl && !isCustomPhotoUrl(prof.photoUrl, me.googlePhotoUrl)) {
+          prof.photoUrl = "";
         }
         setProfile(prof);
         setAvatarError(false);
@@ -141,11 +146,13 @@ function Profile() {
           .trim();
         const activeName = computed || me.fullName;
 
+        setInstructor((prev) => ({
+          ...prev,
+          fullName: activeName || prev?.fullName,
+          googlePhotoUrl: me.googlePhotoUrl || prev?.googlePhotoUrl,
+        }));
+
         if (activeName) {
-          setInstructor((prev) => ({
-            ...prev,
-            fullName: activeName,
-          }));
 
           const stored = localStorage.getItem('instructor');
           if (stored) {
@@ -205,11 +212,31 @@ function Profile() {
 
       position: p.position || "",
       rank: p.rank || "",
+      photoUrl: isCustomPhotoUrl(p.photoUrl, instructor?.googlePhotoUrl) ? p.photoUrl : "",
     });
 
     setSaveError("");
     setSaveSuccess("");
     setIsEditing(true);
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      setSaveError("");
+      const dataUrl = await resizeProfileImage(file);
+      setForm((prev) => ({ ...prev, photoUrl: dataUrl }));
+      setAvatarError(false);
+    } catch (err) {
+      setSaveError(err.message || "Failed to process profile photo.");
+    }
+  };
+
+  const handleDeletePhoto = () => {
+    setForm((prev) => ({ ...prev, photoUrl: "" }));
+    setAvatarError(false);
   };
 
   // Normal input change
@@ -321,6 +348,7 @@ function Profile() {
 
           position: form.position,
           rank: form.rank,
+          photoUrl: form.photoUrl ?? "",
         }),
       });
 
@@ -335,7 +363,7 @@ function Profile() {
       // Update the displayed profile
       setProfile(data.profile || {});
 
-      // Update displayed name
+      // Update displayed name & photo
       const updatedFullName = [
         form.firstName,
         form.middleName,
@@ -347,6 +375,8 @@ function Profile() {
       setInstructor((prev) => ({
         ...prev,
         fullName: updatedFullName || prev.fullName,
+        googlePhotoUrl: data.googlePhotoUrl || prev.googlePhotoUrl,
+        profile: data.profile || prev.profile,
       }));
 
       // Update localStorage instructor information
@@ -360,6 +390,8 @@ function Profile() {
           JSON.stringify({
             ...parsedInstructor,
             fullName: updatedFullName || parsedInstructor.fullName,
+            googlePhotoUrl: data.googlePhotoUrl || parsedInstructor.googlePhotoUrl,
+            profile: data.profile || parsedInstructor.profile,
           })
         );
       }
@@ -399,7 +431,9 @@ function Profile() {
     .trim();
   const displayName = profileFullName || instructor.fullName || 'Instructor';
 
-  const avatarUrl = p.photoUrl || instructor.googlePhotoUrl || instructor.photoUrl;
+  const activePhotoUrl = isEditing ? form.photoUrl : p.photoUrl;
+  const hasCustomPhoto = isCustomPhotoUrl(activePhotoUrl, instructor.googlePhotoUrl);
+  const avatarUrl = resolveAvatarUrl(activePhotoUrl, instructor.googlePhotoUrl || instructor.photoUrl);
 
   return (
     <div className="space-y-6">
@@ -444,6 +478,38 @@ function Profile() {
             <p className="text-gray-400 text-xs">
               id: {instructor.id}
             </p>
+
+            {isEditing && (
+              <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 border border-orange-200 text-xs font-semibold hover:bg-orange-100 transition cursor-pointer">
+                  <Camera size={14} />
+                  <span>{hasCustomPhoto ? "Change Photo" : "Upload Photo"}</span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                {hasCustomPhoto && (
+                  <button
+                    type="button"
+                    onClick={handleDeletePhoto}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 border border-red-200 text-xs font-semibold hover:bg-red-100 transition cursor-pointer"
+                  >
+                    <Trash2 size={14} />
+                    <span>Delete Photo</span>
+                  </button>
+                )}
+
+                {!hasCustomPhoto && instructor.googlePhotoUrl && (
+                  <span className="text-[11px] text-gray-400">
+                    Using Gmail photo by default
+                  </span>
+                )}
+              </div>
+            )}
 
             {loadError && (
               <p className="text-red-500 text-xs mt-1">

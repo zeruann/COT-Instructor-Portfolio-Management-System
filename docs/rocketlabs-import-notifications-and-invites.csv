@@ -1,0 +1,8 @@
+Group,Creation Date,Created By,Item Parent Id,Item/Subitem Id,Title,Date,Person,Status
+Instructor Components,18/11/2026,Hazel Ann Carillo,8149287,,IN-091 Instructor should be able to delete a single notification from the Notifications page after confirming the action.,,Hazel Ann Carillo,For Review
+Instructor Components,18/11/2026,Hazel Ann Carillo,8149287,,IN-092 Instructor should be able to delete all of their notifications at once after confirming the action.,,Hazel Ann Carillo,For Review
+Instructor Components,18/11/2026,Hazel Ann Carillo,8149287,,IN-093 Instructor should see the unread notification count update immediately after deleting an unread notification.,,Hazel Ann Carillo,For Review
+Admin Components,18/11/2026,Hazel Ann Carillo,8149170,,AD-100 Admin/Dean should be able to delete a single notification from the Notifications page after confirming the action.,,Hazel Ann Carillo,For Review
+Admin Components,18/11/2026,Hazel Ann Carillo,8149170,,AD-101 Admin/Dean should be able to delete all of their notifications at once after confirming the action.,,Hazel Ann Carillo,For Review
+Admin Components,18/11/2026,Hazel Ann Carillo,8149004,,AD-102 Admin should be able to open an instructor's profile in a modal from the Invite Instructors page without leaving the page.,,Hazel Ann Carillo,For Review
+Admin Components,18/11/2026,Hazel Ann Carillo,8149004,,AD-103 Admin should be able to change an instructor's account status from the profile modal opened via the Invite Instructors page and see the result reflected in the invitations table.,,Hazel Ann Carillo,For Review

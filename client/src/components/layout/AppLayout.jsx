@@ -84,11 +84,16 @@ function AppLayout({ role }) {
   useEffect(() => {
     const onAllRead = () => setUnreadCount(0);
     const onOneRead = () => setUnreadCount((c) => Math.max(0, c - 1));
+    const onOneDeleted = (e) => {
+      if (e.detail?.unread) setUnreadCount((c) => Math.max(0, c - 1));
+    };
     window.addEventListener('notifications-read', onAllRead);
     window.addEventListener('notification-read', onOneRead);
+    window.addEventListener('notification-deleted', onOneDeleted);
     return () => {
       window.removeEventListener('notifications-read', onAllRead);
       window.removeEventListener('notification-read', onOneRead);
+      window.removeEventListener('notification-deleted', onOneDeleted);
     };
   }, []);
 

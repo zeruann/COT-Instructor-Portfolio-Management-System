@@ -96,3 +96,43 @@ exports.markAsRead = async (req, res) => {
   }
 };
 
+/**
+ * DELETE /api/notifications/clear-all
+ * Delete all notifications for current user
+ */
+exports.clearAll = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await Notification.deleteMany({ userId });
+    return res.json({
+      message: 'All notifications deleted.',
+      deletedCount: result.deletedCount,
+    });
+  } catch (err) {
+    console.error('Error in clearAll notifications:', err);
+    return res.status(500).json({ message: 'Failed to delete notifications.' });
+  }
+};
+
+/**
+ * DELETE /api/notifications/:id
+ * Delete a single notification belonging to the current user
+ */
+exports.deleteNotification = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const notif = await Notification.findOneAndDelete({ _id: id, userId });
+
+    if (!notif) {
+      return res.status(404).json({ message: 'Notification not found.' });
+    }
+
+    return res.json({ message: 'Notification deleted.', id });
+  } catch (err) {
+    console.error('Error in deleteNotification:', err);
+    return res.status(500).json({ message: 'Failed to delete notification.' });
+  }
+};
+

@@ -49,7 +49,7 @@ const REQUIREMENT = {
 // ─────────────────────────────────────────────────────────────
 const WORDS = {
   pageTitle: 'Service Records',
-  addButton: 'Add Service Record',
+  addButton: 'Upload Document',
   plural: 'service records',
 };
 

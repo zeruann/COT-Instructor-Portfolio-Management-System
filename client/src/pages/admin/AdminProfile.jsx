@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Pencil } from "lucide-react";
+import { Camera, Pencil, Trash2 } from "lucide-react";
+import {
+  resizeProfileImage,
+  isCustomPhotoUrl,
+  resolveAvatarUrl,
+} from "../../utils/profilePhoto";
 import {
   NAME_MAX_LENGTH,
   ALTERNATE_EMAIL_MAX_LENGTH,
@@ -53,7 +58,7 @@ function Section({ title, action, children }) {
   );
 }
 
-export default function AdminProfile() {
+export default function AdminProfile({ embedded = false } = {}) {
   const navigate = useNavigate();
 
   const [admin, setAdmin] = useState(null);
@@ -103,20 +108,22 @@ export default function AdminProfile() {
         return res.json();
       })
       .then((me) => {
-        const p = me.profile || me || {};
+        const p = { ...(me.profile || me || {}) };
+        if (p.photoUrl && !isCustomPhotoUrl(p.photoUrl, me.googlePhotoUrl)) {
+          p.photoUrl = "";
+        }
         setProfile(p);
 
         const fetchedName =
           me.fullName ||
           [p.firstName, p.middleName, p.lastName].filter(Boolean).join(" ");
 
-        if (fetchedName) {
-          setAdmin((prev) => ({
-            ...prev,
-            fullName: fetchedName,
-            email: me.email || prev?.email,
-          }));
-        }
+        setAdmin((prev) => ({
+          ...prev,
+          fullName: fetchedName || prev?.fullName,
+          email: me.email || prev?.email,
+          googlePhotoUrl: me.googlePhotoUrl || prev?.googlePhotoUrl,
+        }));
       })
       .catch(() => {
         // Fallback for UI testing when API isn't ready
@@ -158,11 +165,29 @@ export default function AdminProfile() {
       officeLocation: p.officeLocation || "",
       department: p.department || "",
       role: p.role || "System Administrator",
+      photoUrl: isCustomPhotoUrl(p.photoUrl, admin?.googlePhotoUrl) ? p.photoUrl : "",
     });
 
     setSaveError("");
     setSaveSuccess("");
     setIsEditing(true);
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      setSaveError("");
+      const dataUrl = await resizeProfileImage(file);
+      setForm((prev) => ({ ...prev, photoUrl: dataUrl }));
+    } catch (err) {
+      setSaveError(err.message || "Failed to process profile photo.");
+    }
+  };
+
+  const handleDeletePhoto = () => {
+    setForm((prev) => ({ ...prev, photoUrl: "" }));
   };
 
   // Normal input handler
@@ -210,6 +235,7 @@ export default function AdminProfile() {
           officeLocation: form.officeLocation,
           department: form.department,
           role: form.role,
+          photoUrl: form.photoUrl ?? "",
         }),
       });
 
@@ -239,6 +265,8 @@ export default function AdminProfile() {
       setAdmin((prev) => ({
         ...prev,
         fullName: updatedFullName || prev?.fullName,
+        googlePhotoUrl: data.googlePhotoUrl || prev?.googlePhotoUrl,
+        profile: updatedProfile,
       }));
 
       // Update localStorage
@@ -252,6 +280,8 @@ export default function AdminProfile() {
           JSON.stringify({
             ...parsedAdmin,
             fullName: updatedFullName || parsedAdmin.fullName,
+            googlePhotoUrl: data.googlePhotoUrl || parsedAdmin.googlePhotoUrl,
+            profile: updatedProfile,
           })
         );
       }
@@ -282,26 +312,32 @@ export default function AdminProfile() {
 
   const p = profile || {};
   const currentAdmin = admin || { fullName: "Admin User", email: "admin@cot.edu.ph" };
+  const activePhotoUrl = isEditing ? form.photoUrl : p.photoUrl;
+  const hasCustomPhoto = isCustomPhotoUrl(activePhotoUrl, currentAdmin.googlePhotoUrl);
+  const avatarUrl = resolveAvatarUrl(activePhotoUrl, currentAdmin.googlePhotoUrl || currentAdmin.photoUrl);
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-2 sm:p-6">
+    <div className={embedded ? "space-y-6" : "space-y-6 max-w-6xl mx-auto p-2 sm:p-6"}>
       {/* PAGE HEADER */}
-      <div>
-        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
-          Profile
-        </h1>
-        <p className="mt-1 text-sm font-medium text-gray-500">
-          View and manage your administrator profile and contact details.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
+            Profile
+          </h1>
+          <p className="mt-1 text-sm font-medium text-gray-500">
+            View and manage your administrator profile and contact details.
+          </p>
+        </div>
+      )}
 
       {/* PROFILE HEADER CARD */}
       <div className="bg-white rounded-2xl shadow p-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          {p.photoUrl ? (
+          {avatarUrl ? (
             <img
-              src={p.photoUrl}
+              src={avatarUrl}
               alt="Profile"
+              referrerPolicy="no-referrer"
               className="w-20 h-20 rounded-full object-cover border-2 border-orange-500"
             />
           ) : (
@@ -319,6 +355,38 @@ export default function AdminProfile() {
             </p>
             {currentAdmin.id && (
               <p className="text-gray-400 text-xs">id: {currentAdmin.id}</p>
+            )}
+
+            {isEditing && (
+              <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 text-orange-700 border border-orange-200 text-xs font-semibold hover:bg-orange-100 transition cursor-pointer">
+                  <Camera size={14} />
+                  <span>{hasCustomPhoto ? "Change Photo" : "Upload Photo"}</span>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </label>
+
+                {hasCustomPhoto && (
+                  <button
+                    type="button"
+                    onClick={handleDeletePhoto}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 border border-red-200 text-xs font-semibold hover:bg-red-100 transition cursor-pointer"
+                  >
+                    <Trash2 size={14} />
+                    <span>Delete Photo</span>
+                  </button>
+                )}
+
+                {!hasCustomPhoto && currentAdmin.googlePhotoUrl && (
+                  <span className="text-[11px] text-gray-400">
+                    Using Gmail photo by default
+                  </span>
+                )}
+              </div>
             )}
 
             {loadError && (

@@ -4,6 +4,7 @@ const DocumentModel = require('../models/Document');
 const Instructor = require('../models/Instructor');
 const { logAudit } = require('../utils/auditLog');
 const { CATEGORY, ACTION } = require('../constants/auditActions');
+const { checkLockConflict } = require('../utils/resourceLock');
 
 /**
  * Format academic period human-readable name
@@ -358,11 +359,29 @@ exports.createAcademicPeriod = async (req, res) => {
 exports.updateAcademicPeriod = async (req, res) => {
   try {
     const { id } = req.params;
-    const { schoolYear, semester, startDate, endDate, status } = req.body;
+    const { schoolYear, semester, startDate, endDate, status, expectedUpdatedAt } = req.body;
+
+    // Pessimistic lock check: block if another admin is currently editing this period
+    const lockConflict = await checkLockConflict(`academic-period:${id}`, req.user.id);
+    if (lockConflict) {
+      return res.status(lockConflict.status).json(lockConflict.body);
+    }
 
     const period = await AcademicPeriod.findById(id);
     if (!period) {
       return res.status(404).json({ message: 'Academic period not found.' });
+    }
+
+    // Optimistic lock check: reject stale writes if period was modified since it was opened
+    if (
+      expectedUpdatedAt &&
+      period.updatedAt &&
+      new Date(expectedUpdatedAt).getTime() !== new Date(period.updatedAt).getTime()
+    ) {
+      return res.status(409).json({
+        message: 'This academic period was modified by another administrator. Please refresh and try again.',
+        code: 'VERSION_CONFLICT',
+      });
     }
 
     if (period.isArchived) {
@@ -458,6 +477,11 @@ exports.updateAcademicPeriod = async (req, res) => {
 exports.setActiveAcademicPeriod = async (req, res) => {
   try {
     const { id } = req.params;
+    const lockConflict = await checkLockConflict(`academic-period:${id}`, req.user.id);
+    if (lockConflict) {
+      return res.status(lockConflict.status).json(lockConflict.body);
+    }
+
     const period = await AcademicPeriod.findById(id);
     if (!period) {
       return res.status(404).json({ message: 'Academic period not found.' });
@@ -508,6 +532,11 @@ exports.setActiveAcademicPeriod = async (req, res) => {
 exports.closeAcademicPeriod = async (req, res) => {
   try {
     const { id } = req.params;
+    const lockConflict = await checkLockConflict(`academic-period:${id}`, req.user.id);
+    if (lockConflict) {
+      return res.status(lockConflict.status).json(lockConflict.body);
+    }
+
     const period = await AcademicPeriod.findById(id);
     if (!period) {
       return res.status(404).json({ message: 'Academic period not found.' });
@@ -551,6 +580,11 @@ exports.closeAcademicPeriod = async (req, res) => {
 exports.archiveAcademicPeriod = async (req, res) => {
   try {
     const { id } = req.params;
+    const lockConflict = await checkLockConflict(`academic-period:${id}`, req.user.id);
+    if (lockConflict) {
+      return res.status(lockConflict.status).json(lockConflict.body);
+    }
+
     const period = await AcademicPeriod.findById(id);
     if (!period) {
       return res.status(404).json({ message: 'Academic period not found.' });
@@ -596,6 +630,11 @@ exports.archiveAcademicPeriod = async (req, res) => {
 exports.unarchiveAcademicPeriod = async (req, res) => {
   try {
     const { id } = req.params;
+    const lockConflict = await checkLockConflict(`academic-period:${id}`, req.user.id);
+    if (lockConflict) {
+      return res.status(lockConflict.status).json(lockConflict.body);
+    }
+
     const period = await AcademicPeriod.findById(id);
     if (!period) {
       return res.status(404).json({ message: 'Academic period not found.' });
@@ -634,6 +673,11 @@ exports.unarchiveAcademicPeriod = async (req, res) => {
 exports.deleteAcademicPeriod = async (req, res) => {
   try {
     const { id } = req.params;
+    const lockConflict = await checkLockConflict(`academic-period:${id}`, req.user.id);
+    if (lockConflict) {
+      return res.status(lockConflict.status).json(lockConflict.body);
+    }
+
     const period = await AcademicPeriod.findById(id);
     if (!period) {
       return res.status(404).json({ message: 'Academic period not found.' });

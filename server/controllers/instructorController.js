@@ -1,11 +1,22 @@
 const Instructor = require('../models/Instructor');
+const { markStaleUsersOffline } = require('../utils/onlineStatus');
 
 const SAFE_FIELDS = '-password -resetPasswordToken -resetPasswordExpires';
 
 // GET /api/instructors
 exports.getInstructors = async (req, res) => {
   try {
-    const instructors = await Instructor.find({ accountType: { $ne: 'Administrator' } })
+    await markStaleUsersOffline();
+
+    const instructors = await Instructor.find({
+      accountType: { $ne: 'Administrator' },
+      $or: [
+        { status: 'Accepted' },
+        { status: { $exists: false } },
+        { status: null },
+        { status: '' },
+      ],
+    })
       .select(SAFE_FIELDS)
       .sort({ createdAt: -1 });
     res.json(instructors);
@@ -17,6 +28,8 @@ exports.getInstructors = async (req, res) => {
 // GET /api/instructors/:id
 exports.getInstructorById = async (req, res) => {
   try {
+    await markStaleUsersOffline();
+
     const instructor = await Instructor.findById(req.params.id).select(SAFE_FIELDS);
 
     if (!instructor) {
@@ -38,9 +51,15 @@ exports.updateInstructorStatus = async (req, res) => {
       return res.status(400).json({ message: 'Invalid account status.' });
     }
 
+    const update = { accountStatus };
+    if (accountStatus === 'Deactivated') {
+      update.onlineStatus = 'Offline';
+      update.lastSeenAt = null;
+    }
+
     const instructor = await Instructor.findByIdAndUpdate(
       req.params.id,
-      { accountStatus },
+      update,
       { new: true }
     ).select(SAFE_FIELDS);
 

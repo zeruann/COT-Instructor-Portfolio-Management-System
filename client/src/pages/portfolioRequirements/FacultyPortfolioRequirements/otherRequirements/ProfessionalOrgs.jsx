@@ -54,7 +54,7 @@ const REQUIREMENT = {
 // ─────────────────────────────────────────────────────────────
 const WORDS = {
   pageTitle: 'Professional Organization Membership',
-  addButton: 'Add Document',
+  addButton: 'Upload Document',
   plural: 'professional memberships',
 };
 

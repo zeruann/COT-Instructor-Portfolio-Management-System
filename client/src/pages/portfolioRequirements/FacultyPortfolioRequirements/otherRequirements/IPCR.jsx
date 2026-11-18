@@ -53,7 +53,7 @@ const REQUIREMENT = {
 // ─────────────────────────────────────────────────────────────
 const WORDS = {
   pageTitle: 'IPCR',
-  addButton: 'Add Document',
+  addButton: 'Upload Document',
   plural: 'IPCR records',
 };
 

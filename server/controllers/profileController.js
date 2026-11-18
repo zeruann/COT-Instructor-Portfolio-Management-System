@@ -3,11 +3,13 @@ const bcrypt = require('bcryptjs');
 const { logAudit } = require('../utils/auditLog');
 const { ACTION } = require('../constants/auditActions');
 const { isPasswordValid } = require('../utils/passwordRules');
+const { markStaleUsersOffline } = require('../utils/onlineStatus');
 const { validateProfileFields, formatValidationError } = require('../constants/profilePolicy');
 
 const EDITABLE = [
   'firstName', 'middleName', 'lastName', 'gender', 'civilStatus', 'birthdate',
   'contactNumber', 'alternateEmail', 'address', 'education', 'position', 'rank',
+  'photoUrl',
 ];
 
 const FIELD_LABELS = {
@@ -23,6 +25,7 @@ const FIELD_LABELS = {
   education: 'education',
   position: 'position',
   rank: 'academic rank',
+  photoUrl: 'profile photo',
 };
 
 // GET /api/profile/me
@@ -40,6 +43,8 @@ exports.getMyProfile = async (req, res) => {
 // GET /api/profile/:id (Admin view)
 exports.getProfileById = async (req, res) => {
   try {
+    await markStaleUsersOffline();
+
     const instructor = await Instructor.findById(req.params.id).select('fullName email department profile accountStatus onlineStatus createdAt googlePhotoUrl');
     if (!instructor) return res.status(404).json({ message: 'Instructor not found.' });
     res.json(instructor);
@@ -134,6 +139,16 @@ exports.updateMyProfile = async (req, res) => {
     const changedFields = [];
     const $set = {};
 
+    if (req.body.photoUrl !== undefined && req.body.photoUrl !== null && req.body.photoUrl !== '') {
+      const val = String(req.body.photoUrl);
+      const isValidImage =
+        /^data:image\/(png|jpeg|jpg|webp|gif);base64,/i.test(val) ||
+        val.startsWith('https://');
+      if (!isValidImage || val.length > 750000) {
+        return res.status(400).json({ message: 'Invalid or oversized profile photo.' });
+      }
+    }
+
     const fieldError = validateProfileFields(req.body);
     if (fieldError) {
       return res.status(400).json({ message: fieldError });
@@ -141,10 +156,11 @@ exports.updateMyProfile = async (req, res) => {
 
     for (const key of EDITABLE) {
       if (req.body[key] !== undefined) {
-        $set[`profile.${key}`] = req.body[key];
+        const value = key === 'photoUrl' && req.body[key] === null ? '' : req.body[key];
+        $set[`profile.${key}`] = value;
 
         const oldVal = JSON.stringify(meBefore.profile?.[key] ?? '');
-        const newVal = JSON.stringify(req.body[key] ?? '');
+        const newVal = JSON.stringify(value ?? '');
         if (oldVal !== newVal) {
           changedFields.push(FIELD_LABELS[key] || key);
         }
@@ -172,7 +188,7 @@ exports.updateMyProfile = async (req, res) => {
       req.user.id,
       { $set },
       { new: true, runValidators: true }
-    ).select('fullName email department profile');
+    ).select('fullName email department profile googlePhotoUrl');
 
     const details =
       changedFields.length > 0

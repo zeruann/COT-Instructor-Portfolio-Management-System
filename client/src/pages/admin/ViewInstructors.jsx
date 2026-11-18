@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, Plus, ChevronLeft, ChevronRight, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AppModal, { useAppModal } from '../../components/common/AppModal';
+import InstructorProfileModal from '../../components/admin/InstructorProfileModal';
 import { API_BASE } from '../../api/config';
 
 const PAGE_SIZE = 10;
@@ -37,6 +38,7 @@ export default function ViewInstructors() {
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [tableVisible, setTableVisible] = useState(true);
+  const [selectedInstructor, setSelectedInstructor] = useState(null);
   const { modal, close: closeModal, notify, confirm: showConfirm } = useAppModal();
 
   // Fetch instructors from backend API
@@ -384,7 +386,7 @@ export default function ViewInstructors() {
                   return (
                     <tr
                       key={id}
-                      onClick={() => navigate(`/admin/instructors/${id}`)}
+                      onClick={() => setSelectedInstructor(item)}
                       className="hover:bg-gray-50/50 transition-colors duration-150 cursor-pointer"
                     >
                       <td className="py-4 pr-4">
@@ -494,6 +496,20 @@ export default function ViewInstructors() {
           </div>
         )}
       </div>
+
+      <InstructorProfileModal
+        instructor={selectedInstructor}
+        onClose={() => setSelectedInstructor(null)}
+        onStatusUpdated={(updatedId, newStatus) => {
+          setInstructors((prev) =>
+            prev.map((inst) =>
+              (inst._id || inst.id) === updatedId
+                ? { ...inst, accountStatus: newStatus }
+                : inst
+            )
+          );
+        }}
+      />
 
       <AppModal modal={modal} onClose={closeModal} />
     </>

@@ -58,7 +58,7 @@ const REQUIREMENT = {
 // ─────────────────────────────────────────────────────────────
 const WORDS = {
   pageTitle: 'Seminars & Workshops',
-  addButton: 'Add Seminar / Workshop',
+  addButton: 'Upload Document',
   plural: 'seminars and workshops',
 };
 

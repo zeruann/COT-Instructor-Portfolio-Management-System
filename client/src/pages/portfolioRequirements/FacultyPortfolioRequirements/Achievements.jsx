@@ -57,7 +57,7 @@ const REQUIREMENT = {
 // ─────────────────────────────────────────────────────────────
 const WORDS = {
   pageTitle: 'Achievements',
-  addButton: 'Add Achievement',
+  addButton: 'Upload Document',
   plural: 'achievements',
 };
 

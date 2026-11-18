@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { ChevronDown, ChevronRight, Eye, Upload, RefreshCw, Trash2, CheckSquare, Lock } from 'lucide-react';
+import { ChevronDown, ChevronRight, Eye, Upload, RefreshCw, Trash2, CheckSquare, Lock, FileText } from 'lucide-react';
 import UploadModal from '../../components/documentActions/UploadModal';
 import PreviewModal from '../../components/documentActions/PreviewModal';
 import ConfirmationModal from '../../components/common/ConfirmationModal';
@@ -38,7 +38,7 @@ const SINGLE_DOCUMENT_REQUIREMENTS = new Set([
   'CLASS_A_LOAD_REPORT',
   'CLASS_B_CLASS_LIST',
   'CLASS_C_SYLLABUS',
-  'CLASS_D_INSTRUCTIONAL_MATERIALS',
+  'CLASS_D_IM',
   'CLASS_E_POLICIES_RECEIPT',
   'CLASS_F_SYLLABUS_RECEIPT',
   'CLASS_G_SEAT_PLAN',
@@ -81,6 +81,13 @@ const CHECKED_ACTIVITIES_SECTIONS = [
     type: 'return_receipt',
     coList: [null], // single row without CO
   },
+];
+
+const CO_GROUPS = ['CO1', 'CO2', 'CO3', 'CO4', 'CO5'];
+const CO_SUB_ITEMS = [
+  { type: 'instruction', label: 'Instruction of the Activity' },
+  { type: 'output', label: 'Sample Checked Activities' },
+  { type: 'rubrics', label: 'Answer Key/Rated Rubrics' },
 ];
 
 // M 1.0 Class record and official grade fixed rows
@@ -179,6 +186,120 @@ function getCurrentFileName(doc) {
   return current ? current.originalName : versions[versions.length - 1].originalName;
 }
 
+function FixedSlotRowCard({
+  title,
+  doc,
+  status,
+  hasRecord,
+  isAdmin,
+  isArchived,
+  requiredLabel = 'Required',
+  onView,
+  onUpload,
+  onDelete,
+}) {
+  const fileName = doc ? getCurrentFileName(doc) : null;
+  const remarks = doc?.review?.comment || doc?.comment;
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-xl border border-gray-200 bg-gray-50">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-100 text-brand-purple shrink-0">
+          <FileText size={24} />
+        </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm sm:text-base font-bold text-gray-900">
+              {title}
+            </h3>
+            {requiredLabel && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-gray-100 text-gray-600 border-gray-200">
+                {requiredLabel}
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500">
+            <StatusBadge status={status} />
+            <span className="truncate max-w-[320px]" title={fileName || undefined}>
+              {fileName || 'PDF, DOCX, JPEG, PNG · Maximum 25 MB'}
+            </span>
+            {hasRecord && doc?.submittedAt && (
+              <span>· Submitted {formatDate(doc.submittedAt)}</span>
+            )}
+          </div>
+          {remarks && status === 'rejected' && (
+            <p className="mt-1.5 text-xs text-red-600 font-medium">
+              Admin Remarks: {remarks}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 shrink-0">
+        {isAdmin ? (
+          <button
+            type="button"
+            disabled={!hasRecord}
+            onClick={() => onView(doc)}
+            className="inline-flex items-center gap-2 rounded-xl bg-brand-orange px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-orange-600 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <CheckSquare size={16} />
+            <span>Review Document</span>
+          </button>
+        ) : (
+          <>
+            {hasRecord && (
+              <button
+                type="button"
+                onClick={() => onView(doc)}
+                className="inline-flex items-center gap-2 rounded-xl bg-brand-purple px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-opacity-90 transition cursor-pointer"
+              >
+                <Eye size={16} />
+                <span>View Document</span>
+              </button>
+            )}
+
+            {!isArchived && status !== 'approved' && (
+              <button
+                type="button"
+                onClick={onUpload}
+                className={
+                  hasRecord
+                    ? 'inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition cursor-pointer'
+                    : 'inline-flex items-center gap-2 rounded-xl bg-brand-orange px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-orange-600 transition cursor-pointer'
+                }
+              >
+                {hasRecord ? (
+                  <>
+                    <RefreshCw size={15} />
+                    <span>Replace</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={16} />
+                    <span>Upload Document</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {hasRecord && !isArchived && status !== 'approved' && (
+              <button
+                type="button"
+                onClick={() => onDelete(doc)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100 transition cursor-pointer"
+              >
+                <Trash2 size={16} />
+                <span>Delete</span>
+              </button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ClassRequirementPage({
   classId: propClassId,
   reqPath: propReqPath,
@@ -204,18 +325,19 @@ export default function ClassRequirementPage({
   const isClassRecord = reqConfig.key === 'CLASS_M_CLASS_RECORD';
   const isConsultation = reqConfig.key === 'CLASS_N_STUDENT_CONSULTATION';
 
-  // Collapsible dropdown state for main sections (all expanded by default)
-  const [expandedSections, setExpandedSections] = useState({
-    instruction: true,
-    output: true,
-    rubrics: true,
-    return_receipt: true,
+  // Collapsible dropdown state for CO groups (smooth accordion)
+  const [expandedCos, setExpandedCos] = useState({
+    CO1: false,
+    CO2: false,
+    CO3: false,
+    CO4: false,
+    CO5: false,
   });
 
-  const toggleSection = (type) => {
-    setExpandedSections((prev) => ({
+  const toggleCo = (co) => {
+    setExpandedCos((prev) => ({
       ...prev,
-      [type]: !prev[type],
+      [co]: !prev[co],
     }));
   };
 
@@ -483,510 +605,219 @@ export default function ClassRequirementPage({
       </div>
 
       {isCheckedActivities ? (
-        /* ── SAMPLE CHECKED ACTIVITIES ── list-style layout ── */
-        <section className="doc-table-card" aria-label={reqConfig.title}>
-          <div className="doc-table-scroll">
-            <table className="doc-table">
-              <colgroup>
-                <col className="doc-table__col-type" />
-                <col className="doc-table__col-status" />
-                <col className="doc-table__col-action" />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th scope="col">Document Type</th>
-                  <th scope="col" className="doc-table__status">Status</th>
-                  <th scope="col">Action</th>
-                </tr>
-              </thead>
-            </table>
+        /* ── SAMPLE CHECKED ACTIVITIES ── card-row layout ── */
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-xs">
+          <div className="border-b border-gray-100 pb-5">
+            <h2 className="text-xl font-bold text-brand-purple">Submitted Evidence</h2>
+            <p className="mt-1 text-sm text-gray-400">
+              {isAdmin
+                ? 'Review submitted document evidence and provide feedback or approval.'
+                : 'Upload the required evidence for each course outcome section below.'}
+            </p>
           </div>
+
           {loading ? (
-            <div className="px-5 py-6 text-sm text-gray-400">Loading…</div>
+            <div className="py-10 text-center text-sm text-gray-400">Loading…</div>
           ) : (
-            <div className="divide-y divide-gray-100">
-              {CHECKED_ACTIVITIES_SECTIONS.map((sec, secIdx) => {
-                const isExpanded = expandedSections[sec.type] !== false;
-                const sectionUploadedCount = sec.coList.filter((co) =>
-                  records.some((r) => r.slot?.type === sec.type && (co ? r.slot?.co === co : true))
+            <div className="mt-6 space-y-4">
+              {/* Return Output Receipt (standalone, on top of CO dropdowns) */}
+              {(() => {
+                const receiptDoc = records.find((r) => r.slot?.type === 'return_receipt');
+                return (
+                  <FixedSlotRowCard
+                    title="Return Output Receipt"
+                    doc={receiptDoc}
+                    status={receiptDoc ? receiptDoc.status : 'missing'}
+                    hasRecord={Boolean(receiptDoc)}
+                    isAdmin={isAdmin}
+                    isArchived={isArchived}
+                    onView={handleView}
+                    onUpload={() =>
+                      openModal(
+                        receiptDoc || null,
+                        { type: 'return_receipt', co: null },
+                        'Return Output Receipt'
+                      )
+                    }
+                    onDelete={handleDelete}
+                  />
+                );
+              })()}
+
+              {/* CO1 .. CO5 smooth collapsible dropdowns */}
+              {CO_GROUPS.map((co) => {
+                const isExpanded = Boolean(expandedCos[co]);
+                const uploadedCount = CO_SUB_ITEMS.filter((item) =>
+                  records.some((r) => r.slot?.type === item.type && r.slot?.co === co)
                 ).length;
-                const sectionTotalCount = sec.coList.length;
 
                 return (
-                  <React.Fragment key={sec.type}>
-                    {/* ── Collapsible section header ── */}
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => toggleSection(sec.type)}
-                      onKeyDown={(e) => e.key === 'Enter' && toggleSection(sec.type)}
-                      className="flex items-center justify-between gap-3 px-5 py-3 bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                  <div key={co} className="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => toggleCo(co)}
+                      aria-expanded={isExpanded}
+                      className="w-full flex items-center justify-between gap-4 p-5 text-left hover:bg-gray-100/70 transition-colors cursor-pointer select-none"
                     >
-                      <div className="flex items-center gap-2.5">
-                        <button
-                          type="button"
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-500 shadow-sm hover:border-brand-purple hover:text-brand-purple transition"
-                          aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
-                        >
-                          {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        </button>
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-purple/10 text-xs font-bold text-brand-purple">
-                          {secIdx + 1}
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-brand-purple">
+                          <ChevronRight
+                            size={18}
+                            className={`transition-transform duration-300 ease-in-out ${
+                              isExpanded ? 'rotate-90' : 'rotate-0'
+                            }`}
+                          />
                         </span>
-                        <span className="text-sm font-semibold text-gray-800">
-                          {sec.categoryTitle}
-                        </span>
-                      </div>
-                      <span className="shrink-0 text-xs font-medium text-gray-400">
-                        {sectionUploadedCount} of {sectionTotalCount} uploaded
-                      </span>
-                    </div>
-
-                    {/* ── Expandable sub-items (CO 1 … CO 5 / receipt) ── */}
-                    {isExpanded && sec.coList.map((co) => {
-                      const doc = records.find(
-                        (r) => r.slot?.type === sec.type && (co ? r.slot?.co === co : true)
-                      );
-                      const hasRecord = Boolean(doc);
-                      const status = doc ? doc.status : 'missing';
-                      const uploadSlot = { type: sec.type, co };
-                      const rowTitle = co ? co.replace('CO', 'CO ') : sec.categoryTitle;
-                      const modalLabel = `${sec.categoryTitle} — ${rowTitle}`;
-
-                      return (
-                        <div
-                          key={`${sec.type}_${co || 'all'}`}
-                          className="flex items-center justify-between gap-4 py-3.5 pr-6 pl-12 bg-white border-b border-gray-100 hover:bg-slate-50/50 transition-colors"
-                        >
-                          {/* Icon + name + subtitle */}
-                          <div className="flex flex-1 min-w-0 items-center gap-3.5">
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.6"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="w-6 h-6 shrink-0 text-brand-purple"
-                              aria-hidden="true"
-                            >
-                              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                              <path d="M14 3v5h5M9 13h6M9 17h6" />
-                            </svg>
-                            <div className="min-w-0">
-                              <div className="flex items-baseline gap-2 flex-wrap">
-                                <span className="text-[15px] font-semibold text-brand-purple">
-                                  {rowTitle}
-                                </span>
-                                <span className="text-[10px] font-semibold tracking-wider uppercase text-red-500 rounded-sm border border-gray-200 px-1 py-0.5">
-                                  Required
-                                </span>
-                              </div>
-                              <p className="text-[12px] text-gray-400 mt-0.5 truncate">
-                                {doc ? getCurrentFileName(doc) : 'PDF, DOCX, JPEG, PNG · Maximum 25 MB'}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Status pill */}
-                          <div className="shrink-0 text-center">
-                            <StatusBadge status={status} />
-                          </div>
-
-                          {/* View + Upload/Reupload buttons */}
-                          <div className="flex shrink-0 items-center gap-2">
-                            {isAdmin ? (
-                              status === 'approved' || status === 'rejected' ? (
-                                <span className="doc-badge--reviewed">
-                                  <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                                  Reviewed
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="doc-btn doc-btn--review"
-                                  disabled={!hasRecord}
-                                  title={hasRecord ? 'Review document' : 'No document submitted yet'}
-                                  onClick={() => handleView(doc)}
-                                >
-                                  <CheckSquare className="w-4 h-4" />
-                                  Review
-                                </button>
-                              )
-                            ) : isArchived ? (
-                              <button
-                                type="button"
-                                className="doc-btn doc-btn--view"
-                                disabled={!hasRecord}
-                                title={hasRecord ? 'View document' : 'No document submitted'}
-                                onClick={() => handleView(doc)}
-                              >
-                                <Eye className="w-4 h-4" />
-                                View
-                              </button>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  className="doc-btn doc-btn--view"
-                                  disabled={!hasRecord}
-                                  title={hasRecord ? 'View document' : 'Upload a file first'}
-                                  onClick={() => handleView(doc)}
-                                >
-                                  <Eye className="w-4 h-4" />
-                                  View
-                                </button>
-
-                                {!hasRecord ? (
-                                  <button
-                                    type="button"
-                                    className="doc-btn doc-btn--upload"
-                                    title="Upload document"
-                                    onClick={() => openModal(null, uploadSlot, modalLabel)}
-                                  >
-                                    <Upload className="w-4 h-4" />
-                                    Upload
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="doc-btn doc-btn--reupload"
-                                    title="Upload replacement version"
-                                    onClick={() => openModal(doc, uploadSlot, modalLabel)}
-                                  >
-                                    <RefreshCw className="w-3.5 h-3.5" />
-                                    Reupload
-                                  </button>
-                                )}
-
-                                {hasRecord && status !== 'approved' && (
-                                  <button
-                                    type="button"
-                                    className="doc-btn border-red-200 text-red-600 hover:bg-red-50 p-2 rounded"
-                                    title="Delete document"
-                                    onClick={() => handleDelete(doc)}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
+                        <div className="min-w-0">
+                          <h3 className="text-sm sm:text-base font-bold text-gray-900">
+                            {co}
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {uploadedCount} of {CO_SUB_ITEMS.length} uploaded
+                          </p>
                         </div>
-                      );
-                    })}
-                  </React.Fragment>
+                      </div>
+                    </button>
+
+                    <div
+                      className={`grid transition-all duration-300 ease-in-out ${
+                        isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <div className="p-4 space-y-3 bg-white border-t border-gray-200">
+                          {CO_SUB_ITEMS.map((item) => {
+                            const doc = records.find(
+                              (r) => r.slot?.type === item.type && r.slot?.co === co
+                            );
+                            const hasRecord = Boolean(doc);
+                            const status = doc ? doc.status : 'missing';
+                            const uploadSlot = { type: item.type, co };
+                            const modalLabel = `${co} — ${item.label}`;
+
+                            return (
+                              <FixedSlotRowCard
+                                key={`${item.type}_${co}`}
+                                title={item.label}
+                                doc={doc}
+                                status={status}
+                                hasRecord={hasRecord}
+                                isAdmin={isAdmin}
+                                isArchived={isArchived}
+                                onView={handleView}
+                                onUpload={() => openModal(doc || null, uploadSlot, modalLabel)}
+                                onDelete={handleDelete}
+                              />
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 );
               })}
             </div>
           )}
-        </section>
+        </div>
       ) : isClassRecord ? (
-        /* ── M 1.0 CLASS RECORD AND OFFICIAL GRADE ── list-style layout ── */
-        <section className="doc-table-card" aria-label={reqConfig.title}>
-          <div className="doc-table-scroll">
-            <table className="doc-table">
-              <colgroup>
-                <col className="doc-table__col-type" />
-                <col className="doc-table__col-status" />
-                <col className="doc-table__col-action" />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th scope="col">Document Type</th>
-                  <th scope="col" className="doc-table__status">Status</th>
-                  <th scope="col">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={3} className="doc-table__empty">Loading...</td>
-                  </tr>
-                ) : (
-                  classRecordRows.map((row) => {
-                    const doc = row.doc;
-                    const hasRecord = row.hasRecord;
-                    const status = row.status;
-                    const uploadSlot = { type: row.type };
-                    const modalLabel = `${reqConfig.title} — ${row.label}`;
-
-                    return (
-                      <tr key={row.type}>
-                        <td>
-                          <div className="doc-table__type">
-                            <svg
-                              viewBox="0 0 24 24"
-                              className="doc-table__icon"
-                              width="26"
-                              height="26"
-                              strokeWidth="1.6"
-                              fill="none"
-                              stroke="currentColor"
-                            >
-                              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                              <path d="M14 3v5h5M9 13h6M9 17h6" />
-                            </svg>
-
-                            <div>
-                              <div className="doc-table__name-row">
-                                <span className="doc-table__name">{row.label}</span>
-                                <span className="doc-table__required rounded-sm border border-gray-200 px-1">
-                                  Required
-                                </span>
-                              </div>
-                              <p className="text-[12px] text-gray-400">
-                                {doc ? getCurrentFileName(doc) : row.hint}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="doc-table__status">
-                          <StatusBadge status={status} />
-                        </td>
-
-                        <td>
-                          <div className="doc-actions flex items-center gap-2">
-                            {isAdmin ? (
-                              status === 'approved' || status === 'rejected' ? (
-                                <span className="doc-badge--reviewed">
-                                  <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                                  Reviewed
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="doc-btn doc-btn--review"
-                                  disabled={!hasRecord}
-                                  title={hasRecord ? 'Review document' : 'No document submitted yet'}
-                                  onClick={() => handleView(doc)}
-                                >
-                                  <CheckSquare className="w-4 h-4" />
-                                  Review
-                                </button>
-                              )
-                            ) : isArchived ? (
-                              <button
-                                type="button"
-                                className="doc-btn doc-btn--view"
-                                disabled={!hasRecord}
-                                title={hasRecord ? 'View document' : 'No document submitted'}
-                                onClick={() => handleView(doc)}
-                              >
-                                <Eye className="w-4 h-4" />
-                                View
-                              </button>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  className="doc-btn doc-btn--view"
-                                  disabled={!hasRecord}
-                                  title={hasRecord ? 'View document' : 'Upload a file first'}
-                                  onClick={() => handleView(doc)}
-                                >
-                                  <Eye className="w-4 h-4" />
-                                  View
-                                </button>
-
-                                {!hasRecord ? (
-                                  <button
-                                    type="button"
-                                    className="doc-btn doc-btn--upload"
-                                    title="Upload document"
-                                    onClick={() => openModal(null, uploadSlot, modalLabel)}
-                                  >
-                                    <Upload className="w-4 h-4" />
-                                    Upload
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="doc-btn doc-btn--reupload"
-                                    title="Upload replacement version"
-                                    onClick={() => openModal(doc, uploadSlot, modalLabel)}
-                                  >
-                                    <RefreshCw className="w-3.5 h-3.5" />
-                                    Reupload
-                                  </button>
-                                )}
-
-                                {hasRecord && status !== 'approved' && (
-                                  <button
-                                    type="button"
-                                    className="doc-btn border-red-200 text-red-600 hover:bg-red-50 p-2 rounded"
-                                    title="Delete document"
-                                    onClick={() => handleDelete(doc)}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+        /* ── M 1.0 CLASS RECORD AND OFFICIAL GRADE ── card-row layout ── */
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-xs">
+          <div className="border-b border-gray-100 pb-5">
+            <h2 className="text-xl font-bold text-brand-purple">Submitted Evidence</h2>
+            <p className="mt-1 text-sm text-gray-400">
+              {isAdmin
+                ? 'Review submitted document evidence and provide feedback or approval.'
+                : 'Upload each required class record and grade sheet below.'}
+            </p>
           </div>
-        </section>
+
+          <div className="mt-6 space-y-3">
+            {loading ? (
+              <div className="py-10 text-center text-sm text-gray-400">Loading…</div>
+            ) : (
+              classRecordRows.map((row) => (
+                <FixedSlotRowCard
+                  key={row.type}
+                  title={row.label}
+                  doc={row.doc}
+                  status={row.status}
+                  hasRecord={row.hasRecord}
+                  isAdmin={isAdmin}
+                  isArchived={isArchived}
+                  onView={handleView}
+                  onUpload={() => openModal(row.doc || null, { type: row.type }, row.label)}
+                  onDelete={handleDelete}
+                />
+              ))
+            )}
+          </div>
+        </div>
       ) : isConsultation ? (
-        /* ── N 1.0 STUDENT CONSULTATION FORMS ── list-style layout ── */
-        <section className="doc-table-card" aria-label={reqConfig.title}>
-          <div className="doc-table-scroll">
-            <table className="doc-table">
-              <colgroup>
-                <col className="doc-table__col-type" />
-                <col className="doc-table__col-status" />
-                <col className="doc-table__col-action" />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th scope="col">Document Type</th>
-                  <th scope="col" className="doc-table__status">Status</th>
-                  <th scope="col">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan={3} className="doc-table__empty">Loading...</td>
-                  </tr>
-                ) : (
-                  consultationRows.map((row) => {
-                    const doc = row.doc;
-                    const hasRecord = row.hasRecord;
-                    const status = row.status;
-                    const uploadSlot = { type: row.type };
-                    const modalLabel = `${reqConfig.title} — ${row.label}`;
-
-                    return (
-                      <tr key={row.type}>
-                        <td>
-                          <div className="doc-table__type">
-                            <svg
-                              viewBox="0 0 24 24"
-                              className="doc-table__icon"
-                              width="26"
-                              height="26"
-                              strokeWidth="1.6"
-                              fill="none"
-                              stroke="currentColor"
-                            >
-                              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                              <path d="M14 3v5h5M9 13h6M9 17h6" />
-                            </svg>
-
-                            <div>
-                              <div className="doc-table__name-row">
-                                <span className="doc-table__name">{row.label}</span>
-                                <span className="doc-table__required rounded-sm border border-gray-200 px-1">
-                                  Required
-                                </span>
-                              </div>
-                              <p className="text-[12px] text-gray-400">
-                                {doc ? getCurrentFileName(doc) : row.hint}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-
-                        <td className="doc-table__status">
-                          <StatusBadge status={status} />
-                        </td>
-
-                        <td>
-                          <div className="doc-actions flex items-center gap-2">
-                            {isAdmin ? (
-                              status === 'approved' || status === 'rejected' ? (
-                                <span className="doc-badge--reviewed">
-                                  <CheckSquare className="w-3.5 h-3.5 text-slate-500" />
-                                  Reviewed
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="doc-btn doc-btn--review"
-                                  disabled={!hasRecord}
-                                  title={hasRecord ? 'Review document' : 'No document submitted yet'}
-                                  onClick={() => handleView(doc)}
-                                >
-                                  <CheckSquare className="w-4 h-4" />
-                                  Review
-                                </button>
-                              )
-                            ) : isArchived ? (
-                              <button
-                                type="button"
-                                className="doc-btn doc-btn--view"
-                                disabled={!hasRecord}
-                                title={hasRecord ? 'View document' : 'No document submitted'}
-                                onClick={() => handleView(doc)}
-                              >
-                                <Eye className="w-4 h-4" />
-                                View
-                              </button>
-                            ) : (
-                              <>
-                                <button
-                                  type="button"
-                                  className="doc-btn doc-btn--view"
-                                  disabled={!hasRecord}
-                                  title={hasRecord ? 'View document' : 'Upload a file first'}
-                                  onClick={() => handleView(doc)}
-                                >
-                                  <Eye className="w-4 h-4" />
-                                  View
-                                </button>
-
-                                {!hasRecord ? (
-                                  <button
-                                    type="button"
-                                    className="doc-btn doc-btn--upload"
-                                    title="Upload document"
-                                    onClick={() => openModal(null, uploadSlot, modalLabel)}
-                                  >
-                                    <Upload className="w-4 h-4" />
-                                    Upload
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="doc-btn doc-btn--reupload"
-                                    title="Upload replacement version"
-                                    onClick={() => openModal(doc, uploadSlot, modalLabel)}
-                                  >
-                                    <RefreshCw className="w-3.5 h-3.5" />
-                                    Reupload
-                                  </button>
-                                )}
-
-                                {hasRecord && status !== 'approved' && (
-                                  <button
-                                    type="button"
-                                    className="doc-btn border-red-200 text-red-600 hover:bg-red-50 p-2 rounded"
-                                    title="Delete document"
-                                    onClick={() => handleDelete(doc)}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+        /* ── N 1.0 STUDENT CONSULTATION FORMS ── card-row layout ── */
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-xs">
+          <div className="border-b border-gray-100 pb-5">
+            <h2 className="text-xl font-bold text-brand-purple">Submitted Evidence</h2>
+            <p className="mt-1 text-sm text-gray-400">
+              {isAdmin
+                ? 'Review submitted document evidence and provide feedback or approval.'
+                : 'Upload each required student consultation document below.'}
+            </p>
           </div>
-        </section>
+
+          <div className="mt-6 space-y-3">
+            {loading ? (
+              <div className="py-10 text-center text-sm text-gray-400">Loading…</div>
+            ) : (
+              consultationRows.map((row) => (
+                <FixedSlotRowCard
+                  key={row.type}
+                  title={row.label}
+                  doc={row.doc}
+                  status={row.status}
+                  hasRecord={row.hasRecord}
+                  isAdmin={isAdmin}
+                  isArchived={isArchived}
+                  onView={handleView}
+                  onUpload={() => openModal(row.doc || null, { type: row.type }, row.label)}
+                  onDelete={handleDelete}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      ) : isFixedTerm ? (
+        /* ── FIXED TERM REQUIREMENTS (K 1.0 Signed TOS / L 1.0 Test Questionnaire) ── card-row layout ── */
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 shadow-xs">
+          <div className="border-b border-gray-100 pb-5">
+            <h2 className="text-xl font-bold text-brand-purple">Submitted Evidence</h2>
+            <p className="mt-1 text-sm text-gray-400">
+              {isAdmin
+                ? 'Review submitted document evidence and provide feedback or approval.'
+                : 'Upload the Midterm and Finalterm documents below.'}
+            </p>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {loading ? (
+              <div className="py-10 text-center text-sm text-gray-400">Loading…</div>
+            ) : (
+              fixedTermRows.map((row) => (
+                <FixedSlotRowCard
+                  key={row.term}
+                  title={`${row.term} — ${reqConfig.title}`}
+                  doc={row.doc}
+                  status={row.status}
+                  hasRecord={row.hasRecord}
+                  isAdmin={isAdmin}
+                  isArchived={isArchived}
+                  onView={handleView}
+                  onUpload={() => openModal(row.doc || null, { term: row.term }, `${row.term} — ${reqConfig.title}`)}
+                  onDelete={handleDelete}
+                />
+              ))
+            )}
+          </div>
+        </div>
       ) : (
         /* ── ALL OTHER REQUIREMENTS ── table layout ── */
         <section className="doc-table-card" aria-label={reqConfig.title}>

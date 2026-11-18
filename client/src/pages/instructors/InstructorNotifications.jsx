@@ -6,13 +6,17 @@ import {
   Info,
   ChevronRight,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 import PlaceholderPage from '../../components/layout/PlaceholderPage';
+import ConfirmationModal from '../../components/common/ConfirmationModal';
 import { getNotificationTitle } from '../../utils/notificationDisplay';
 import {
   fetchNotifications,
   markAllNotificationsAsRead,
   markNotificationAsRead,
+  deleteNotification,
+  clearAllNotifications,
 } from '../../api/notifications';
 
 function getInitials(name) {
@@ -50,6 +54,8 @@ function InstructorNotifications() {
   const [activeTab, setActiveTab] = useState('all');
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [pendingDelete, setPendingDelete] = useState(null); // { type: 'single', notif } | { type: 'all' }
+  const [deleting, setDeleting] = useState(false);
 
   const loadNotifications = async () => {
     try {
@@ -78,6 +84,35 @@ function InstructorNotifications() {
       window.dispatchEvent(new Event('notifications-read'));
     } catch (err) {
       console.error('Failed to mark all as read:', err);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      if (pendingDelete.type === 'all') {
+        await clearAllNotifications();
+        setNotifications([]);
+        window.dispatchEvent(new Event('notifications-read'));
+      } else {
+        const notif = pendingDelete.notif;
+        const id = notif._id || notif.id;
+        await deleteNotification(id);
+        setNotifications((prev) =>
+          prev.filter((n) => (n._id || n.id) !== id)
+        );
+        window.dispatchEvent(
+          new CustomEvent('notification-deleted', {
+            detail: { unread: !notif.readAt },
+          })
+        );
+      }
+      setPendingDelete(null);
+    } catch (err) {
+      console.error('Failed to delete notification(s):', err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -191,13 +226,26 @@ function InstructorNotifications() {
           })}
         </div>
 
-        <button
-          type="button"
-          onClick={handleMarkAllAsRead}
-          className="self-start rounded-xl border border-brand-purple/40 bg-white px-5 py-2 text-sm font-medium text-brand-purple transition-colors hover:border-brand-purple hover:bg-brand-purple/5 sm:self-auto cursor-pointer"
-        >
-          Mark all as read
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={handleMarkAllAsRead}
+            className="rounded-xl border border-brand-purple/40 bg-white px-5 py-2 text-sm font-medium text-brand-purple transition-colors hover:border-brand-purple hover:bg-brand-purple/5 cursor-pointer"
+          >
+            Mark all as read
+          </button>
+
+          {notifications.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setPendingDelete({ type: 'all' })}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-500 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 cursor-pointer"
+            >
+              <Trash2 size={15} />
+              Delete all
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main Notifications Card Container */}
@@ -290,19 +338,54 @@ function InstructorNotifications() {
                     </div>
                   </div>
 
-                  {/* Right: Open Portfolio chevron (only when there's a link) */}
-                  {notif.actionLink && (
-                    <span className="inline-flex shrink-0 items-center gap-1 self-start rounded-xl border border-brand-purple/40 bg-white px-4 py-2 text-sm font-medium text-brand-purple sm:self-auto">
-                      Open portfolio
-                      <ChevronRight size={16} />
-                    </span>
-                  )}
+                  {/* Right: Open Portfolio chevron (only when there's a link) + Delete */}
+                  <div className="flex shrink-0 items-center gap-2 self-start sm:self-auto">
+                    {notif.actionLink && (
+                      <span className="inline-flex items-center gap-1 rounded-xl border border-brand-purple/40 bg-white px-4 py-2 text-sm font-medium text-brand-purple">
+                        Open portfolio
+                        <ChevronRight size={16} />
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      title="Delete notification"
+                      aria-label="Delete notification"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPendingDelete({ type: 'single', notif });
+                      }}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-400 transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 cursor-pointer"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        open={Boolean(pendingDelete)}
+        variant="danger"
+        title={
+          pendingDelete?.type === 'all'
+            ? 'Delete all notifications?'
+            : 'Delete this notification?'
+        }
+        message={
+          pendingDelete?.type === 'all'
+            ? 'All of your notifications will be permanently deleted. This action cannot be undone.'
+            : 'This notification will be permanently deleted. This action cannot be undone.'
+        }
+        confirmLabel="Delete"
+        loading={deleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => !deleting && setPendingDelete(null)}
+      />
     </div>
   );
 }

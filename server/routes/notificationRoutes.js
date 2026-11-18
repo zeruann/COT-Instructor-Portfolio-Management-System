@@ -7,6 +7,8 @@ const notificationController = require('../controllers/notificationController');
 router.get('/', auth, notificationController.getNotifications);
 router.patch('/mark-all-read', auth, notificationController.markAllAsRead);
 router.patch('/:id/read', auth, notificationController.markAsRead);
+router.delete('/clear-all', auth, notificationController.clearAll);
+router.delete('/:id', auth, notificationController.deleteNotification);
 
 module.exports = router;
 
