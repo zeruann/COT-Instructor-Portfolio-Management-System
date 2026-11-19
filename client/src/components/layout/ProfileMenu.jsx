@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, ChevronDown, Lock, LogOut, User } from 'lucide-react';
+import { ArrowLeftRight, ChevronDown, Loader2, Lock, LogOut, User } from 'lucide-react';
 import useLogout from '../../hooks/useLogout';
 import UserBadge from './UserBadge';
 import AdminAccountModal from '../admin/AdminAccountModal';
@@ -20,8 +21,8 @@ function ProfileMenu({ role, menu, name, avatarUrl, user }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [accountModalMode, setAccountModalMode] = useState(null);
-  const [showSwitchModal, setShowSwitchModal] = useState(false);
-  const [switching, setSwitching] = useState(false);
+  const [switchTargetRole, setSwitchTargetRole] = useState(null);
+  const [switchingScreenRole, setSwitchingScreenRole] = useState(null);
   const wrapperRef = useRef(null);
   const { askToLogout, logoutModal } = useLogout(role);
 
@@ -39,33 +40,17 @@ function ProfileMenu({ role, menu, name, avatarUrl, user }) {
         localStorage.setItem('admin', serialized);
       }
     }
-    setShowSwitchModal(false);
-    if (data.activeRole === 'admin') {
-      navigate(getFirstAllowedAdminPath(data.instructor));
-    } else {
-      navigate('/instructors/dashboard');
-    }
-  };
+    setSwitchTargetRole(null);
+    setSwitchingScreenRole(data.activeRole);
 
-  const handleSwitchToInstructor = async () => {
-    if (switching) return;
-    try {
-      setSwitching(true);
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/auth/switch-mode', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ targetRole: 'instructor' }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) return;
-      applySwitchSuccess(data);
-    } finally {
-      setSwitching(false);
-    }
+    setTimeout(() => {
+      if (data.activeRole === 'admin') {
+        navigate(getFirstAllowedAdminPath(data.instructor));
+      } else {
+        navigate('/instructors/dashboard');
+      }
+      setSwitchingScreenRole(null);
+    }, 800);
   };
 
   // While the menu is open: clicking outside it, or pressing Escape, closes it.
@@ -171,7 +156,7 @@ function ProfileMenu({ role, menu, name, avatarUrl, user }) {
               tabIndex={open ? 0 : -1}
               onClick={() => {
                 setOpen(false);
-                setShowSwitchModal(true);
+                setSwitchTargetRole('admin');
               }}
               className="flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg bg-orange-50 px-3 py-2 text-left text-sm font-semibold text-brand-orange transition-colors duration-150 hover:bg-brand-orange hover:text-white cursor-pointer"
             >
@@ -186,15 +171,14 @@ function ProfileMenu({ role, menu, name, avatarUrl, user }) {
               type="button"
               role="menuitem"
               tabIndex={open ? 0 : -1}
-              disabled={switching}
               onClick={() => {
                 setOpen(false);
-                handleSwitchToInstructor();
+                setSwitchTargetRole('instructor');
               }}
-              className="flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg bg-[#efeef8] px-3 py-2 text-left text-sm font-semibold text-[#2e2a72] transition-colors duration-150 hover:bg-[#2e2a72] hover:text-white disabled:opacity-60 cursor-pointer"
+              className="flex w-full items-center gap-2.5 whitespace-nowrap rounded-lg bg-[#efeef8] px-3 py-2 text-left text-sm font-semibold text-[#2e2a72] transition-colors duration-150 hover:bg-[#2e2a72] hover:text-white cursor-pointer"
             >
               <ArrowLeftRight size={16} className="shrink-0" aria-hidden="true" />
-              {switching ? 'Switching…' : 'Switch to Instructor'}
+              Switch to Instructor
             </button>
           </div>
         )}
@@ -221,10 +205,33 @@ function ProfileMenu({ role, menu, name, avatarUrl, user }) {
         />
       )}
       <ModeSwitchPasswordModal
-        open={showSwitchModal}
-        onClose={() => setShowSwitchModal(false)}
+        open={Boolean(switchTargetRole)}
+        targetRole={switchTargetRole || 'admin'}
+        user={currentUser}
+        onClose={() => setSwitchTargetRole(null)}
         onSuccess={applySwitchSuccess}
       />
+      {switchingScreenRole &&
+        createPortal(
+          <div className="fixed inset-0 z-[150] flex flex-col items-center justify-center bg-white/85 backdrop-blur-md animate-[modalBackdropIn_150ms_ease-out_forwards]">
+            <div className="flex flex-col items-center gap-4 rounded-3xl border border-gray-200/80 bg-white px-10 py-8 shadow-xl text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-brand-orange border border-orange-200/80">
+                <Loader2 size={28} className="animate-spin" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-gray-900">
+                  {switchingScreenRole === 'admin'
+                    ? 'Switching to Administrator…'
+                    : 'Switching to Instructor…'}
+                </h3>
+                <p className="mt-1 text-xs text-gray-500">
+                  Preparing your workspace and permissions
+                </p>
+              </div>
+            </div>
+          </div>,
+          window.document.body
+        )}
     </div>
   );
 }

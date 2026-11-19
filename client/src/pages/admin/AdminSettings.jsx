@@ -1450,7 +1450,7 @@ export default function AdminSettings() {
       {/* ── SECURITY VERIFICATION OVERLAY COVER (Dark backdrop blur, centered across the whole screen) ── */}
       {!isUnlocked && createPortal(
         <div
-          className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/50 transition-all duration-500 ease-out overflow-y-auto ${isFadingOut
+          className={`fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm transition-all duration-500 ease-out overflow-y-auto ${isFadingOut
             ? "opacity-0 scale-[0.98] pointer-events-none"
             : "opacity-100 scale-100"
             }`}

@@ -447,57 +447,57 @@ exports.switchMode = async (req, res) => {
       req.user.activeRole ||
       (user.accountType === 'Administrator' ? 'admin' : 'instructor');
 
-    if (targetRole === 'admin') {
-      if (!canUseAdminMode(user)) {
-        return res.status(403).json({
-          message: 'You do not have Administrator access granted for this account.',
-        });
-      }
+    if (targetRole === 'admin' && !canUseAdminMode(user)) {
+      return res.status(403).json({
+        message: 'You do not have Administrator access granted for this account.',
+      });
+    }
 
-      if (!user.password) {
-        return res.status(400).json({
-          message:
-            'No password is set on your account yet. Please set a password in Security settings before switching to Administrator mode.',
-        });
-      }
+    if (!user.password) {
+      return res.status(400).json({
+        message:
+          'No password is set on your account yet. Please set a password in Security settings before switching roles.',
+      });
+    }
 
-      if (!password) {
-        return res.status(400).json({ message: 'Password is required to switch to Administrator mode.' });
-      }
+    if (!password) {
+      return res.status(400).json({
+        message: `Password is required to switch to ${targetRole === 'admin' ? 'Administrator' : 'Instructor'} role.`,
+      });
+    }
 
-      const match = await bcrypt.compare(password, user.password);
-      if (!match) {
-        await logAudit({
-          actor: user,
-          action: ACTION.MODE_SWITCH_FAILED,
-          outcome: 'failure',
-          targetType: 'account',
-          targetId: user._id,
-          targetLabel: user.fullName || user.email,
-          details: 'Failed password verification while attempting to switch to Administrator role',
-          meta: { targetRole: 'admin', previousRole },
-          req,
-        });
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      await logAudit({
+        actor: user,
+        action: ACTION.MODE_SWITCH_FAILED,
+        outcome: 'failure',
+        targetType: 'account',
+        targetId: user._id,
+        targetLabel: user.fullName || user.email,
+        details: `Failed password verification while attempting to switch to ${targetRole === 'admin' ? 'Administrator' : 'Instructor'} role`,
+        meta: { targetRole, previousRole },
+        req,
+      });
 
-        await notifyUser({
-          userId: user._id,
-          type: 'mode_switch_failed',
-          title: 'Failed Role Verification',
-          message: 'Incorrect password entered while attempting to switch to Administrator access.',
-          category: 'system',
-        });
+      await notifyUser({
+        userId: user._id,
+        type: 'mode_switch_failed',
+        title: 'Failed Role Verification',
+        message: `Incorrect password entered while attempting to switch to ${targetRole === 'admin' ? 'Administrator' : 'Instructor'} access.`,
+        category: 'system',
+      });
 
-        await notifyAdmins({
-          type: 'mode_switch_failed',
-          title: 'Failed Role Verification Attempt',
-          message: `${user.fullName || user.email} failed password verification while attempting to switch to Administrator access.`,
-          senderId: user._id,
-          excludeUserId: user._id,
-          category: 'system',
-        });
+      await notifyAdmins({
+        type: 'mode_switch_failed',
+        title: 'Failed Role Verification Attempt',
+        message: `${user.fullName || user.email} failed password verification while attempting to switch to ${targetRole === 'admin' ? 'Administrator' : 'Instructor'} access.`,
+        senderId: user._id,
+        excludeUserId: user._id,
+        category: 'system',
+      });
 
-        return res.status(401).json({ message: 'Incorrect password. Please try again.' });
-      }
+      return res.status(401).json({ message: 'Incorrect password. Please try again.' });
     }
 
     const newToken = signToken(user, targetRole);

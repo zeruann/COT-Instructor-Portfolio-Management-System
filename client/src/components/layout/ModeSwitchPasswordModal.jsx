@@ -1,20 +1,61 @@
 // client/src/components/layout/ModeSwitchPasswordModal.jsx
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Eye, EyeOff, Lock, ShieldCheck, X } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ShieldCheck, X } from 'lucide-react';
 
-export default function ModeSwitchPasswordModal({ open, onClose, onSuccess }) {
+function censorEmail(email) {
+  if (!email || typeof email !== 'string') return '';
+  const atIndex = email.indexOf('@');
+  if (atIndex === -1) {
+    if (email.length <= 4) return '••••';
+    return `${email.slice(0, 2)}••••${email.slice(-2)}`;
+  }
+  const user = email.slice(0, atIndex);
+  const domain = email.slice(atIndex);
+  if (user.length <= 2) {
+    return `${user[0] || ''}•${domain}`;
+  }
+  if (user.length <= 4) {
+    return `${user[0]}••${user.slice(-1)}${domain}`;
+  }
+  const visibleStart = user.slice(0, 2);
+  const visibleEnd = user.slice(-2);
+  const maskedPart = '•'.repeat(Math.min(user.length - 4, 5));
+  return `${visibleStart}${maskedPart}${visibleEnd}${domain}`;
+}
+
+function getInitials(name = '') {
+  return (
+    name
+      .split(' ')
+      .filter(Boolean)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2) || 'US'
+  );
+}
+
+export default function ModeSwitchPasswordModal({
+  open,
+  targetRole = 'admin',
+  user,
+  onClose,
+  onSuccess,
+}) {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setPassword('');
     setShowPassword(false);
     setError('');
-  }, [open]);
+    setImgError(false);
+  }, [open, targetRole]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -26,6 +67,19 @@ export default function ModeSwitchPasswordModal({ open, onClose, onSuccess }) {
   }, [open, submitting, onClose]);
 
   if (!open) return null;
+
+  const isToAdmin = targetRole === 'admin';
+  const title = isToAdmin ? 'Switch to Administrator' : 'Switch to Instructor';
+  const displayName = user?.fullName || user?.name || 'User';
+  const displayRole =
+    user?.accountType === 'Administrator'
+      ? 'Administrator'
+      : user?.adminAccess?.enabled
+        ? 'Instructor · Admin Access'
+        : 'Instructor';
+  const displayDept = user?.department || 'College of Technologies';
+  const displayEmail = user?.email ? censorEmail(user.email) : '••••••@buksu.edu.ph';
+  const avatarUrl = user?.profile?.photoUrl || user?.googlePhotoUrl || user?.photoUrl;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,7 +99,7 @@ export default function ModeSwitchPasswordModal({ open, onClose, onSuccess }) {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ targetRole: 'admin', password }),
+        body: JSON.stringify({ targetRole, password }),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -64,31 +118,74 @@ export default function ModeSwitchPasswordModal({ open, onClose, onSuccess }) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 animate-[modalBackdropIn_150ms_ease-out_forwards]"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-[modalBackdropIn_150ms_ease-out_forwards]"
       onClick={() => !submitting && onClose?.()}
     >
       <div
-        className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl border border-gray-200 animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]"
+        className="relative w-full max-w-md rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border border-gray-100 animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={() => !submitting && onClose?.()}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition cursor-pointer"
           aria-label="Close modal"
         >
           <X size={18} />
         </button>
 
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#efeef8] text-[#2e2a72] shrink-0">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-4 pr-8">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-50 text-brand-orange border border-orange-200/80 shrink-0">
             <ShieldCheck size={22} />
           </div>
           <div>
-            <h3 className="text-base font-bold text-[#2e2a72]">Switch to Administrator Mode</h3>
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 leading-tight">{title}</h3>
             <p className="text-xs text-gray-500 mt-0.5">
               Re-enter your password to verify your identity.
             </p>
+          </div>
+        </div>
+
+        {/* Profile & Censored Email Card (matches API Settings verification modal) */}
+        <div className="mb-4 p-3.5 rounded-2xl bg-gray-50/90 border border-gray-200/80 text-left shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="relative shrink-0">
+              {avatarUrl && !imgError ? (
+                <img
+                  src={avatarUrl}
+                  alt={displayName}
+                  referrerPolicy="no-referrer"
+                  onError={() => setImgError(true)}
+                  className="w-11 h-11 rounded-full object-cover border-2 border-brand-orange/40 shadow-xs"
+                />
+              ) : (
+                <div className="w-11 h-11 rounded-full bg-brand-orange text-white font-bold text-sm flex items-center justify-center shadow-xs">
+                  {getInitials(displayName)}
+                </div>
+              )}
+              <span
+                className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white ring-1 ring-emerald-400"
+                title="Active Account"
+              />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-sm font-bold text-gray-900 truncate">{displayName}</h4>
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-brand-orange border border-orange-200">
+                  {displayRole}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 truncate mt-0.5">{displayDept}</p>
+            </div>
+          </div>
+
+          <div className="mt-3 pt-2.5 border-t border-gray-200/70">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-gray-200 shadow-2xs">
+              <Mail size={14} className="text-gray-400 shrink-0" />
+              <span className="text-xs text-gray-700 truncate select-all">{displayEmail}</span>
+            </div>
           </div>
         </div>
 
@@ -100,7 +197,7 @@ export default function ModeSwitchPasswordModal({ open, onClose, onSuccess }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="switch-admin-password" className="block text-xs font-semibold text-gray-600 mb-1.5">
+            <label htmlFor="switch-role-password" className="block text-xs font-semibold text-gray-600 mb-1.5">
               Password
             </label>
             <div className="relative">
@@ -109,13 +206,13 @@ export default function ModeSwitchPasswordModal({ open, onClose, onSuccess }) {
                 className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
               />
               <input
-                id="switch-admin-password"
+                id="switch-role-password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoFocus
                 placeholder="Enter your password"
-                className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-10 text-sm text-gray-800 focus:border-[#2e2a72] focus:outline-none focus:ring-2 focus:ring-[#2e2a72]/20"
+                className="w-full rounded-xl border border-gray-200 py-2.5 pl-10 pr-10 text-sm text-gray-800 focus:border-brand-orange focus:outline-none focus:ring-2 focus:ring-orange-200"
               />
               <button
                 type="button"
@@ -140,7 +237,7 @@ export default function ModeSwitchPasswordModal({ open, onClose, onSuccess }) {
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-xl bg-[#2e2a72] px-5 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-[#231f5c] transition cursor-pointer disabled:opacity-60"
+              className="rounded-xl bg-brand-orange px-5 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-orange-600 shadow-sm transition cursor-pointer disabled:opacity-60"
             >
               {submitting ? 'Verifying…' : 'Confirm & Switch'}
             </button>
@@ -151,4 +248,3 @@ export default function ModeSwitchPasswordModal({ open, onClose, onSuccess }) {
     window.document.body
   );
 }
-
