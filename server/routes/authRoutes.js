@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 const {
-  login, logout, googleLogin, heartbeat, forgotPassword, verifyResetOtp, resetPassword,
+  login, logout, googleLogin, heartbeat, switchMode, forgotPassword, verifyResetOtp, resetPassword,
 } = require("../controllers/authController");
 const auth = require("../middleware/auth");
 const { loginLimiter, forgotPasswordLimiter } = require("../middleware/rateLimiter");
@@ -25,6 +25,7 @@ router.post("/login", loginLimiter, login);
 router.post("/google", googleLogin);
 router.post("/logout", optionalAuth, logout);
 router.post("/heartbeat", auth, heartbeat);
+router.post("/switch-mode", auth, switchMode);
 router.post("/forgot-password", forgotPasswordLimiter, forgotPassword);
 router.post("/verify-reset-otp", verifyResetOtp);
 router.post("/reset-password/:token", resetPassword);

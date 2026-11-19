@@ -10,6 +10,8 @@ const { getSettingOrEnv } = require('./settingController');
 const { sendEmail } = require('../utils/sendEmail');
 const { isPasswordValid } = require('../utils/passwordRules');
 const verifyRecaptcha = require('../utils/verifyRecaptcha');
+const { canUseAdminMode } = require('../constants/adminPermissions');
+const { notifyAdmins, notifyUser } = require('../utils/adminNotificationService');
 
 // Note: googleLogin() creates its own OAuth2Client per-request using the DB credential.
 // No module-level client needed.
@@ -21,24 +23,36 @@ const canSignIn = (user) =>
 
 // One place to build the token so login and googleLogin stay identical.
 // `name` is what sendInvitation reads as req.user.name for "invited by".
-const signToken = (user) =>
-  jwt.sign(
-    { id: user._id, accountType: user.accountType, name: user.fullName },
+const signToken = (user, activeRole) => {
+  const resolvedRole = activeRole || (user.accountType === 'Administrator' ? 'admin' : 'instructor');
+  return jwt.sign(
+    {
+      id: user._id,
+      accountType: user.accountType,
+      activeRole: resolvedRole,
+      name: user.fullName,
+    },
     process.env.JWT_SECRET,
     { expiresIn: '1d' }
   );
+};
 
-const publicInstructor = (user) => ({
-  id: user._id,
-  fullName: user.fullName,
-  email: user.email,
-  accountType: user.accountType,
-  accountStatus: user.accountStatus,
-  onlineStatus: user.onlineStatus,
-  googlePhotoUrl: user.googlePhotoUrl || user.profile?.photoUrl,
-  photoUrl: user.profile?.photoUrl || user.googlePhotoUrl,
-  profile: user.profile,
-});
+const publicInstructor = (user, activeRole) => {
+  const resolvedRole = activeRole || (user.accountType === 'Administrator' ? 'admin' : 'instructor');
+  return {
+    id: user._id,
+    fullName: user.fullName,
+    email: user.email,
+    accountType: user.accountType,
+    activeRole: resolvedRole,
+    adminAccess: user.adminAccess || { enabled: false, scope: 'none', pages: [], documents: { faculty: [], class: [] } },
+    accountStatus: user.accountStatus,
+    onlineStatus: user.onlineStatus,
+    googlePhotoUrl: user.googlePhotoUrl || user.profile?.photoUrl,
+    photoUrl: user.profile?.photoUrl || user.googlePhotoUrl,
+    profile: user.profile,
+  };
+};
 
 /* ------------------------------ Login ------------------------------ */
 
@@ -410,5 +424,122 @@ exports.resetPassword = async (req, res) => {
   } catch (err) {
     console.error('resetPassword error:', err);
     res.status(500).json({ message: 'Something went wrong. Please try again.' });
+  }
+};
+
+/* ------------------------------ Switch Mode ------------------------------ */
+
+exports.switchMode = async (req, res) => {
+  try {
+    const targetRole = req.body?.targetRole;
+    const password = req.body?.password;
+
+    if (!['admin', 'instructor'].includes(targetRole)) {
+      return res.status(400).json({ message: 'Invalid target role.' });
+    }
+
+    const user = await Instructor.findById(req.user.id);
+    if (!user || user.accountStatus !== 'Active') {
+      return res.status(403).json({ message: 'Account is not active.' });
+    }
+
+    const previousRole =
+      req.user.activeRole ||
+      (user.accountType === 'Administrator' ? 'admin' : 'instructor');
+
+    if (targetRole === 'admin') {
+      if (!canUseAdminMode(user)) {
+        return res.status(403).json({
+          message: 'You do not have Administrator access granted for this account.',
+        });
+      }
+
+      if (!user.password) {
+        return res.status(400).json({
+          message:
+            'No password is set on your account yet. Please set a password in Security settings before switching to Administrator mode.',
+        });
+      }
+
+      if (!password) {
+        return res.status(400).json({ message: 'Password is required to switch to Administrator mode.' });
+      }
+
+      const match = await bcrypt.compare(password, user.password);
+      if (!match) {
+        await logAudit({
+          actor: user,
+          action: ACTION.MODE_SWITCH_FAILED,
+          outcome: 'failure',
+          targetType: 'account',
+          targetId: user._id,
+          targetLabel: user.fullName || user.email,
+          details: 'Failed password verification while attempting to switch to Administrator role',
+          meta: { targetRole: 'admin', previousRole },
+          req,
+        });
+
+        await notifyUser({
+          userId: user._id,
+          type: 'mode_switch_failed',
+          title: 'Failed Role Verification',
+          message: 'Incorrect password entered while attempting to switch to Administrator access.',
+          category: 'system',
+        });
+
+        await notifyAdmins({
+          type: 'mode_switch_failed',
+          title: 'Failed Role Verification Attempt',
+          message: `${user.fullName || user.email} failed password verification while attempting to switch to Administrator access.`,
+          senderId: user._id,
+          excludeUserId: user._id,
+          category: 'system',
+        });
+
+        return res.status(401).json({ message: 'Incorrect password. Please try again.' });
+      }
+    }
+
+    const newToken = signToken(user, targetRole);
+    const modeLabel = targetRole === 'admin' ? 'Administrator' : 'Instructor';
+    const prevLabel = previousRole === 'admin' ? 'Administrator' : 'Instructor';
+
+    await logAudit({
+      actor: user,
+      action: ACTION.MODE_SWITCH,
+      outcome: 'success',
+      targetType: 'account',
+      targetId: user._id,
+      targetLabel: user.fullName || user.email,
+      details: `Switched active role from ${prevLabel} to ${modeLabel}`,
+      meta: { before: { activeRole: previousRole }, after: { activeRole: targetRole } },
+      req,
+    });
+
+    await notifyUser({
+      userId: user._id,
+      type: 'mode_switch',
+      title: 'Active Role Updated',
+      message: `You switched your active role from ${prevLabel} to ${modeLabel}.`,
+      category: 'system',
+    });
+
+    await notifyAdmins({
+      type: 'mode_switch',
+      title: 'User Role Switched',
+      message: `${user.fullName || user.email} switched active role from ${prevLabel} to ${modeLabel}.`,
+      senderId: user._id,
+      excludeUserId: user._id,
+      category: 'system',
+    });
+
+    res.json({
+      token: newToken,
+      activeRole: targetRole,
+      instructor: publicInstructor(user, targetRole),
+    });
+  } catch (err) {
+    console.error('switchMode error:', err);
+    res.status(500).json({ message: 'Failed to switch mode. Please try again.' });
   }
 };

@@ -3,13 +3,9 @@ const router = express.Router();
 const settingController = require('../controllers/settingController');
 const auditLogController = require('../controllers/auditLogController');
 const auth = require('../middleware/auth');
+const { requireAdminAccess } = require('../middleware/adminAccess');
 
-const requireAdmin = (req, res, next) => {
-    if (req.user?.accountType !== 'Administrator') {
-        return res.status(403).json({ message: 'Access denied. Administrator only.' });
-    }
-    next();
-};
+const requireAdmin = requireAdminAccess('api_settings');
 
 // Public route for login page
 router.get('/public', settingController.getPublicSettings);

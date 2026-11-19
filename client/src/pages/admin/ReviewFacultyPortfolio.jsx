@@ -13,11 +13,13 @@ import {
   List,
   ChevronLeft,
   ChevronRight,
+  Lock,
 } from 'lucide-react';
 import { fetchFacultySummary, fetchDocuments } from '../../api/documents';
 import PreviewModal from '../../components/documentActions/PreviewModal';
 import StatusBadge from '../../components/documentActions/StatusBadge';
 import { API_BASE } from '../../api/config';
+import { hasFacultyRequirementAccess, readStoredUserRecord } from '../../config/adminPermissions';
 
 // accent = dot + underline color of the card (matches the design reference)
 const requirementCards = [
@@ -148,6 +150,7 @@ function PortfolioCard({
   onCloseMenu,
   onSelectRequirement,
   compact = false,
+  locked = false,
 }) {
   const approved = summary.approved || 0;
   const pending = summary.pendingReview || 0;
@@ -163,6 +166,35 @@ function PortfolioCard({
   const descCls = compact
     ? 'break-words text-xs leading-relaxed text-gray-400'
     : 'break-words text-xs leading-relaxed text-gray-400 sm:text-sm';
+
+  if (locked) {
+    return (
+      <div
+        title="Locked — access not granted for this requirement"
+        className={`relative flex h-full min-w-0 flex-col rounded-xl border border-gray-200 bg-gray-100/80 opacity-65 select-none cursor-not-allowed ${compact ? 'px-4 pt-4 pb-3.5 min-h-[165px]' : 'px-4 pt-5 pb-4 sm:px-5 sm:pt-6 sm:pb-5 min-h-[220px]'}`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-gray-300" />
+            <h3 className="min-w-0 break-words text-sm font-bold leading-snug text-gray-500 sm:text-base">
+              {card.title}
+            </h3>
+          </div>
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-500">
+            <Lock size={14} />
+          </span>
+        </div>
+        <div className="mt-3 h-[2px] w-full rounded-full bg-gray-300" />
+        <p className="mt-3 flex-1 break-words text-xs leading-relaxed text-gray-400">
+          {card.description}
+        </p>
+        <div className="mt-4 flex items-center gap-1.5 text-xs font-medium text-gray-500">
+          <Lock size={12} />
+          <span>Access Locked</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -474,9 +506,6 @@ export default function ReviewFacultyPortfolio({
     const query = searchQuery.toLowerCase();
 
     const result = instructors.filter((inst) => {
-      // Show instructors only; exclude Administrators
-      if (inst.accountType === 'Administrator') return false;
-
       const name = getDisplayName(inst);
       const email = inst.email || '';
       const matchSearch = name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
@@ -691,7 +720,17 @@ export default function ReviewFacultyPortfolio({
                     <p className="mt-1 break-words text-sm text-gray-500">{rank}</p>
                     <p className="break-words text-sm text-gray-500">{department}</p>
 
-                    {pdsDoc ? (
+                    {!hasFacultyRequirementAccess(readStoredUserRecord(), 'FAC_A_PDS') ? (
+                      <button
+                        type="button"
+                        disabled
+                        title="Locked — PDS access not granted"
+                        className="mt-3 inline-flex w-full cursor-not-allowed items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-gray-100 px-6 py-2 text-sm font-medium text-gray-400"
+                      >
+                        <Lock size={14} />
+                        <span>PDS Locked</span>
+                      </button>
+                    ) : pdsDoc ? (
                       <div className="mt-3 space-y-2">
                         <button
                           type="button"
@@ -812,22 +851,26 @@ export default function ReviewFacultyPortfolio({
 
           {embedded ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {requirementCards.map((card) => (
-                <PortfolioCard
-                  key={card.path}
-                  card={card}
-                  summary={instructorSummaries[card.path] || {}}
-                  instructorId={id}
-                  menuOpen={openMenu === card.path}
-                  onToggleMenu={(e) => {
-                    e.stopPropagation();
-                    setOpenMenu(openMenu === card.path ? null : card.path);
-                  }}
-                  onCloseMenu={() => setOpenMenu(null)}
-                  onSelectRequirement={onSelectRequirement}
-                  compact
-                />
-              ))}
+              {requirementCards.map((card) => {
+                const locked = !hasFacultyRequirementAccess(readStoredUserRecord(), card.path);
+                return (
+                  <PortfolioCard
+                    key={card.path}
+                    card={card}
+                    summary={instructorSummaries[card.path] || {}}
+                    instructorId={id}
+                    menuOpen={openMenu === card.path}
+                    onToggleMenu={(e) => {
+                      e.stopPropagation();
+                      setOpenMenu(openMenu === card.path ? null : card.path);
+                    }}
+                    onCloseMenu={() => setOpenMenu(null)}
+                    onSelectRequirement={onSelectRequirement}
+                    compact
+                    locked={locked}
+                  />
+                );
+              })}
             </div>
           ) : (
             <div className="space-y-4 sm:space-y-6">
@@ -835,21 +878,25 @@ export default function ReviewFacultyPortfolio({
                 <div key={rowIndex}>
                   {rowIndex > 0 && <hr className="mb-4 border-gray-200 sm:mb-6" />}
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 xl:grid-cols-4">
-                    {row.map((card) => (
-                      <PortfolioCard
-                        key={card.path}
-                        card={card}
-                        summary={instructorSummaries[card.path] || {}}
-                        instructorId={id}
-                        menuOpen={openMenu === card.path}
-                        onToggleMenu={(e) => {
-                          e.stopPropagation();
-                          setOpenMenu(openMenu === card.path ? null : card.path);
-                        }}
-                        onCloseMenu={() => setOpenMenu(null)}
-                        onSelectRequirement={onSelectRequirement}
-                      />
-                    ))}
+                    {row.map((card) => {
+                      const locked = !hasFacultyRequirementAccess(readStoredUserRecord(), card.path);
+                      return (
+                        <PortfolioCard
+                          key={card.path}
+                          card={card}
+                          summary={instructorSummaries[card.path] || {}}
+                          instructorId={id}
+                          menuOpen={openMenu === card.path}
+                          onToggleMenu={(e) => {
+                            e.stopPropagation();
+                            setOpenMenu(openMenu === card.path ? null : card.path);
+                          }}
+                          onCloseMenu={() => setOpenMenu(null)}
+                          onSelectRequirement={onSelectRequirement}
+                          locked={locked}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               ))}

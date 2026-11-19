@@ -4,6 +4,9 @@ const mongoose = require('mongoose');
 const Instructor = require('../models/Instructor');
 const { sendInvitationEmail } = require('../utils/sendEmail');
 const { notifyAdmins } = require('../utils/adminNotificationService');
+const { normalizeAdminAccess, formatAccessSummary } = require('../constants/adminPermissions');
+const { logAudit } = require('../utils/auditLog');
+const { ACTION } = require('../constants/auditActions');
 const {
   isAllowedInvitationEmail,
   invitationDomainMessage,
@@ -27,9 +30,8 @@ const withoutPrivate = (doc) => {
   return obj;
 };
 
-// Only people who were invited belong in the invitations table.
-// Exclude administrators — they should never appear in the instructor list.
-const INVITED = { invitedBy: { $exists: true }, accountType: { $ne: 'Administrator' } };
+// Only people who were invited belong in the invitations table (including those with Administrator roles).
+const INVITED = { invitedBy: { $exists: true } };
 
 // Flip any Pending invitation past its expiry date to Expired
 const expireStale = () =>
@@ -88,15 +90,26 @@ exports.sendInvitation = async (req, res) => {
         .json({ message: messages[existing.status] || 'This email already belongs to an account.' });
     }
 
+    const normalizedAccess = normalizeAdminAccess(req.body.adminAccess);
+    const now = new Date();
+    const inviterName = req.user?.name || 'Administrator';
+
     const inviteFields = {
       token: newToken(),
       fullName,
       department,
-      invitedBy: req.user?.name || 'Administrator',
+      invitedBy: inviterName,
       status: 'Pending',
       accountStatus: 'Pending',
       accountType: 'Instructor',
-      dateSent: new Date(),
+      adminAccess: {
+        ...normalizedAccess,
+        invitedBy: normalizedAccess.enabled && req.user?.id ? req.user.id : null,
+        invitedByName: normalizedAccess.enabled ? inviterName : '',
+        grantedAt: normalizedAccess.enabled ? now : null,
+        updatedAt: normalizedAccess.enabled ? now : null,
+      },
+      dateSent: now,
       expiresAt: newExpiry(),
       respondedAt: null,
       resendCount: 0,
@@ -126,8 +139,10 @@ exports.sendInvitation = async (req, res) => {
       });
     }
 
+    const accessSummary = normalizedAccess.enabled ? formatAccessSummary(normalizedAccess) : '';
+
     try {
-      await sendInvitationEmail(invitation.email, invitation.fullName, invitation.token);
+      await sendInvitationEmail(invitation.email, invitation.fullName, invitation.token, accessSummary);
     } catch (emailErr) {
       console.error('Failed to send invitation email:', emailErr);
       // Don't leave an invitation behind that nobody received
@@ -144,6 +159,44 @@ exports.sendInvitation = async (req, res) => {
         message: mailDisabled
           ? 'Google Mail is disabled. Enable it in Administrator Settings before sending invitations.'
           : 'The invitation email could not be sent. Verify the Google Mail credentials in Administrator Settings and try again.',
+      });
+    }
+
+    if (normalizedAccess.enabled) {
+      const grantDetails = `${inviterName} invited ${invitation.fullName || invitation.email} with ${accessSummary}`;
+      await logAudit({
+        actor: req.user
+          ? { _id: req.user.id, accountType: req.user.accountType || 'Administrator', fullName: inviterName }
+          : null,
+        action: ACTION.ADMIN_ACCESS_GRANT,
+        outcome: 'success',
+        targetType: 'instructor',
+        targetId: invitation._id,
+        targetLabel: invitation.fullName || invitation.email,
+        details: grantDetails,
+        meta: { after: normalizedAccess },
+        req,
+      });
+
+      await notifyAdmins({
+        type: 'role_access_updated',
+        title: 'Instructor Invited with Admin Privileges',
+        message: grantDetails,
+        senderId: req.user?.id || null,
+        category: 'system',
+      });
+    } else {
+      await logAudit({
+        actor: req.user
+          ? { _id: req.user.id, accountType: req.user.accountType || 'Administrator', fullName: inviterName }
+          : null,
+        action: ACTION.INVITE_SEND,
+        outcome: 'success',
+        targetType: 'instructor',
+        targetId: invitation._id,
+        targetLabel: invitation.fullName || invitation.email,
+        details: `${inviterName} sent an instructor invitation to ${invitation.fullName || invitation.email} (${invitation.department})`,
+        req,
       });
     }
 
@@ -467,7 +520,6 @@ exports.completeSetup = async (req, res) => {
 exports.getActiveInstructors = async (req, res) => {
   try {
     const instructors = await Instructor.find({
-      accountType: 'Instructor',
       accountStatus: { $in: ['Active', 'Inactive'] },
     })
       .select(PRIVATE_SELECT)
@@ -493,7 +545,6 @@ exports.getInstructorById = async (req, res) => {
 
     const instructor = await Instructor.findOne({
       _id: id,
-      accountType: 'Instructor',
     }).select(PRIVATE_SELECT);
 
     if (!instructor) {

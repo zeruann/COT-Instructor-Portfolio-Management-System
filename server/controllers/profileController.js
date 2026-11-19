@@ -31,7 +31,7 @@ const FIELD_LABELS = {
 // GET /api/profile/me
 exports.getMyProfile = async (req, res) => {
   try {
-    const me = await Instructor.findById(req.user.id).select('fullName email department profile googlePhotoUrl');
+    const me = await Instructor.findById(req.user.id).select('fullName email department profile googlePhotoUrl accountType adminAccess');
     if (!me) return res.status(404).json({ message: 'Account not found.' });
     res.json(me);
   } catch (err) {

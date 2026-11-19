@@ -92,7 +92,7 @@ function TopBar({
         </Link>
 
         {menu.accountInTopBar ? (
-          <ProfileMenu role={role} menu={menu} name={name} avatarUrl={avatarUrl} />
+          <ProfileMenu role={role} menu={menu} name={name} avatarUrl={avatarUrl} user={user} />
         ) : (
           <Link to={menu.profilePath} aria-label={`${name}, ${menu.roleLabel}: open profile`} className="flex items-center gap-3">
             <UserBadge name={name} roleLabel={menu.roleLabel} avatarUrl={avatarUrl} />

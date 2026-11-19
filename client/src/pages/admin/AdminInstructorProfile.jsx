@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ShieldCheck } from "lucide-react";
 import AppModal, { useAppModal } from "../../components/common/AppModal";
+import GrantAdminAccessModal from "../../components/admin/GrantAdminAccessModal";
 
 // ---------- helpers ----------
 const show = (value) =>
@@ -77,6 +79,7 @@ function AdminInstructorProfile({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showInviteAccessModal, setShowInviteAccessModal] = useState(false);
   const { modal, close: closeModal, notify, confirm: showConfirm } = useAppModal();
 
   useEffect(() => {
@@ -219,8 +222,8 @@ function AdminInstructorProfile({
   return (
     <div className="space-y-6">
       {/* PROFILE HEADER CARD */}
-      <div className="bg-white rounded-2xl shadow p-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-6">
+      <div className="bg-white rounded-2xl shadow p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-5 min-w-0 flex-1">
           <div className="w-20 h-20 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-2xl border-2 border-orange-500 shrink-0 overflow-hidden">
             {avatar && !avatarError ? (
               <img
@@ -236,7 +239,7 @@ function AdminInstructorProfile({
           </div>
 
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-xl font-bold text-gray-900">{displayName}</h1>
               <span
                 className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${statusStyles[statusKey] || statusStyles.inactive
@@ -244,6 +247,11 @@ function AdminInstructorProfile({
               >
                 {instructor.accountStatus ? instructor.accountStatus.charAt(0).toUpperCase() + instructor.accountStatus.slice(1).toLowerCase() : "Active"}
               </span>
+              {instructor.adminAccess?.enabled && (
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border border-indigo-200 bg-indigo-50 text-[#2e2a72]">
+                  {instructor.adminAccess.scope === "full" ? "Full Admin Access" : "Limited Admin Access"}
+                </span>
+              )}
             </div>
             <p className="text-sm text-gray-500 mt-1">
               {[position, instructor.department].filter(Boolean).join(", ") ||
@@ -269,19 +277,34 @@ function AdminInstructorProfile({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 self-start">
+        <div className="flex flex-col gap-2 shrink-0 w-full sm:w-52 lg:self-center">
           {!embedded && (
             <button
               onClick={() => navigate("/admin/instructors")}
-              className="px-6 py-2 border border-gray-300 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-50 transition cursor-pointer"
+              className="w-full px-5 py-2 border border-gray-300 text-gray-600 rounded-full text-sm font-medium hover:bg-gray-50 transition cursor-pointer"
             >
               Back
+            </button>
+          )}
+          {instructor.accountType !== "Administrator" && (
+            <button
+              type="button"
+              onClick={() => setShowInviteAccessModal(true)}
+              className={`w-full inline-flex items-center justify-center gap-2 whitespace-nowrap px-5 py-2 rounded-full text-sm font-semibold transition shadow-sm cursor-pointer ${instructor.adminAccess?.enabled
+                ? "border border-orange-200 bg-orange-50 text-brand-orange hover:bg-brand-orange hover:text-white"
+                : "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-500 hover:text-white"
+                }`}
+            >
+              <ShieldCheck size={15} className="shrink-0" />
+              <span>
+                {instructor.adminAccess?.enabled ? "Manage Admin Access" : "Grant Admin Access"}
+              </span>
             </button>
           )}
           <button
             onClick={handleToggleStatus}
             disabled={updatingStatus}
-            className={`px-6 py-2 rounded-full text-sm font-semibold transition shadow-sm cursor-pointer disabled:opacity-50 ${isActive
+            className={`w-full px-5 py-2 rounded-full text-sm font-semibold transition shadow-sm cursor-pointer disabled:opacity-50 ${isActive
               ? "border border-red-200 bg-red-50 text-red-600 hover:bg-red-500 hover:text-white"
               : "border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-500 hover:text-white"
               }`}
@@ -362,6 +385,17 @@ function AdminInstructorProfile({
           <Info label="Password" value="••••••••" />
         </div>
       </Section>
+
+      <GrantAdminAccessModal
+        open={showInviteAccessModal}
+        instructor={instructor}
+        displayName={displayName}
+        onClose={() => setShowInviteAccessModal(false)}
+        onSaved={(updated) => {
+          if (updated) setInstructor(updated);
+        }}
+        onNotify={notify}
+      />
 
       <AppModal modal={modal} onClose={closeModal} />
     </div>

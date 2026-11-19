@@ -29,11 +29,16 @@ const ACTION_LABELS = {
   'auth.login': 'Logged in',
   'auth.login_failed': 'Failed login attempt',
   'auth.logout': 'Logged out',
+  'auth.mode_switch': 'Switched Role',
+  'auth.mode_switch_failed': 'Failed Role Verification',
   'auth.password_reset_request': 'Requested password reset',
   'auth.password_reset': 'Reset password',
   'auth.password_change': 'Changed password',
   'account.profile_update': 'Updated profile',
   'account.profile_create': 'Created profile',
+  'account.admin_access_grant': 'Granted Admin Privileges',
+  'account.admin_access_update': 'Updated Admin Privileges',
+  'account.admin_access_revoke': 'Revoked Admin Privileges',
   'document.upload': 'Uploaded document',
   'document.reupload': 'Re-uploaded document',
   'document.delete': 'Deleted document',
@@ -71,6 +76,7 @@ const getActionBadgeColor = (action = '', outcome = 'success', meta = null) => {
     action.includes('reject') ||
     action.includes('failed') ||
     action.includes('deactivate') ||
+    action.includes('revoke') ||
     action.includes('cancel')
   ) {
     return 'bg-red-50 text-red-700 border-red-200';

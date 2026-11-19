@@ -93,17 +93,24 @@ async function sendEmail({ to, subject, html, bypassToggle = false, fallbackToDe
   }
 }
 
-const sendInvitationEmail = async (to, fullName, token) => {
+const sendInvitationEmail = async (to, fullName, token, accessSummary = '') => {
   const inviteLink = `${process.env.CLIENT_URL}/accept-invitation/${token}`;
+
+  const accessBlock = accessSummary
+    ? `<p style="background:#FFF7ED; border:1px solid #FDBA74; padding:10px 12px; border-radius:8px; color:#9A3412; font-size:13px;"><strong>Administrator Access Granted:</strong> ${accessSummary}</p>`
+    : '';
 
   const sent = await sendEmail({
     to,
-    subject: "You've been invited to join as an Instructor",
+    subject: accessSummary
+      ? "You've been invited to join as an Instructor with Administrator Access"
+      : "You've been invited to join as an Instructor",
     html: `
       <div style="font-family: sans-serif; max-width: 480px; margin: auto;">
         <h2 style="color: #F97316;">COT Instructor E-Portfolio Management System</h2>
         <p>Hi ${fullName},</p>
         <p>You have been invited to join the system as an instructor.</p>
+        ${accessBlock}
         <a href="${inviteLink}" style="display:inline-block; background:#F97316; color:white; padding:10px 20px; border-radius:999px; text-decoration:none; margin-top:10px;">
           Review Invitation
         </a>
@@ -121,4 +128,43 @@ const sendInvitationEmail = async (to, fullName, token) => {
   return true;
 };
 
-module.exports = { sendEmail, sendInvitationEmail };
+const sendAdminAccessEmail = async ({
+  to,
+  fullName,
+  grantedByName = 'Administrator',
+  accessSummary,
+  isRevoked = false,
+  isUpdate = false,
+}) => {
+  const loginLink = `${process.env.CLIENT_URL || 'http://localhost:5173'}/login`;
+  const subject = isRevoked
+    ? 'Your Administrator Access Has Been Revoked'
+    : isUpdate
+      ? 'Your Administrator Access Permissions Have Been Updated'
+      : 'You Have Been Granted Administrator Access';
+
+  const bodyCopy = isRevoked
+    ? `<p><strong>${grantedByName}</strong> has revoked your delegated Administrator access. You can continue using the system in Instructor mode.</p>`
+    : `<p><strong>${grantedByName}</strong> has ${isUpdate ? 'updated your' : 'invited you with'} Administrator access in the COT Instructor E-Portfolio Management System.</p>
+       <p style="background:#FFF7ED; border:1px solid #FDBA74; padding:10px 12px; border-radius:8px; color:#9A3412; font-size:13px;"><strong>Access Level:</strong> ${accessSummary}</p>
+       <p style="font-size:13px; color:#4B5563;">To enter Administrator mode, sign in and select <strong>Switch to Administrator</strong> from your profile menu.</p>`;
+
+  const sent = await sendEmail({
+    to,
+    subject,
+    html: `
+      <div style="font-family: sans-serif; max-width: 500px; margin: auto;">
+        <h2 style="color: #2E2A72;">COT Instructor E-Portfolio Management System</h2>
+        <p>Hi ${fullName},</p>
+        ${bodyCopy}
+        <a href="${loginLink}" style="display:inline-block; background:#F97316; color:white; padding:10px 20px; border-radius:999px; text-decoration:none; margin-top:10px;">
+          Open System
+        </a>
+      </div>
+    `,
+  });
+
+  return sent;
+};
+
+module.exports = { sendEmail, sendInvitationEmail, sendAdminAccessEmail };

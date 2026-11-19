@@ -1,17 +1,62 @@
 // server/controllers/notificationController.js
 const Notification = require('../models/Notification');
 const Instructor = require('../models/Instructor');
+const { isActingAsAdmin } = require('../constants/adminPermissions');
+
+const ADMIN_TITLE_REGEX = /^(New Document|User Mode|Role Switch|User Role|Instructor Admin|Failed Admin|Failed Role|Instructor Invited)/i;
+
+function buildAudienceFilter(actingAsAdmin) {
+  if (actingAsAdmin) {
+    return {
+      $or: [
+        { audience: 'admin' },
+        {
+          audience: null,
+          $or: [
+            { category: 'pending_review' },
+            { type: 'document_submitted' },
+            { title: ADMIN_TITLE_REGEX },
+          ],
+        },
+        {
+          audience: { $exists: false },
+          $or: [
+            { category: 'pending_review' },
+            { type: 'document_submitted' },
+            { title: ADMIN_TITLE_REGEX },
+          ],
+        },
+      ],
+    };
+  }
+
+  return {
+    $or: [
+      { audience: 'instructor' },
+      {
+        $or: [{ audience: null }, { audience: { $exists: false } }],
+        category: { $ne: 'pending_review' },
+        type: { $ne: 'document_submitted' },
+        title: { $not: ADMIN_TITLE_REGEX },
+      },
+    ],
+  };
+}
 
 /**
  * GET /api/notifications
- * Fetch notifications for the current authenticated user
+ * Fetch notifications for the current authenticated user, scoped to active role
  */
 exports.getNotifications = async (req, res) => {
   try {
     const userId = req.user.id;
     const { category } = req.query;
+    const actingAsAdmin = isActingAsAdmin(req.user);
 
-    const filter = { userId };
+    const filter = {
+      userId,
+      ...buildAudienceFilter(actingAsAdmin),
+    };
     if (category && category !== 'all') {
       if (category === 'unread') {
         filter.readAt = null;
@@ -62,7 +107,11 @@ exports.getNotifications = async (req, res) => {
 exports.markAllAsRead = async (req, res) => {
   try {
     const userId = req.user.id;
-    await Notification.updateMany({ userId, readAt: null }, { $set: { readAt: new Date() } });
+    const actingAsAdmin = isActingAsAdmin(req.user);
+    await Notification.updateMany(
+      { userId, readAt: null, ...buildAudienceFilter(actingAsAdmin) },
+      { $set: { readAt: new Date() } }
+    );
     return res.json({ message: 'All notifications marked as read.' });
   } catch (err) {
     console.error('Error in markAllAsRead:', err);

@@ -1,6 +1,20 @@
 const express = require('express');
+const jwt = require('jsonwebtoken');
 
 const router = express.Router();
+
+const optionalAuth = (req, res, next) => {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (token) {
+    try {
+      req.user = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+      // ignore invalid/expired token
+    }
+  }
+  next();
+};
 
 const {
   sendInvitation,
@@ -16,7 +30,7 @@ const {
   completeSetup,
 } = require('../controllers/invitationController');
 
-router.post('/', sendInvitation);
+router.post('/', optionalAuth, sendInvitation);
 
 router.get('/', getInvitations);
 

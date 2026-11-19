@@ -9,6 +9,7 @@ const { buildComplianceWorkbook, uploadAsGoogleSheet } = require('../reports/com
 const { getGoogleClients } = require('../utils/sheetsService');
 const storageService = require('../utils/storageService');
 const driveNaming = require('../utils/driveNaming');
+const { isActingAsAdmin } = require('../constants/adminPermissions');
 
 /**
  * Assembles live compliance checklist data for an instructor and selected academic period
@@ -503,7 +504,7 @@ async function assembleCompliancePayload(ownerId, { periodId, schoolYear, semest
  */
 exports.getComplianceData = async (req, res) => {
   try {
-    const isAdmin = req.user.accountType === 'Administrator';
+    const isAdmin = isActingAsAdmin(req.user);
     const ownerId = isAdmin && req.query.instructorId ? req.query.instructorId : req.user.id;
     const { periodId, schoolYear, semester } = req.query;
 
@@ -520,7 +521,7 @@ exports.getComplianceData = async (req, res) => {
  */
 exports.downloadComplianceExcel = async (req, res) => {
   try {
-    const isAdmin = req.user.accountType === 'Administrator';
+    const isAdmin = isActingAsAdmin(req.user);
     const ownerId = isAdmin && req.query.instructorId ? req.query.instructorId : req.user.id;
     const { periodId, schoolYear, semester } = req.query;
 
@@ -560,7 +561,7 @@ exports.exportComplianceGoogleSheet = async (req, res) => {
       });
     }
 
-    const isAdmin = req.user.accountType === 'Administrator';
+    const isAdmin = isActingAsAdmin(req.user);
     const ownerId = isAdmin && req.body.instructorId ? req.body.instructorId : req.user.id;
     const { periodId, schoolYear, semester } = req.body;
 

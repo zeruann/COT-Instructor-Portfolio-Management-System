@@ -16,6 +16,14 @@ const STATUS_OPTIONS = [
   { value: 'deactivated', label: 'Deactivated' },
 ];
 
+const ROLE_OPTIONS = [
+  { value: 'all', label: 'All roles' },
+  { value: 'administrator', label: 'Administrator' },
+  { value: 'admin_full', label: 'Admin Access (Full)' },
+  { value: 'admin_limited', label: 'Admin Access (Limited)' },
+  { value: 'instructor', label: 'Instructor' },
+];
+
 // Default table order: Active first, then Pending, then Deactivated
 const STATUS_ORDER = { active: 0, pending: 1, deactivated: 2, inactive: 3 };
 
@@ -36,6 +44,9 @@ export default function ViewInstructors() {
   const [updatingId, setUpdatingId] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [departmentFilter, setDepartmentFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const roleDropdownRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [tableVisible, setTableVisible] = useState(true);
   const [selectedInstructor, setSelectedInstructor] = useState(null);
@@ -82,9 +93,6 @@ export default function ViewInstructors() {
   // Search (name / email) + status + department filters, then sort by status group (newest first inside each group)
   const filteredInstructors = instructors
     .filter((inst) => {
-      // Show instructors only; exclude Administrators
-      if (inst.accountType === 'Administrator') return false;
-
       const name = getDisplayName(inst);
       const email = inst.email || '';
       const query = searchQuery.toLowerCase();
@@ -96,7 +104,22 @@ export default function ViewInstructors() {
       const matchesDepartment =
         departmentFilter === 'all' || inst.department === departmentFilter;
 
-      return matchesSearch && matchesStatus && matchesDepartment;
+      let matchesRole = true;
+      if (roleFilter === 'administrator') {
+        matchesRole = inst.accountType === 'Administrator';
+      } else if (roleFilter === 'admin_full') {
+        matchesRole =
+          inst.accountType !== 'Administrator' &&
+          Boolean(inst.adminAccess?.enabled && inst.adminAccess?.scope === 'full');
+      } else if (roleFilter === 'admin_limited') {
+        matchesRole =
+          inst.accountType !== 'Administrator' &&
+          Boolean(inst.adminAccess?.enabled && inst.adminAccess?.scope === 'limited');
+      } else if (roleFilter === 'instructor') {
+        matchesRole = inst.accountType !== 'Administrator' && !inst.adminAccess?.enabled;
+      }
+
+      return matchesSearch && matchesStatus && matchesDepartment && matchesRole;
     })
     .sort((a, b) => {
       const rankA = STATUS_ORDER[(a.accountStatus || '').toLowerCase()] ?? 99;
@@ -106,11 +129,15 @@ export default function ViewInstructors() {
     });
 
   const hasActiveFilters =
-    statusFilter !== 'all' || departmentFilter !== 'all' || searchQuery !== '';
+    statusFilter !== 'all' ||
+    departmentFilter !== 'all' ||
+    roleFilter !== 'all' ||
+    searchQuery !== '';
 
   const clearFilters = () => {
     setStatusFilter('all');
     setDepartmentFilter('all');
+    setRoleFilter('all');
     setSearchQuery('');
     setCurrentPage(1);
   };
@@ -147,9 +174,13 @@ export default function ViewInstructors() {
       onConfirm: async () => {
         try {
           setUpdatingId(id);
+          const token = localStorage.getItem('token');
           const res = await fetch(`${API_URL}/${id}/status`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
             body: JSON.stringify({ accountStatus: newStatus }),
           });
           if (!res.ok) throw new Error(`Failed to ${verb} instructor.`);
@@ -261,8 +292,27 @@ export default function ViewInstructors() {
     currentPage * PAGE_SIZE
   );
 
+  // Close role dropdown on outside click or Escape
+  useEffect(() => {
+    if (!roleDropdownOpen) return undefined;
+    const onMouseDown = (e) => {
+      if (roleDropdownRef.current && !roleDropdownRef.current.contains(e.target)) {
+        setRoleDropdownOpen(false);
+      }
+    };
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setRoleDropdownOpen(false);
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [roleDropdownOpen]);
+
   // Reset to page 1 whenever filters change
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, departmentFilter]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, statusFilter, departmentFilter, roleFilter]);
 
   // Fade the table out then back in whenever the visible rows change
   const isFirstRender = useRef(true);
@@ -271,7 +321,7 @@ export default function ViewInstructors() {
     setTableVisible(false);
     const t = setTimeout(() => setTableVisible(true), 200);
     return () => clearTimeout(t);
-  }, [searchQuery, statusFilter, departmentFilter, currentPage]);
+  }, [searchQuery, statusFilter, departmentFilter, roleFilter, currentPage]);
 
   return (
     <>
@@ -332,10 +382,64 @@ export default function ViewInstructors() {
           <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
 
+        {/* Role filter (smooth custom dropdown) */}
+        <div ref={roleDropdownRef} className="relative flex-1 min-w-0">
+          <button
+            type="button"
+            onClick={() => setRoleDropdownOpen((prev) => !prev)}
+            aria-haspopup="listbox"
+            aria-expanded={roleDropdownOpen}
+            aria-label="Filter by role"
+            className={`flex w-full items-center justify-between gap-2 bg-white border rounded-lg py-3 pl-4 pr-3 text-[14px] text-gray-700 focus:outline-none transition cursor-pointer ${roleDropdownOpen ? 'border-orange-500 ring-2 ring-orange-100' : 'border-gray-200 hover:border-gray-300'
+              }`}
+          >
+            <span className="truncate">
+              {ROLE_OPTIONS.find((opt) => opt.value === roleFilter)?.label || 'All roles'}
+            </span>
+            <ChevronDown
+              className={`w-4 h-4 shrink-0 text-gray-400 transition-transform duration-200 ${roleDropdownOpen ? 'rotate-180 text-orange-500' : ''
+                }`}
+            />
+          </button>
+
+          <div
+            role="listbox"
+            aria-hidden={!roleDropdownOpen}
+            className={`absolute left-0 right-0 top-full z-40 mt-1.5 origin-top rounded-xl border border-gray-200 bg-white py-1.5 shadow-lg transition-all duration-200 ease-out ${roleDropdownOpen
+                ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto'
+                : 'opacity-0 scale-95 -translate-y-1 pointer-events-none'
+              }`}
+          >
+            {ROLE_OPTIONS.map((opt) => {
+              const selected = roleFilter === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  tabIndex={roleDropdownOpen ? 0 : -1}
+                  onClick={() => {
+                    setRoleFilter(opt.value);
+                    setRoleDropdownOpen(false);
+                  }}
+                  className={`flex w-full items-center justify-between px-3.5 py-2 text-left text-sm transition-colors cursor-pointer ${selected
+                      ? 'bg-[#efeef8] font-semibold text-[#2e2a72]'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-[#2e2a72]'
+                    }`}
+                >
+                  <span className="truncate">{opt.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Add button */}
         <button
-          onClick={() => navigate('/admin/invite-instructor')}
-          className="shrink-0 inline-flex items-center gap-2 px-10 py-3 text-[14px] font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 transition"
+          type="button"
+          onClick={() => navigate('/admin/invite-instructor', { state: { openInviteModal: true } })}
+          className="shrink-0 inline-flex items-center gap-2 px-8 py-3 text-[14px] font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 transition cursor-pointer whitespace-nowrap"
         >
           <Plus className="w-4 h-4" />
           Invite Instructor

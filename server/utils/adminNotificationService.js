@@ -14,13 +14,19 @@ async function notifyAdmins({
   requirementKey = null,
   actionLink = null,
   senderId = null,
+  excludeUserId = null,
   category = 'pending_review',
 }) {
   try {
-    const admins = await Instructor.find({
+    const query = {
       accountType: 'Administrator',
       accountStatus: { $ne: 'Deactivated' },
-    }).select('_id');
+    };
+    if (excludeUserId) {
+      query._id = { $ne: excludeUserId };
+    }
+
+    const admins = await Instructor.find(query).select('_id');
 
     if (!admins || admins.length === 0) return;
 
@@ -35,6 +41,7 @@ async function notifyAdmins({
       actionLink,
       senderId,
       category,
+      audience: 'admin',
     }));
 
     try {
@@ -53,7 +60,49 @@ async function notifyAdmins({
   }
 }
 
+async function createNotificationSafe(doc) {
+  try {
+    await Notification.create(doc);
+  } catch (err) {
+    console.warn('[Notification] Insert fallback attempt:', err.message);
+    await Notification.create({
+      ...doc,
+      type: 'notice',
+    });
+  }
+}
+
+async function notifyUser({
+  userId,
+  type = 'notice',
+  title,
+  message,
+  comment = '',
+  actionLink = null,
+  senderId = null,
+  category = 'system',
+  audience = 'instructor',
+}) {
+  if (!userId) return;
+  try {
+    await createNotificationSafe({
+      userId,
+      type,
+      title,
+      message,
+      comment,
+      actionLink,
+      senderId,
+      category,
+      audience,
+    });
+  } catch (err) {
+    console.error('Failed to notify user:', err.message);
+  }
+}
+
 module.exports = {
   notifyAdmins,
+  notifyUser,
 };
 

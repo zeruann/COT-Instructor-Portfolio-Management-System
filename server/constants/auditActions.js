@@ -52,8 +52,13 @@ const ACTION = Object.freeze({
   SETTING_MODE_CHANGE: 'settings.mode_change',
   SETTING_TEST_CONNECTION: 'settings.test_connection',
   SETTING_RESTORE_DEFAULTS: 'settings.restore_defaults',
-  // future System Administrator features (not confirmed with the client)
+  // role-based access & mode switching
   ROLE_ASSIGN: 'account.role_assign',
+  ADMIN_ACCESS_GRANT: 'account.admin_access_grant',
+  ADMIN_ACCESS_UPDATE: 'account.admin_access_update',
+  ADMIN_ACCESS_REVOKE: 'account.admin_access_revoke',
+  MODE_SWITCH: 'auth.mode_switch',
+  MODE_SWITCH_FAILED: 'auth.mode_switch_failed',
   INTEGRATION_TOGGLE: 'settings.integration_toggle',
 });
 

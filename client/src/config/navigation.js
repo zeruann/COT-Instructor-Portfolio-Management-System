@@ -96,7 +96,7 @@ export const NAV = {
       {
         heading: 'Management',
         items: [
-          { to: '/admin/AdminDashboard', label: 'Dashboard', icon: Home },
+          { to: '/admin/AdminDashboard', label: 'Dashboard', icon: Home, pageKey: 'dashboard' },
 
           // Dropdown: Instructors
 
@@ -104,8 +104,8 @@ export const NAV = {
             label: 'Instructors',
             icon: Users,
             children: [
-              { to: '/admin/instructors', label: 'View Instructors', icon: Users },
-              { to: '/admin/invite-instructor', label: 'Invite Instructors', icon: UserPlus },
+              { to: '/admin/instructors', label: 'View Instructors', icon: Users, pageKey: 'instructors' },
+              { to: '/admin/invite-instructor', label: 'Invite Instructors', icon: UserPlus, pageKey: 'invite_instructors' },
             ],
           },
 
@@ -115,8 +115,8 @@ export const NAV = {
             label: 'Portfolio Review',
             icon: ClipboardCheck,
             children: [
-              { to: '/admin/review/faculty-portfolio', label: 'Faculty Portfolio', icon: ClipboardCheck },
-              { to: '/admin/review/class-portfolio', label: 'Class Portfolio', icon: ClipboardList },
+              { to: '/admin/review/faculty-portfolio', label: 'Faculty Portfolio', icon: ClipboardCheck, pageKey: 'review_faculty' },
+              { to: '/admin/review/class-portfolio', label: 'Class Portfolio', icon: ClipboardList, pageKey: 'review_class' },
             ],
           },
         ],
@@ -124,17 +124,17 @@ export const NAV = {
       {
         heading: 'Records',
         items: [
-          { to: '/admin/reports', label: 'Reports', icon: FileSpreadsheet },
-          { to: '/admin/archive', label: 'Archive', icon: Archive, hidden: true },
-          { to: '/admin/archive-records', label: 'Archive Records', icon: Archive },
-          { to: '/admin/academic-period', label: 'Academic Period', icon: Calendar },
-          { to: '/admin/activity-logs', label: 'Activity Logs', icon: History },
+          { to: '/admin/reports', label: 'Reports', icon: FileSpreadsheet, pageKey: 'reports' },
+          { to: '/admin/archive', label: 'Archive', icon: Archive, hidden: true, pageKey: 'archive_records' },
+          { to: '/admin/archive-records', label: 'Archive Records', icon: Archive, pageKey: 'archive_records' },
+          { to: '/admin/academic-period', label: 'Academic Period', icon: Calendar, pageKey: 'academic_period' },
+          { to: '/admin/activity-logs', label: 'Activity Logs', icon: History, pageKey: 'activity_logs' },
         ],
       },
       {
         heading: 'Settings',
         items: [
-          { to: '/admin/settings', label: 'API Settings', icon: Settings },
+          { to: '/admin/settings', label: 'API Settings', icon: Settings, pageKey: 'api_settings' },
         ],
       },
     ],

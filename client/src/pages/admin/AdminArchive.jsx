@@ -233,7 +233,7 @@ export default function AdminArchive() {
   );
 
   const registeredFaculty = useMemo(
-    () => instructors.filter((i) => i.accountType !== 'Administrator'),
+    () => instructors,
     [instructors]
   );
 

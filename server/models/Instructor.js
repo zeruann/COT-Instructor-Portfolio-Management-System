@@ -50,6 +50,19 @@ const instructorSchema = new mongoose.Schema({
     enum: ["Administrator", "Instructor"],
     default: "Instructor",
   },
+  adminAccess: {
+    enabled: { type: Boolean, default: false },
+    scope: { type: String, enum: ['none', 'full', 'limited'], default: 'none' },
+    pages: { type: [String], default: [] },
+    documents: {
+      faculty: { type: [String], default: [] },
+      class: { type: [String], default: [] },
+    },
+    invitedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Instructor', default: null },
+    invitedByName: { type: String, default: '' },
+    grantedAt: { type: Date, default: null },
+    updatedAt: { type: Date, default: null },
+  },
   accountStatus: {
     type: String,
     enum: ["Active", "Inactive", "Pending"],

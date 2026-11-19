@@ -15,6 +15,11 @@ const { ACTION } = require('../constants/auditActions');
 const { notifyAdmins } = require('../utils/adminNotificationService');
 const { checkLockConflict } = require('../utils/resourceLock');
 const { REJECT_COMMENT_MAX_WORDS, countWords } = require('../constants/reviewPolicy');
+const {
+  isActingAsAdmin,
+  canUseAdminMode,
+  hasDocumentReviewAccess,
+} = require('../constants/adminPermissions');
 
 /**
  * Helper to safely parse stringified JSON (from multipart/form-data)
@@ -383,7 +388,7 @@ exports.getDocuments = async (req, res) => {
 
     const filter = { archivedAt: null };
     const targetOwnerId = instructorId || ownerId;
-    if (req.user.accountType === 'Administrator') {
+    if (isActingAsAdmin(req.user)) {
       if (targetOwnerId) {
         filter.ownerId = targetOwnerId;
       }
@@ -444,7 +449,7 @@ exports.getDocumentById = async (req, res) => {
     }
 
     const isOwner = String(doc.ownerId) === String(req.user.id);
-    const isAdmin = req.user.accountType === 'Administrator';
+    const isAdmin = isActingAsAdmin(req.user);
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: 'Access denied.' });
     }
@@ -473,7 +478,7 @@ exports.streamDocumentFile = async (req, res) => {
 
     // Permission check: Owner or Administrator
     const isOwner = String(doc.ownerId) === String(req.user.id);
-    const isAdmin = req.user.accountType === 'Administrator';
+    const isAdmin = isActingAsAdmin(req.user);
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: 'Access denied.' });
     }
@@ -519,7 +524,15 @@ exports.streamDocumentFile = async (req, res) => {
  */
 exports.reviewDocument = async (req, res) => {
   try {
-    if (req.user.accountType !== 'Administrator') {
+    const reviewer = await Instructor.findById(req.user.id).select(
+      'accountType accountStatus adminAccess'
+    );
+    if (
+      !reviewer ||
+      reviewer.accountStatus !== 'Active' ||
+      !isActingAsAdmin(req.user) ||
+      !canUseAdminMode(reviewer)
+    ) {
       return res.status(403).json({ message: 'Only administrators can review documents.' });
     }
 
@@ -549,6 +562,12 @@ exports.reviewDocument = async (req, res) => {
     const doc = await Document.findById(id);
     if (!doc) {
       return res.status(404).json({ message: 'Document not found.' });
+    }
+
+    if (!hasDocumentReviewAccess(reviewer, doc.requirementKey)) {
+      return res.status(403).json({
+        message: 'You do not have permission to review this requirement type.',
+      });
     }
 
     // Optimistic lock check: reject stale writes if document was already updated
@@ -692,7 +711,7 @@ exports.deleteDocument = async (req, res) => {
 
     // Permission check: Owner or Administrator
     const isOwner = String(doc.ownerId) === String(req.user.id);
-    const isAdmin = req.user.accountType === 'Administrator';
+    const isAdmin = isActingAsAdmin(req.user);
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: 'Access denied.' });
     }
@@ -775,7 +794,7 @@ exports.updateDocument = async (req, res) => {
     }
 
     const isOwner = String(doc.ownerId) === String(req.user.id);
-    const isAdmin = req.user.accountType === 'Administrator';
+    const isAdmin = isActingAsAdmin(req.user);
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ message: 'Access denied.' });
     }
@@ -834,7 +853,7 @@ exports.updateDocument = async (req, res) => {
 exports.getFacultyPortfolioSummary = async (req, res) => {
   try {
     let targetOwnerId = req.user.id;
-    if (req.user.accountType === 'Administrator') {
+    if (isActingAsAdmin(req.user)) {
       if (req.query.instructorId) {
         targetOwnerId = req.query.instructorId;
       } else {

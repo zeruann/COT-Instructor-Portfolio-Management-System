@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 import InstructorProfileModal from '../../components/admin/InstructorProfileModal';
 import {
@@ -18,6 +19,8 @@ import {
   UserPlus,
 } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate';
+import AdminAccessDropdowns from '../../components/admin/AdminAccessDropdowns';
+import { EMPTY_ADMIN_ACCESS } from '../../config/adminPermissions';
 
 const INVITE_PAGE_SIZE = 8;
 
@@ -250,7 +253,10 @@ function getInvitationSchoolYear(inv, periods = []) {
 }
 
 function InviteInstructor() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [form, setForm] = useState(EMPTY_FORM);
+  const [adminAccess, setAdminAccess] = useState(EMPTY_ADMIN_ACCESS);
   const [invitations, setInvitations] = useState([]);
   const [academicPeriods, setAcademicPeriods] = useState([]);
   const [isSending, setIsSending] = useState(false);
@@ -406,10 +412,14 @@ function InviteInstructor() {
     }
     setIsSending(true);
     try {
+      const token = localStorage.getItem('token');
       const res = await fetch('/api/invitations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ ...form, adminAccess }),
       });
 
       const data = await res.json();
@@ -425,6 +435,7 @@ function InviteInstructor() {
 
       setInvitations((current) => [data, ...current]);
       setForm(EMPTY_FORM);
+      setAdminAccess(EMPTY_ADMIN_ACCESS);
       setShowInviteModal(false);
       notify(
         'success',
@@ -445,8 +456,16 @@ function InviteInstructor() {
 
   const handleCancel = () => {
     setForm(EMPTY_FORM);
+    setAdminAccess(EMPTY_ADMIN_ACCESS);
     closeInviteModal();
   };
+
+  useEffect(() => {
+    if (location.state?.openInviteModal) {
+      setShowInviteModal(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
 
   useEffect(() => {
     if (!showInviteModal) return undefined;
@@ -550,29 +569,18 @@ function InviteInstructor() {
 
   return (
     <>
-      {/* PAGE HEADER + TOGGLE INVITE CARD BUTTON */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-        <div>
-          <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
-            Invite Instructors
-          </h1>
-          <p className="mt-1 text-sm font-medium text-gray-500">
-            Send email invitations to new faculty members and track their onboarding status.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowInviteModal(true)}
-          className="inline-flex items-center gap-2 self-start sm:self-auto px-4 py-2.5 rounded-xl text-xs font-semibold bg-brand-orange text-white hover:bg-orange-600 shadow-sm transition-all duration-200 cursor-pointer"
-        >
-          <UserPlus size={16} />
-          <span>Invite Instructor</span>
-        </button>
+      {/* PAGE HEADER */}
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-brand-purple sm:text-2xl">
+          Invite Instructors
+        </h1>
+        <p className="mt-1 text-sm font-medium text-gray-500">
+          Send email invitations to new faculty members and track their onboarding status.
+        </p>
       </div>
 
-      {/* FILTER BAR: Search | School Year | Department | View By */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-5">
+      {/* FILTER BAR: Search | School Year | Department | View By | Invite Button */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 mb-5">
         {/* Search */}
         <div className="relative min-w-0 flex-1">
           <input
@@ -647,6 +655,16 @@ function InviteInstructor() {
           </select>
           <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
         </div>
+
+        {/* Invite Instructor Button (inline with filter bar, matching View Instructors) */}
+        <button
+          type="button"
+          onClick={() => setShowInviteModal(true)}
+          className="shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold bg-brand-orange text-white hover:bg-orange-600 shadow-sm transition-all duration-200 cursor-pointer whitespace-nowrap"
+        >
+          <UserPlus size={16} />
+          <span>Invite Instructor</span>
+        </button>
       </div>
 
       {/* Recent Invitations Table */}
@@ -866,7 +884,7 @@ function InviteInstructor() {
             onClick={closeInviteModal}
           >
             <div
-              className={`relative flex flex-col w-full max-w-4xl max-h-[90vh] rounded-2xl bg-[#f8f9fc] shadow-2xl border border-gray-200 overflow-hidden ${isClosingInviteModal
+              className={`relative flex flex-col w-full max-w-5xl max-h-[90vh] rounded-2xl bg-[#f8f9fc] shadow-2xl border border-gray-200 overflow-hidden ${isClosingInviteModal
                 ? 'animate-[modalPanelOut_150ms_ease-in_forwards]'
                 : 'animate-[modalPanelIn_180ms_cubic-bezier(0.16,1,0.3,1)_forwards]'
                 }`}
@@ -875,8 +893,8 @@ function InviteInstructor() {
               {/* Modal Header */}
               <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-6 py-4 bg-white">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="bg-orange-50 p-2 rounded-xl shrink-0">
-                    <Mail className="text-orange-500" size={18} />
+                  <div className="bg-[#efeef8] p-2 rounded-xl shrink-0">
+                    <Mail className="text-[#2e2a72]" size={18} />
                   </div>
                   <div className="min-w-0">
                     <h2 className="text-lg sm:text-xl font-bold text-[#2e2a72] truncate">
@@ -899,6 +917,14 @@ function InviteInstructor() {
 
               {/* Scrollable Modal Body */}
               <div className="flex-1 overflow-y-auto p-6">
+                <div className="mb-2.5 px-1">
+                  <h3 className="text-sm font-bold text-[#2e2a72]">
+                    Instructor Information
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Enter the faculty member&apos;s name, institutional email, and department.
+                  </p>
+                </div>
                 <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-2xs">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                     <div>
@@ -964,6 +990,19 @@ function InviteInstructor() {
                       </select>
                     </div>
                   </div>
+                </div>
+
+                {/* Optional Administrator Access Grant */}
+                <div className="mt-5">
+                  <div className="mb-2.5 px-1">
+                    <h3 className="text-sm font-bold text-[#2e2a72]">
+                      Administrator Access (Optional)
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Grant full or limited administrator access to this instructor upon invitation.
+                    </p>
+                  </div>
+                  <AdminAccessDropdowns value={adminAccess} onChange={setAdminAccess} />
                 </div>
               </div>
 

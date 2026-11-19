@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, LogOut, X } from 'lucide-react';
+import { ChevronDown, Lock, LogOut, X } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import useLogout from '../hooks/useLogout';
 import { NAV } from '../config/navigation';
+import { hasAdminPageAccess, readStoredUserRecord } from '../config/adminPermissions';
 
 // The seal shown next to the "COT FACULTY PORTFOLIO" text.
 const LOGO = '/COT-PurpleLogo.svg';
@@ -49,7 +50,7 @@ function SidebarLogout({ role, isCollapsed }) {
   );
 }
 
-function SidebarGroup({ item, isOpen, isActive, onToggle, onClose, isChildActive, isCollapsed }) {
+function SidebarGroup({ item, isOpen, isActive, onToggle, onClose, isChildActive, isCollapsed, isItemAllowed }) {
   const { label, icon: Icon, children } = item;
   const panelId = `nav-group-${label.toLowerCase().replace(/\s+/g, '-')}`;
 
@@ -85,23 +86,37 @@ function SidebarGroup({ item, isOpen, isActive, onToggle, onClose, isChildActive
       >
         <div className="overflow-hidden">
           <ul className="flex flex-col gap-1 pl-6 py-0.5">
-            {children.map((child) => (
-              <li key={child.to}>
-                <NavLink
-                  to={child.to}
-                  onClick={onClose}
-                  tabIndex={isOpen ? undefined : -1}
-                  end
-                  className={({ isActive: childIsActive }) =>
-                    childLinkClass({
-                      isActive: childIsActive || isChildActive(child.to),
-                    })
-                  }
-                >
-                  {child.label}
-                </NavLink>
-              </li>
-            ))}
+            {children.map((child) => {
+              const allowed = isItemAllowed ? isItemAllowed(child) : true;
+              return (
+                <li key={child.to}>
+                  {allowed ? (
+                    <NavLink
+                      to={child.to}
+                      onClick={onClose}
+                      tabIndex={isOpen ? undefined : -1}
+                      end
+                      className={({ isActive: childIsActive }) =>
+                        childLinkClass({
+                          isActive: childIsActive || isChildActive(child.to),
+                        })
+                      }
+                    >
+                      {child.label}
+                    </NavLink>
+                  ) : (
+                    <div
+                      aria-disabled="true"
+                      title="Locked — access not granted"
+                      className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 cursor-not-allowed select-none"
+                    >
+                      <span className="truncate">{child.label}</span>
+                      <Lock size={13} className="shrink-0 text-gray-300" aria-hidden="true" />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       </div>
@@ -113,22 +128,36 @@ function SidebarGroup({ item, isOpen, isActive, onToggle, onClose, isChildActive
             {label}
           </div>
           <ul className="flex flex-col gap-1">
-            {children.map((child) => (
-              <li key={child.to}>
-                <NavLink
-                  to={child.to}
-                  onClick={onClose}
-                  end
-                  className={({ isActive: childIsActive }) =>
-                    childLinkClass({
-                      isActive: childIsActive || isChildActive(child.to),
-                    })
-                  }
-                >
-                  {child.label}
-                </NavLink>
-              </li>
-            ))}
+            {children.map((child) => {
+              const allowed = isItemAllowed ? isItemAllowed(child) : true;
+              return (
+                <li key={child.to}>
+                  {allowed ? (
+                    <NavLink
+                      to={child.to}
+                      onClick={onClose}
+                      end
+                      className={({ isActive: childIsActive }) =>
+                        childLinkClass({
+                          isActive: childIsActive || isChildActive(child.to),
+                        })
+                      }
+                    >
+                      {child.label}
+                    </NavLink>
+                  ) : (
+                    <div
+                      aria-disabled="true"
+                      title="Locked — access not granted"
+                      className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm text-gray-300 cursor-not-allowed select-none"
+                    >
+                      <span className="truncate">{child.label}</span>
+                      <Lock size={13} className="shrink-0 text-gray-300" aria-hidden="true" />
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
@@ -136,10 +165,16 @@ function SidebarGroup({ item, isOpen, isActive, onToggle, onClose, isChildActive
   );
 }
 
-function Sidebar({ role, isOpen, onClose, isCollapsed = false, onToggleCollapse }) {
+function Sidebar({ role, user, isOpen, onClose, isCollapsed = false, onToggleCollapse }) {
   const location = useLocation();
   const [openGroups, setOpenGroups] = useState({});
   const menu = NAV[role];
+  const activeUser = user || readStoredUserRecord();
+
+  const isItemAllowed = (item) => {
+    if (role !== 'admin' || !item?.pageKey) return true;
+    return hasAdminPageAccess(activeUser, item.pageKey);
+  };
 
   const pathname = location.pathname;
 
@@ -307,32 +342,47 @@ function Sidebar({ role, isOpen, onClose, isCollapsed = false, onToggleCollapse 
                             onClose={onClose}
                             isChildActive={isParentPortfolioActive}
                             isCollapsed={isCollapsed}
+                            isItemAllowed={isItemAllowed}
                           />
                         </li>
                       );
                     }
 
                     const { to, label, icon: Icon } = item;
+                    const allowed = isItemAllowed(item);
 
                     return (
                       <li key={to}>
-                        <NavLink
-                          to={to}
-                          onClick={onClose}
-                          end
-                          title={isCollapsed ? label : undefined}
-                          className={({ isActive }) =>
-                            linkClass(
-                              {
-                                isActive: isActive || isParentPortfolioActive(to),
-                              },
-                              isCollapsed
-                            )
-                          }
-                        >
-                          <Icon size={18} className="shrink-0" aria-hidden="true" />
-                          <span className={`truncate ${isCollapsed ? 'inline lg:hidden' : ''}`}>{label}</span>
-                        </NavLink>
+                        {allowed ? (
+                          <NavLink
+                            to={to}
+                            onClick={onClose}
+                            end
+                            title={isCollapsed ? label : undefined}
+                            className={({ isActive }) =>
+                              linkClass(
+                                {
+                                  isActive: isActive || isParentPortfolioActive(to),
+                                },
+                                isCollapsed
+                              )
+                            }
+                          >
+                            <Icon size={18} className="shrink-0" aria-hidden="true" />
+                            <span className={`truncate ${isCollapsed ? 'inline lg:hidden' : ''}`}>{label}</span>
+                          </NavLink>
+                        ) : (
+                          <div
+                            aria-disabled="true"
+                            title={isCollapsed ? `${label} (Locked)` : 'Locked — access not granted'}
+                            className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-gray-300 cursor-not-allowed select-none ${isCollapsed ? 'justify-start lg:justify-center px-3 lg:px-2' : ''
+                              }`}
+                          >
+                            <Icon size={18} className="shrink-0 text-gray-300" aria-hidden="true" />
+                            <span className={`flex-1 truncate ${isCollapsed ? 'inline lg:hidden' : ''}`}>{label}</span>
+                            <Lock size={13} className={`shrink-0 text-gray-300 ${isCollapsed ? 'inline lg:hidden' : ''}`} aria-hidden="true" />
+                          </div>
+                        )}
                       </li>
                     );
                   })}

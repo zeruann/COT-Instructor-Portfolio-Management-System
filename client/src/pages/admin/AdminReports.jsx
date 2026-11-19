@@ -152,8 +152,6 @@ export default function AdminReports() {
     const query = searchQuery.toLowerCase();
 
     const result = instructors.filter((inst) => {
-      if (inst.accountType === 'Administrator') return false;
-
       const name = getDisplayName(inst);
       const email = inst.email || '';
       const matchSearch =
@@ -275,8 +273,8 @@ export default function AdminReports() {
             title="Grid view"
             aria-label="Grid view"
             className={`rounded-lg p-2 transition cursor-pointer ${displayMode === 'grid'
-                ? 'bg-orange-500 text-white shadow-xs'
-                : 'text-gray-400 hover:text-gray-700'
+              ? 'bg-orange-500 text-white shadow-xs'
+              : 'text-gray-400 hover:text-gray-700'
               }`}
           >
             <LayoutGrid size={18} />
@@ -287,8 +285,8 @@ export default function AdminReports() {
             title="Table view"
             aria-label="Table view"
             className={`rounded-lg p-2 transition cursor-pointer ${displayMode === 'table'
-                ? 'bg-orange-500 text-white shadow-xs'
-                : 'text-gray-400 hover:text-gray-700'
+              ? 'bg-orange-500 text-white shadow-xs'
+              : 'text-gray-400 hover:text-gray-700'
               }`}
           >
             <List size={18} />

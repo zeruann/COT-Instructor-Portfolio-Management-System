@@ -1,4 +1,5 @@
 const AuditLog = require('../models/AuditLog');
+const { isActingAsAdmin } = require('../constants/adminPermissions');
 
 const DOCUMENT_NAMES = {
     FAC_B_BACHELORS_DIPLOMA: "Bachelor's Diploma",
@@ -68,8 +69,8 @@ exports.getAuditLogs = async (req, res) => {
 
         const query = {};
 
-        // If regular instructor, restrict strictly to their own activities
-        if (req.user?.accountType !== 'Administrator') {
+        // If acting in Instructor mode, restrict strictly to their own activities
+        if (!isActingAsAdmin(req.user)) {
             query.actorId = req.user.id;
         } else if (actorRole && actorRole !== 'all') {
             // Admin can filter by role

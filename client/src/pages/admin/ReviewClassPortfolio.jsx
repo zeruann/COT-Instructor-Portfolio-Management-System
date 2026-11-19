@@ -28,7 +28,7 @@ export default function ReviewClassPortfolio() {
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [classCounts, setClassCounts] = useState({});
   const [loadingClassCounts, setLoadingClassCounts] = useState(true);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [viewBy, setViewBy] = useState('all');
@@ -137,8 +137,6 @@ export default function ReviewClassPortfolio() {
     const query = searchQuery.toLowerCase();
 
     const result = instructors.filter((inst) => {
-      if (inst.accountType === 'Administrator') return false;
-
       const name = getDisplayName(inst);
       const email = inst.email || '';
       const matchSearch = name.toLowerCase().includes(query) || email.toLowerCase().includes(query);
@@ -359,11 +357,10 @@ export default function ReviewClassPortfolio() {
             onClick={() => setDisplayMode('grid')}
             title="Grid view"
             aria-label="Grid view"
-            className={`rounded-lg p-2 transition cursor-pointer ${
-              displayMode === 'grid'
+            className={`rounded-lg p-2 transition cursor-pointer ${displayMode === 'grid'
                 ? 'bg-orange-500 text-white shadow-xs'
                 : 'text-gray-400 hover:text-gray-700'
-            }`}
+              }`}
           >
             <LayoutGrid size={18} />
           </button>
@@ -372,11 +369,10 @@ export default function ReviewClassPortfolio() {
             onClick={() => setDisplayMode('table')}
             title="Table view"
             aria-label="Table view"
-            className={`rounded-lg p-2 transition cursor-pointer ${
-              displayMode === 'table'
+            className={`rounded-lg p-2 transition cursor-pointer ${displayMode === 'table'
                 ? 'bg-orange-500 text-white shadow-xs'
                 : 'text-gray-400 hover:text-gray-700'
-            }`}
+              }`}
           >
             <List size={18} />
           </button>
@@ -633,11 +629,10 @@ export default function ReviewClassPortfolio() {
                   key={p}
                   type="button"
                   onClick={() => setCurrentPage(p)}
-                  className={`w-8 h-8 rounded-lg text-xs font-medium border transition cursor-pointer ${
-                    p === currentPage
+                  className={`w-8 h-8 rounded-lg text-xs font-medium border transition cursor-pointer ${p === currentPage
                       ? 'bg-orange-500 text-white border-orange-500'
                       : 'border-gray-200 hover:bg-gray-50 text-gray-600'
-                  }`}
+                    }`}
                 >
                   {p}
                 </button>

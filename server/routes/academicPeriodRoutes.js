@@ -2,13 +2,9 @@ const express = require('express');
 const router = express.Router();
 const academicPeriodController = require('../controllers/academicPeriodController');
 const auth = require('../middleware/auth');
+const { requireAdminAccess } = require('../middleware/adminAccess');
 
-const requireAdmin = (req, res, next) => {
-  if (req.user?.accountType !== 'Administrator') {
-    return res.status(403).json({ message: 'Access denied. Administrator / Dean only.' });
-  }
-  next();
-};
+const requireAdmin = requireAdminAccess('academic_period');
 
 // Public/Read-only for all logged in users (Instructors and Admins)
 router.get('/current', auth, academicPeriodController.getCurrentAcademicPeriod);

@@ -5,6 +5,7 @@ const Document = require('../models/Document');
 const Requirement = require('../models/Requirement');
 const { STATUS } = require('../constants/documentStatus');
 const { validateClassFields } = require('../constants/classPolicy');
+const { isActingAsAdmin } = require('../constants/adminPermissions');
 
 /**
  * GET /api/classes
@@ -12,7 +13,7 @@ const { validateClassFields } = require('../constants/classPolicy');
  */
 exports.getClasses = async (req, res) => {
   try {
-    const isAdmin = req.user.accountType === 'Administrator';
+    const isAdmin = isActingAsAdmin(req.user);
     const ownerId = isAdmin && req.query.instructorId ? req.query.instructorId : req.user.id;
     const { academicPeriodId, archived, includeArchived } = req.query;
 
@@ -163,7 +164,7 @@ exports.getClasses = async (req, res) => {
  */
 exports.getClassById = async (req, res) => {
   try {
-    const isAdmin = req.user.accountType === 'Administrator';
+    const isAdmin = isActingAsAdmin(req.user);
     const { id } = req.params;
     const { includeArchived } = req.query;
 
@@ -419,7 +420,7 @@ exports.updateClass = async (req, res) => {
  */
 exports.archiveClass = async (req, res) => {
   try {
-    const isAdmin = req.user.accountType === 'Administrator';
+    const isAdmin = isActingAsAdmin(req.user);
     const { id } = req.params;
     const filter = isAdmin ? { _id: id } : { _id: id, ownerId: req.user.id };
 
@@ -444,7 +445,7 @@ exports.archiveClass = async (req, res) => {
  */
 exports.unarchiveClass = async (req, res) => {
   try {
-    const isAdmin = req.user.accountType === 'Administrator';
+    const isAdmin = isActingAsAdmin(req.user);
     const { id } = req.params;
     const filter = isAdmin ? { _id: id } : { _id: id, ownerId: req.user.id };
 

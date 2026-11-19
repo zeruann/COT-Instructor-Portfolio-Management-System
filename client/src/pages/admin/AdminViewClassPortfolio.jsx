@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { fetchClassById } from '../../api/classes';
 import { CLASS_REQUIREMENT_CARDS } from '../instructors/ViewClassPortfolio';
+import { hasClassRequirementAccess, readStoredUserRecord } from '../../config/adminPermissions';
 
 const statusStyles = {
   completed: { label: 'Completed', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -21,7 +22,7 @@ const statusStyles = {
   empty: { label: 'No documents', className: 'bg-gray-50 text-gray-600 border-gray-200' },
 };
 
-function RequirementCard({ card, basePath, summary = {}, onSelectRequirement, compact = false }) {
+function RequirementCard({ card, basePath, summary = {}, onSelectRequirement, compact = false, locked = false }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const comments = summary.comments ?? 0;
   const files = summary.totalFiles ?? 0;
@@ -42,6 +43,35 @@ function RequirementCard({ card, basePath, summary = {}, onSelectRequirement, co
   const descCls = compact
     ? 'break-words text-xs leading-relaxed text-gray-400'
     : 'break-words text-xs leading-relaxed text-gray-400 sm:text-sm';
+
+  if (locked) {
+    return (
+      <div
+        title="Locked — access not granted for this requirement"
+        className={`relative flex h-full min-w-0 flex-col rounded-xl border border-gray-200 bg-gray-100/80 opacity-65 select-none cursor-not-allowed ${compact ? 'px-4 pt-4 pb-3.5 min-h-[165px]' : 'px-4 pt-5 pb-4 sm:px-5 sm:pt-6 sm:pb-5 min-h-[220px]'}`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-gray-300" />
+            <h3 className="min-w-0 break-words text-sm font-bold leading-snug text-gray-500 sm:text-base">
+              {card.title}
+            </h3>
+          </div>
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-200 text-gray-500">
+            <Lock size={14} />
+          </span>
+        </div>
+        <div className="mt-3 h-[2px] w-full rounded-full bg-gray-300" />
+        <p className="mt-3 flex-1 break-words text-xs leading-relaxed text-gray-400">
+          {card.description}
+        </p>
+        <div className="mt-4 flex items-center gap-1.5 text-xs font-medium text-gray-500">
+          <Lock size={12} />
+          <span>Access Locked</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -373,16 +403,20 @@ export default function AdminViewClassPortfolio({
                 : 'flex flex-col space-y-3'
             }
           >
-            {CLASS_REQUIREMENT_CARDS.map((card) => (
-              <RequirementCard
-                key={card.path}
-                card={card}
-                basePath={basePath}
-                summary={requirementSummary[card.key] || {}}
-                onSelectRequirement={onSelectRequirement}
-                compact={embedded}
-              />
-            ))}
+            {CLASS_REQUIREMENT_CARDS.map((card) => {
+              const locked = !hasClassRequirementAccess(readStoredUserRecord(), card.key);
+              return (
+                <RequirementCard
+                  key={card.path}
+                  card={card}
+                  basePath={basePath}
+                  summary={requirementSummary[card.key] || {}}
+                  onSelectRequirement={onSelectRequirement}
+                  compact={embedded}
+                  locked={locked}
+                />
+              );
+            })}
           </div>
         )}
       </section>
