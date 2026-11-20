@@ -91,8 +91,8 @@ function ProfileMenu({ role, menu, name, avatarUrl, user }) {
         role="menu"
         aria-hidden={!open}
         className={`absolute right-0 top-full z-50 mt-2 w-60 origin-top-right rounded-xl border border-gray-200 bg-white py-1.5 shadow-lg transition-all duration-200 ease-out ${open
-            ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto'
-            : 'opacity-0 scale-95 -translate-y-1.5 pointer-events-none'
+          ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto'
+          : 'opacity-0 scale-95 -translate-y-1.5 pointer-events-none'
           }`}
       >
         {role === 'admin' ? (
