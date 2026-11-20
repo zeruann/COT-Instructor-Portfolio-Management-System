@@ -564,6 +564,12 @@ exports.reviewDocument = async (req, res) => {
       return res.status(404).json({ message: 'Document not found.' });
     }
 
+    if (String(doc.instructorId || doc.ownerId) === String(req.user.id)) {
+      return res.status(403).json({
+        message: 'You cannot review your own documents.',
+      });
+    }
+
     if (!hasDocumentReviewAccess(reviewer, doc.requirementKey)) {
       return res.status(403).json({
         message: 'You do not have permission to review this requirement type.',

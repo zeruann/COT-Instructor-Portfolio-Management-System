@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import AppModal, { useAppModal } from '../../components/common/AppModal';
 import InstructorProfileModal from '../../components/admin/InstructorProfileModal';
 import { API_BASE } from '../../api/config';
+import { isSelfUser } from '../../config/adminPermissions';
 
 const PAGE_SIZE = 10;
 
@@ -59,7 +60,10 @@ export default function ViewInstructors() {
         setLoading(true);
         setError(null);
 
-        const res = await fetch(API_URL);
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}?excludeSelf=true`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (!res.ok) {
           throw new Error(`Failed to load instructors (HTTP ${res.status}).`);
         }
@@ -69,7 +73,7 @@ export default function ViewInstructors() {
 
         // Accept either [ ... ] or { instructors: [ ... ] }
         const list = Array.isArray(data) ? data : data.instructors || data.data || [];
-        setInstructors(list);
+        setInstructors(list.filter((inst) => !isSelfUser(inst)));
       } catch (err) {
         console.error('Error fetching instructors:', err);
         setError(

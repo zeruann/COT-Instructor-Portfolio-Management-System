@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { ShieldCheck } from "lucide-react";
 import AppModal, { useAppModal } from "../../components/common/AppModal";
 import GrantAdminAccessModal from "../../components/admin/GrantAdminAccessModal";
+import { isSelfUser } from "../../config/adminPermissions";
 
 // ---------- helpers ----------
 const show = (value) =>
@@ -82,7 +83,16 @@ function AdminInstructorProfile({
   const [showInviteAccessModal, setShowInviteAccessModal] = useState(false);
   const { modal, close: closeModal, notify, confirm: showConfirm } = useAppModal();
 
+  const isSelf = isSelfUser(id);
+
   useEffect(() => {
+    if (isSelf) {
+      setInstructor(null);
+      setError("You cannot view or configure your own record here. Use My Profile instead.");
+      setLoading(false);
+      return;
+    }
+
     const token = localStorage.getItem("token");
     const headers = { Authorization: `Bearer ${token}` };
 

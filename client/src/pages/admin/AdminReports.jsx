@@ -5,6 +5,7 @@ import { Search, ChevronDown, LayoutGrid, List } from 'lucide-react';
 import { fetchFacultySummary } from '../../api/documents';
 import InstructorReports from '../instructors/InstructorReports';
 import { API_BASE } from '../../api/config';
+import { isSelfUser } from '../../config/adminPermissions';
 
 const CATEGORY_PATHS = [
   'educational-attainment',
@@ -66,15 +67,24 @@ export default function AdminReports() {
 
   // Load list of instructors
   useEffect(() => {
-    fetch(`${API_BASE}/instructors`)
+    const token = localStorage.getItem('token');
+    fetch(`${API_BASE}/instructors?excludeSelf=true`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then((res) => res.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : data.instructors || [];
-        setInstructors(list);
+        setInstructors(list.filter((inst) => !isSelfUser(inst)));
       })
       .catch((err) => console.error('Failed to load instructors:', err))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (instructorId && isSelfUser(instructorId)) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [instructorId, setSearchParams]);
 
   // Load every instructor's portfolio summary for live completion percentage
   useEffect(() => {

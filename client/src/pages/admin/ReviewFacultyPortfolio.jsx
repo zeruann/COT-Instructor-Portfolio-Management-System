@@ -19,7 +19,7 @@ import { fetchFacultySummary, fetchDocuments } from '../../api/documents';
 import PreviewModal from '../../components/documentActions/PreviewModal';
 import StatusBadge from '../../components/documentActions/StatusBadge';
 import { API_BASE } from '../../api/config';
-import { hasFacultyRequirementAccess, readStoredUserRecord } from '../../config/adminPermissions';
+import { hasFacultyRequirementAccess, isSelfUser, readStoredUserRecord } from '../../config/adminPermissions';
 
 // accent = dot + underline color of the card (matches the design reference)
 const requirementCards = [
@@ -358,15 +358,25 @@ export default function ReviewFacultyPortfolio({
 
   // Load list of instructors
   useEffect(() => {
-    fetch(`${API_BASE}/instructors`)
+    const token = localStorage.getItem('token');
+    fetch(`${API_BASE}/instructors?excludeSelf=true`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then((res) => res.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : data.instructors || [];
-        setInstructors(list);
+        setInstructors(list.filter((inst) => !isSelfUser(inst)));
       })
       .catch((err) => console.error('Failed to load instructors:', err))
       .finally(() => setLoading(false));
   }, []);
+
+  // Prevent direct navigation to self in portfolio review
+  useEffect(() => {
+    if (!propInstructorId && instructorId && isSelfUser(instructorId)) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [propInstructorId, instructorId, setSearchParams]);
 
   // Derive selected instructor from query param
   const selectedInstructor = useMemo(() => {
@@ -392,7 +402,7 @@ export default function ReviewFacultyPortfolio({
 
   useEffect(() => {
     let isCurrent = true;
-    if (instructorId) {
+    if (instructorId && !isSelfUser(instructorId)) {
       fetchFacultySummary(instructorId)
         .then((sum) => {
           if (isCurrent) setSummariesById((prev) => ({ ...prev, [instructorId]: sum || {} }));

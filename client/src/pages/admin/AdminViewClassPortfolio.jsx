@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { fetchClassById } from '../../api/classes';
 import { CLASS_REQUIREMENT_CARDS } from '../instructors/ViewClassPortfolio';
-import { hasClassRequirementAccess, readStoredUserRecord } from '../../config/adminPermissions';
+import { hasClassRequirementAccess, isSelfUser, readStoredUserRecord } from '../../config/adminPermissions';
 
 const statusStyles = {
   completed: { label: 'Completed', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -227,6 +227,24 @@ export default function AdminViewClassPortfolio({
     window.location.search.includes('from=archive') || Boolean(classData?.archivedAt);
 
   const instructorId = classData?.ownerId?._id || classData?.ownerId;
+
+  if (!loading && instructorId && isSelfUser(instructorId)) {
+    return (
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <p className="text-red-500 font-medium">
+          You cannot review your own class portfolio from the administrator review view.
+        </p>
+        {!embedded && (
+          <Link
+            to="/admin/review/class-portfolio"
+            className="mt-4 inline-block text-sm text-orange-500 hover:underline"
+          >
+            ← Back to Class Portfolio Review
+          </Link>
+        )}
+      </div>
+    );
+  }
 
   const backToReviewUrl = isFromArchive
     ? '/admin/archive'

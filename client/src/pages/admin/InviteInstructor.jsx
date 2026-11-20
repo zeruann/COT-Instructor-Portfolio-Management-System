@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { formatDate } from '../../utils/formatDate';
 import AdminAccessDropdowns from '../../components/admin/AdminAccessDropdowns';
-import { EMPTY_ADMIN_ACCESS } from '../../config/adminPermissions';
+import { EMPTY_ADMIN_ACCESS, isSelfUser } from '../../config/adminPermissions';
 
 const INVITE_PAGE_SIZE = 8;
 
@@ -289,7 +289,10 @@ function InviteInstructor() {
   useEffect(() => {
     fetch('/api/invitations')
       .then((res) => res.json())
-      .then((data) => setInvitations(Array.isArray(data) ? data : []))
+      .then((data) => {
+        const list = Array.isArray(data) ? data : [];
+        setInvitations(list.filter((inv) => !isSelfUser(inv)));
+      })
       .catch((err) => console.error('Failed to load invitations:', err));
 
     const token = localStorage.getItem('token');

@@ -25,6 +25,7 @@ import AdminViewClassPortfolio from './AdminViewClassPortfolio';
 import ClassRequirementDetail from '../instructors/ClassRequirementDetail';
 import ReviewFacultyPortfolio from './ReviewFacultyPortfolio';
 import { PortfolioContext } from '../../context/portfolioContextDef';
+import { isSelfUser } from '../../config/adminPermissions';
 import EducationalAttainment from '../portfolioRequirements/FacultyPortfolioRequirements/EducationalAttainment';
 import ServiceRecords from '../portfolioRequirements/FacultyPortfolioRequirements/ServiceRecords';
 import SeminarsAndWorkshops from '../portfolioRequirements/FacultyPortfolioRequirements/Seminars&Workshops';
@@ -317,6 +318,7 @@ export default function AdminArchiveRecordDetail() {
   const filteredInstructors = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     return mergedInstructors.filter((inst) => {
+      if (isSelfUser(inst)) return false;
       const matchesDept =
         departmentFilter === 'all' || inst.department === departmentFilter;
       if (!matchesDept) return false;

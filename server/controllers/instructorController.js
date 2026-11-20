@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const Instructor = require('../models/Instructor');
 const { markStaleUsersOffline } = require('../utils/onlineStatus');
 const {
@@ -14,19 +15,41 @@ const { sendAdminAccessEmail } = require('../utils/sendEmail');
 
 const SAFE_FIELDS = '-password -resetPasswordToken -resetPasswordExpires';
 
+const getAuthenticatedUserId = (req) => {
+  if (req.user?.id) return String(req.user.id);
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return null;
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return decoded?.id ? String(decoded.id) : null;
+  } catch {
+    return null;
+  }
+};
+
 // GET /api/instructors
 exports.getInstructors = async (req, res) => {
   try {
     await markStaleUsersOffline();
 
-    const instructors = await Instructor.find({
+    const query = {
       $or: [
         { status: 'Accepted' },
         { status: { $exists: false } },
         { status: null },
         { status: '' },
       ],
-    })
+    };
+
+    if (req.query.excludeSelf === 'true' || req.query.excludeSelf === '1') {
+      const currentUserId = getAuthenticatedUserId(req);
+      if (currentUserId) {
+        query._id = { $ne: currentUserId };
+      }
+    }
+
+    const instructors = await Instructor.find(query)
       .select(SAFE_FIELDS)
       .sort({ createdAt: -1 });
     res.json(instructors);
@@ -55,6 +78,11 @@ exports.getInstructorById = async (req, res) => {
 // PATCH /api/instructors/:id/status   body: { accountStatus: "Active" | "Deactivated" }
 exports.updateInstructorStatus = async (req, res) => {
   try {
+    const actorId = req.currentUser?._id || req.user?.id;
+    if (actorId && String(req.params.id) === String(actorId)) {
+      return res.status(403).json({ message: 'You cannot change your own account status.' });
+    }
+
     const { accountStatus } = req.body;
 
     if (!['Active', 'Deactivated'].includes(accountStatus)) {
@@ -98,6 +126,10 @@ exports.updateInstructorAdminAccess = async (req, res) => {
     const target = await Instructor.findById(req.params.id).select(SAFE_FIELDS);
     if (!target) {
       return res.status(404).json({ message: 'Instructor not found.' });
+    }
+    const actorId = req.currentUser?._id || req.user?.id;
+    if (actorId && String(target._id) === String(actorId)) {
+      return res.status(403).json({ message: 'You cannot modify your own administrator access.' });
     }
     if (target.accountType === 'Administrator') {
       return res.status(400).json({ message: 'System Administrators already have full access.' });

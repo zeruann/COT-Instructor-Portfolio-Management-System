@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { fetchClasses } from '../../api/classes';
 import { API_BASE } from '../../api/config';
+import { isSelfUser } from '../../config/adminPermissions';
 
 export default function ReviewClassPortfolio() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -43,15 +44,25 @@ export default function ReviewClassPortfolio() {
 
   // Load instructor list
   useEffect(() => {
-    fetch(`${API_BASE}/instructors`)
+    const token = localStorage.getItem('token');
+    fetch(`${API_BASE}/instructors?excludeSelf=true`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then((res) => res.json())
       .then((data) => {
         const list = Array.isArray(data) ? data : data.instructors || [];
-        setInstructors(list);
+        setInstructors(list.filter((inst) => !isSelfUser(inst)));
       })
       .catch((err) => console.error('Failed to load instructors:', err))
       .finally(() => setLoadingInstructors(false));
   }, []);
+
+  // Prevent direct navigation to self in class portfolio review
+  useEffect(() => {
+    if (instructorId && isSelfUser(instructorId)) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [instructorId, setSearchParams]);
 
   // Load active class counts per instructor for the summary cards
   useEffect(() => {
@@ -105,7 +116,7 @@ export default function ReviewClassPortfolio() {
 
   // Load classes for selected instructor
   useEffect(() => {
-    if (!instructorId) {
+    if (!instructorId || isSelfUser(instructorId)) {
       setClasses([]);
       return;
     }

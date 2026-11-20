@@ -71,6 +71,31 @@ export function readStoredUserRecord() {
   }
 }
 
+export function getCurrentUserId() {
+  const user = readStoredUserRecord();
+  const id = user?._id || user?.id;
+  return id ? String(id) : '';
+}
+
+export function isSelfUser(targetOrId) {
+  const user = readStoredUserRecord();
+  if (!user || !targetOrId) return false;
+  const currentId = user._id || user.id ? String(user._id || user.id) : '';
+  const currentEmail = user.email ? String(user.email).trim().toLowerCase() : '';
+
+  if (typeof targetOrId === 'object') {
+    const targetId = targetOrId.instructorId || targetOrId._id || targetOrId.id;
+    if (currentId && targetId && String(targetId) === currentId) return true;
+    const targetEmail = targetOrId.email
+      ? String(targetOrId.email).trim().toLowerCase()
+      : '';
+    if (currentEmail && targetEmail && targetEmail === currentEmail) return true;
+    return false;
+  }
+
+  return Boolean(currentId && String(targetOrId) === currentId);
+}
+
 export function canUseAdminMode(user) {
   if (!user) return false;
   if (user.accountType === 'Administrator') return true;

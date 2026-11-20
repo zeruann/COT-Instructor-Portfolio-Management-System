@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 import { useResourceLock } from '../../hooks/useResourceLock';
+import { isSelfUser } from '../../config/adminPermissions';
 import {
   Calendar,
   Plus,
@@ -1366,17 +1367,22 @@ export default function AcademicPeriod() {
                   </div>
 
                   {/* Instructors */}
-                  <div>
-                    <label className="block text-[13px] font-semibold text-gray-700 mb-2">
-                      Associated Instructors ({detailsData.instructors.length})
-                    </label>
-                    {detailsData.instructors.length === 0 ? (
-                      <p className="text-sm text-gray-400 bg-gray-50 border border-gray-200 p-4 rounded-lg text-center">
-                        No instructors assigned to classes in this period yet.
-                      </p>
-                    ) : (
-                      <div className="border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
-                        {detailsData.instructors.map((inst) => (
+                  {(() => {
+                    const visibleInstructors = detailsData.instructors.filter(
+                      (inst) => !isSelfUser(inst)
+                    );
+                    return (
+                      <div>
+                        <label className="block text-[13px] font-semibold text-gray-700 mb-2">
+                          Associated Instructors ({visibleInstructors.length})
+                        </label>
+                        {visibleInstructors.length === 0 ? (
+                          <p className="text-sm text-gray-400 bg-gray-50 border border-gray-200 p-4 rounded-lg text-center">
+                            No instructors assigned to classes in this period yet.
+                          </p>
+                        ) : (
+                          <div className="border border-gray-200 rounded-lg overflow-hidden divide-y divide-gray-100">
+                            {visibleInstructors.map((inst) => (
                           <div key={inst.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50/50">
                             <div>
                               <p className="text-sm font-semibold text-gray-800">{inst.name}</p>
@@ -1395,10 +1401,12 @@ export default function AcademicPeriod() {
                               </div>
                             </div>
                           </div>
-                        ))}
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
 
                   {/* Subjects & Sections */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
