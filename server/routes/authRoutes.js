@@ -5,7 +5,7 @@ const {
   login, logout, googleLogin, heartbeat, switchMode, forgotPassword, verifyResetOtp, resetPassword,
 } = require("../controllers/authController");
 const auth = require("../middleware/auth");
-const { loginLimiter, forgotPasswordLimiter } = require("../middleware/rateLimiter");
+const { loginLimiter, forgotPasswordLimiter, switchModeLimiter } = require("../middleware/rateLimiter");
 
 const optionalAuth = (req, res, next) => {
   const header = req.headers.authorization || '';
@@ -25,7 +25,7 @@ router.post("/login", loginLimiter, login);
 router.post("/google", googleLogin);
 router.post("/logout", optionalAuth, logout);
 router.post("/heartbeat", auth, heartbeat);
-router.post("/switch-mode", auth, switchMode);
+router.post("/switch-mode", auth, switchModeLimiter, switchMode);
 router.post("/forgot-password", forgotPasswordLimiter, forgotPassword);
 router.post("/verify-reset-otp", verifyResetOtp);
 router.post("/reset-password/:token", resetPassword);

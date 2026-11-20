@@ -3,6 +3,15 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Eye, EyeOff, Lock, Mail, ShieldCheck, X } from 'lucide-react';
 
+function formatCountdown(seconds) {
+  if (seconds >= 60) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  }
+  return `${seconds}s`;
+}
+
 function censorEmail(email) {
   if (!email || typeof email !== 'string') return '';
   const atIndex = email.indexOf('@');
@@ -47,7 +56,17 @@ export default function ModeSwitchPasswordModal({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
   const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (rateLimitSeconds <= 0) return undefined;
+    const timer = setTimeout(
+      () => setRateLimitSeconds((prev) => Math.max(0, prev - 1)),
+      1000
+    );
+    return () => clearTimeout(timer);
+  }, [rateLimitSeconds]);
 
   useEffect(() => {
     if (!open) return;
@@ -83,7 +102,7 @@ export default function ModeSwitchPasswordModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (submitting) return;
+    if (submitting || rateLimitSeconds > 0) return;
     if (!password) {
       setError('Please enter your password.');
       return;
@@ -104,6 +123,10 @@ export default function ModeSwitchPasswordModal({
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 429) {
+          const retryAfter = Number(data.retryAfterSeconds) || 60;
+          setRateLimitSeconds(retryAfter);
+        }
         setError(data.message || 'Authentication failed.');
         return;
       }
@@ -236,10 +259,14 @@ export default function ModeSwitchPasswordModal({
             </button>
             <button
               type="submit"
-              disabled={submitting}
-              className="rounded-xl bg-brand-orange px-5 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-orange-600 shadow-sm transition cursor-pointer disabled:opacity-60"
+              disabled={submitting || rateLimitSeconds > 0}
+              className="rounded-xl bg-brand-orange px-5 py-2 text-xs sm:text-sm font-semibold text-white hover:bg-orange-600 shadow-sm transition cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {submitting ? 'Verifying…' : 'Confirm & Switch'}
+              {submitting
+                ? 'Verifying…'
+                : rateLimitSeconds > 0
+                  ? `Try again in ${formatCountdown(rateLimitSeconds)}`
+                  : 'Confirm & Switch'}
             </button>
           </div>
         </form>

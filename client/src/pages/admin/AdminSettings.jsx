@@ -24,6 +24,15 @@ import {
   RotateCcw,
 } from "lucide-react";
 
+const formatCountdown = (seconds) => {
+  if (seconds >= 60) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  }
+  return `${seconds}s`;
+};
+
 import gmailIcon from "../../assets/Gmail_icon_(2020).svg";
 import recaptchaIcon from "../../assets/ReCAPTCHA_icon.svg";
 import driveIcon from "../../assets/Google_Drive_icon_(2026).svg";
@@ -278,6 +287,8 @@ export default function AdminSettings() {
   });
   const [adminImgError, setAdminImgError] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  const [sendOtpRateLimitSeconds, setSendOtpRateLimitSeconds] = useState(0);
+  const [verifyOtpRateLimitSeconds, setVerifyOtpRateLimitSeconds] = useState(0);
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpError, setOtpError] = useState("");
@@ -316,6 +327,25 @@ export default function AdminSettings() {
     }
     return () => clearInterval(interval);
   }, [resendTimer]);
+
+  // Rate-limit countdown timers for API Settings OTP send & verify
+  useEffect(() => {
+    if (sendOtpRateLimitSeconds <= 0) return undefined;
+    const timer = setTimeout(
+      () => setSendOtpRateLimitSeconds((prev) => Math.max(0, prev - 1)),
+      1000
+    );
+    return () => clearTimeout(timer);
+  }, [sendOtpRateLimitSeconds]);
+
+  useEffect(() => {
+    if (verifyOtpRateLimitSeconds <= 0) return undefined;
+    const timer = setTimeout(
+      () => setVerifyOtpRateLimitSeconds((prev) => Math.max(0, prev - 1)),
+      1000
+    );
+    return () => clearTimeout(timer);
+  }, [verifyOtpRateLimitSeconds]);
 
   // 30-Second Countdown timer for Custom API Save OTP resend
   useEffect(() => {
@@ -415,7 +445,7 @@ export default function AdminSettings() {
 
   /* ─── Send OTP Code to Admin's Email ─────────────────────────── */
   const handleSendOtp = async () => {
-    if (resendTimer > 0 || otpSending) return;
+    if (resendTimer > 0 || otpSending || sendOtpRateLimitSeconds > 0) return;
     setOtpSending(true);
     setOtpError("");
     setOtpSuccess("");
@@ -436,6 +466,10 @@ export default function AdminSettings() {
         setResendTimer(30);
       }
     } catch (err) {
+      if (err.response?.status === 429) {
+        const retryAfter = Number(err.response?.data?.retryAfterSeconds) || 60;
+        setSendOtpRateLimitSeconds(retryAfter);
+      }
       setOtpError(
         err.response?.data?.message || "Failed to send verification code. Please try again."
       );
@@ -447,6 +481,7 @@ export default function AdminSettings() {
   /* ─── Verify OTP Code & Unlock API Settings ──────────────────── */
   const handleVerifyOtp = async (e) => {
     e?.preventDefault();
+    if (otpVerifying || verifyOtpRateLimitSeconds > 0) return;
     if (!otpCode || otpCode.trim().length !== 6) {
       setOtpError("Please enter the complete 6-digit verification code.");
       return;
@@ -480,6 +515,10 @@ export default function AdminSettings() {
         }, 500);
       }
     } catch (err) {
+      if (err.response?.status === 429) {
+        const retryAfter = Number(err.response?.data?.retryAfterSeconds) || 60;
+        setVerifyOtpRateLimitSeconds(retryAfter);
+      }
       setOtpError(
         err.response?.data?.message || "Invalid or expired verification code. Please try again."
       );
@@ -1552,14 +1591,16 @@ export default function AdminSettings() {
                 <button
                   type="button"
                   onClick={handleSendOtp}
-                  disabled={otpSending}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-brand-orange hover:bg-orange-600 active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition-all cursor-pointer disabled:opacity-60"
+                  disabled={otpSending || sendOtpRateLimitSeconds > 0}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-brand-orange hover:bg-orange-600 active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {otpSending ? (
                     <>
                       <RefreshCw size={16} className="animate-spin" />
                       <span>Sending Verification Code…</span>
                     </>
+                  ) : sendOtpRateLimitSeconds > 0 ? (
+                    <span>Try again in {formatCountdown(sendOtpRateLimitSeconds)}</span>
                   ) : (
                     <>
                       <Mail size={16} />
@@ -1617,14 +1658,16 @@ export default function AdminSettings() {
 
                 <button
                   type="submit"
-                  disabled={otpVerifying || otpCode.length !== 6 || isFadingOut}
-                  className="w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-brand-orange hover:bg-orange-600 active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                  disabled={otpVerifying || otpCode.length !== 6 || isFadingOut || verifyOtpRateLimitSeconds > 0}
+                  className="w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl bg-brand-orange hover:bg-orange-600 active:scale-[0.99] text-white font-semibold text-sm shadow-sm transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   {otpVerifying ? (
                     <>
                       <RefreshCw size={16} className="animate-spin" />
                       <span>Verifying &amp; Unlocking…</span>
                     </>
+                  ) : verifyOtpRateLimitSeconds > 0 ? (
+                    <span>Try again in {formatCountdown(verifyOtpRateLimitSeconds)}</span>
                   ) : (
                     <>
                       <Lock size={15} />
@@ -1633,9 +1676,16 @@ export default function AdminSettings() {
                   )}
                 </button>
 
-                {/* Resend Option with 30s Cooldown */}
+                {/* Resend Option with 30s Cooldown & Rate Limit Lock */}
                 <div className="pt-1.5 text-center text-xs text-gray-500">
-                  {resendTimer > 0 ? (
+                  {sendOtpRateLimitSeconds > 0 ? (
+                    <div className="flex items-center justify-center gap-1.5 text-gray-400">
+                      <Clock size={13} />
+                      <span>
+                        Try again in <strong className="text-gray-600 font-mono">{formatCountdown(sendOtpRateLimitSeconds)}</strong>
+                      </span>
+                    </div>
+                  ) : resendTimer > 0 ? (
                     <div className="flex items-center justify-center gap-1.5 text-gray-400">
                       <Clock size={13} />
                       <span>

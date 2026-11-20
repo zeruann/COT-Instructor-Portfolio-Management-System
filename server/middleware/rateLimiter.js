@@ -93,9 +93,38 @@ const forgotPasswordLimiter = createRateLimiter({
   message: 'Too many password reset email requests.',
 });
 
+const getUserOrIpKey = (req) => req.user?.id || getClientIp(req);
+
+const switchModeLimiter = createRateLimiter({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5,
+  skipSuccessfulRequests: true,
+  keyGenerator: getUserOrIpKey,
+  message: 'Too many failed password attempts while switching mode.',
+});
+
+const settingsOtpSendLimiter = createRateLimiter({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 3,
+  skipSuccessfulRequests: false,
+  keyGenerator: getUserOrIpKey,
+  message: 'Too many verification code requests.',
+});
+
+const settingsOtpVerifyLimiter = createRateLimiter({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5,
+  skipSuccessfulRequests: true,
+  keyGenerator: getUserOrIpKey,
+  message: 'Too many failed verification attempts.',
+});
+
 module.exports = {
   createRateLimiter,
   loginLimiter,
   forgotPasswordLimiter,
+  switchModeLimiter,
+  settingsOtpSendLimiter,
+  settingsOtpVerifyLimiter,
 };
 
