@@ -153,9 +153,13 @@ exports.uploadDocument = async (req, res) => {
 
     //6. Build Google Drive folder path and filename
     let folderPath;
+    let resolvedClassDoc = null;
     if (isSharedLoadReport) {
       const AcademicPeriod = require('../models/AcademicPeriod');
       const period = targetPeriodId ? await AcademicPeriod.findById(targetPeriodId) : null;
+      if (classIds.length > 0) {
+        resolvedClassDoc = await Class.findById(classIds[0]);
+      }
       folderPath = driveNaming.classFolderPath({
         department: instructor.department || 'General',
         fullName: instructor.fullName,
@@ -166,19 +170,19 @@ exports.uploadDocument = async (req, res) => {
     } else if (requirement.scope === 'class' && classIds.length > 0) {
       const Class = require('../models/Class');
       const AcademicPeriod = require('../models/AcademicPeriod');
-      const classDoc = await Class.findById(classIds[0]);
+      resolvedClassDoc = await Class.findById(classIds[0]);
       let period = null;
       if (academicPeriodId) {
         period = await AcademicPeriod.findById(academicPeriodId);
-      } else if (classDoc?.academicPeriodId) {
-        period = await AcademicPeriod.findById(classDoc.academicPeriodId);
+      } else if (resolvedClassDoc?.academicPeriodId) {
+        period = await AcademicPeriod.findById(resolvedClassDoc.academicPeriodId);
       }
       folderPath = driveNaming.classFolderPath({
         department: instructor.department || 'General',
         fullName: instructor.fullName,
         instructorId: ownerId,
         period: period || { schoolYear: '2026-2027', semester: '1st' },
-        classDoc,
+        classDoc: resolvedClassDoc,
         co: slot.co || null,
       });
     } else {
@@ -191,7 +195,18 @@ exports.uploadDocument = async (req, res) => {
     }
 
     const targetDocId = existingDoc ? existingDoc._id : new mongoose.Types.ObjectId();
-    const fileName = driveNaming.buildFileName({
+    const isClassScope = requirement.scope === 'class';
+    const standardizedClassName = isClassScope
+      ? driveNaming.buildClassFileName({
+          classDoc: resolvedClassDoc,
+          requirement,
+          slot,
+          meta,
+          originalName: req.file.originalname,
+        })
+      : null;
+
+    const fileName = standardizedClassName || driveNaming.buildFileName({
       slot: meta.name || requirement.label || requirement.card,
       version: 1,
       originalName: req.file.originalname,
@@ -216,11 +231,12 @@ exports.uploadDocument = async (req, res) => {
     });
 
     //8. Prepare the single active file record
+    const displayOriginalName = standardizedClassName || req.file.originalname;
     const newVersion = {
       n: 1,
       driveFileId: driveUpload.fileId,
       driveFolderId: driveUpload.folderId || null,
-      originalName: req.file.originalname,
+      originalName: displayOriginalName,
       mimeType: req.file.mimetype,
       size: driveUpload.size,
       checksum: driveUpload.checksum,

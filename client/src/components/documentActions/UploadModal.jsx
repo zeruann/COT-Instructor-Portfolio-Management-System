@@ -5,8 +5,8 @@ import { X, UploadCloud, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { uploadDocument } from '../../api/documents';
 import { useAnimatedModal } from '../../hooks/useAnimatedModal';
 
-// Biggest file allowed (MB). The server enforces the same limit in constants/uploadRules.js.
-const MAX_FILE_MB = 5;
+// Biggest file allowed (MB). The server enforces the same limit in middleware/upload.js.
+const MAX_FILE_MB = 10;
 
 function formatFileSize(bytes) {
   if (!bytes) return '0 B';

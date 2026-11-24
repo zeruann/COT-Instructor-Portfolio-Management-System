@@ -2,7 +2,8 @@ const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 const {
-  login, logout, googleLogin, heartbeat, switchMode, forgotPassword, verifyResetOtp, resetPassword,
+  login, logout, googleLogin, heartbeat,
+  switchMode, forgotPassword, verifyResetOtp, resetPassword,
 } = require("../controllers/authController");
 const auth = require("../middleware/auth");
 const { loginLimiter, forgotPasswordLimiter, switchModeLimiter } = require("../middleware/rateLimiter");

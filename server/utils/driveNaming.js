@@ -56,9 +56,57 @@ function buildFileName({ slot, qualifier, version, originalName, documentId }) {
   return ext ? `${parts}.${ext}` : parts;
 }
 
+const SLOT_TYPE_LABELS = {
+  return_receipt: 'Return Output Receipt',
+  instruction: 'Instruction of the Activity',
+  output: 'Sample Checked Activities',
+  rubrics: 'Answer Key or Rated Rubrics',
+  raw_score: 'Raw Score (Class Record)',
+  gradesheet_signed: 'Grade Sheet (Signed)',
+  official_gradesheet: 'Official Grade Sheet (Registrar)',
+  gclassroom_score: 'Google Classroom Classwork Score',
+  consultation_forms: 'Student Consultation Forms',
+  online_consultation_screenshots: 'Online Consultation Screenshots',
+  addressing_concerns_evidence: 'Evidence of Addressing Student Concerns',
+};
+
+// Standardized Class Portfolio filename:
+//   - Sample Checked Activities (CO1..CO5): "CO1 - Activity Name.ext"
+//   - All other Class Portfolio uploads:    "Section Code - Subject Code - Requirement.ext"
+function buildClassFileName({ classDoc, requirement, slot, meta, originalName }) {
+  const dot = String(originalName || '').lastIndexOf('.');
+  const ext = dot > 0 ? originalName.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+
+  let baseName;
+  if (requirement?.key === 'CLASS_L_CHECKED_ACTIVITIES' && slot?.co) {
+    const coCode = sanitizeName(slot.co, 20);
+    const activity = sanitizeName(meta?.activityName || meta?.title || meta?.name || 'Activity', 80);
+    baseName = `${coCode} - ${activity}`;
+  } else {
+    const sectionCode = sanitizeName(classDoc?.section?.code || '', 30);
+    const subjectCode = sanitizeName(classDoc?.subject?.code || '', 30);
+    const baseReqLabel = SLOT_TYPE_LABELS[slot?.type] || requirement?.label || requirement?.card || 'Document';
+    const reqLabel = sanitizeName(
+      slot?.term ? `${baseReqLabel} (${slot.term})` : baseReqLabel,
+      90
+    );
+    baseName = [sectionCode, subjectCode, reqLabel].filter(Boolean).join(' - ');
+  }
+
+  return ext ? `${baseName}.${ext}` : baseName;
+}
+
 // Reports: <base>/Reports
 function reportsFolderPath({ department, fullName, instructorId }) {
   return [...instructorBasePath({ department, fullName, instructorId }), 'Reports'];
 }
 
-module.exports = { checklistLetter, instructorBasePath, facultyFolderPath, classFolderPath, reportsFolderPath, buildFileName };
+module.exports = {
+  checklistLetter,
+  instructorBasePath,
+  facultyFolderPath,
+  classFolderPath,
+  reportsFolderPath,
+  buildFileName,
+  buildClassFileName,
+};

@@ -396,7 +396,7 @@ export default function ClassRequirementUpload({
     key: resolvedReq.key,
     label: resolvedReq.title,
     card: classData ? `${classData.subject?.code} · ${classData.section?.code}` : 'Class Portfolio',
-    multiple: !isILR,
+    multiple: false,
     classIds: [classId],
     academicPeriodId: classData?.academicPeriod?._id || classData?.academicPeriod,
     metaFields: [],

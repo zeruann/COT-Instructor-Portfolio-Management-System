@@ -1,4 +1,6 @@
 node_modules
 google-credentials.json
 .env
+backups/
+*.gz
 

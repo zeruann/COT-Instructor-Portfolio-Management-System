@@ -95,22 +95,22 @@ const CLASS_RECORD_ROWS = [
   {
     type: 'raw_score',
     label: 'Raw score (class record) attached some (samples from LMS)',
-    hint: 'PDF, DOCX, JPEG, PNG · Maximum 25 MB',
+    hint: 'PDF, DOCX, JPEG, PNG · Maximum 10 MB',
   },
   {
     type: 'gradesheet_signed',
     label: 'Grade sheet (class record) signed.',
-    hint: 'PDF, DOCX, JPEG, PNG · Maximum 25 MB',
+    hint: 'PDF, DOCX, JPEG, PNG · Maximum 10 MB',
   },
   {
     type: 'official_gradesheet',
     label: 'Official Grade sheet (Registrar)',
-    hint: 'PDF, DOCX, JPEG, PNG · Maximum 25 MB',
+    hint: 'PDF, DOCX, JPEG, PNG · Maximum 10 MB',
   },
   {
     type: 'gclassroom_score',
     label: 'Google Classroom Classwork Score',
-    hint: 'PDF, DOCX, JPEG, PNG · Maximum 25 MB',
+    hint: 'PDF, DOCX, JPEG, PNG · Maximum 10 MB',
   },
 ];
 
@@ -119,17 +119,17 @@ const CONSULTATION_ROWS = [
   {
     type: 'consultation_forms',
     label: 'Student Consultation Forms',
-    hint: 'PDF, DOCX, JPEG, PNG · Maximum 25 MB',
+    hint: 'PDF, DOCX, JPEG, PNG · Maximum 10 MB',
   },
   {
     type: 'online_consultation_screenshots',
     label: 'Samples Screen shots of online consultation platforms (with section code)',
-    hint: 'PDF, DOCX, JPEG, PNG · Maximum 25 MB',
+    hint: 'PDF, DOCX, JPEG, PNG · Maximum 10 MB',
   },
   {
     type: 'addressing_concerns_evidence',
     label: 'Evidence of addressing the student concerns (with section code)',
-    hint: 'PDF, DOCX, JPEG, PNG · Maximum 25 MB',
+    hint: 'PDF, DOCX, JPEG, PNG · Maximum 10 MB',
   },
 ];
 
@@ -221,7 +221,7 @@ function FixedSlotRowCard({
           <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500">
             <StatusBadge status={status} />
             <span className="truncate max-w-[320px]" title={fileName || undefined}>
-              {fileName || 'PDF, DOCX, JPEG, PNG · Maximum 25 MB'}
+              {fileName || 'PDF, DOCX, JPEG, PNG · Maximum 10 MB'}
             </span>
             {hasRecord && doc?.submittedAt && (
               <span>· Submitted {formatDate(doc.submittedAt)}</span>
@@ -542,17 +542,15 @@ export default function ClassRequirementPage({
         ? `${reqConfig.title} - ${selectedSlot.term}`
         : reqConfig.title,
     card: classData ? `${classData.subject?.code} · ${classData.section?.code}` : 'Class Portfolio',
-    multiple: !isSingle && !isFixedTerm && !isCheckedActivities && !isClassRecord && !isConsultation,
+    multiple: false,
     classIds: [classId],
     academicPeriodId: classData?.academicPeriod?._id || classData?.academicPeriod,
     slot: selectedSlot || {},
-    metaFields: isSingle || isFixedTerm || isCheckedActivities || isClassRecord || isConsultation
-      ? []
-      : [
-        { name: 'title', label: 'Document / Activity Title', type: 'text', required: true },
-        { name: 'date', label: 'Date', type: 'date' },
-        { name: 'remarks', label: 'Remarks', type: 'text' },
-      ],
+    metaFields: isCheckedActivities && selectedSlot?.co
+      ? [
+        { name: 'activityName', label: 'Activity Name', type: 'text', required: true },
+      ]
+      : [],
   };
 
   // For single document requirements, if a document already exists, the top action says "Reupload" or hides "Add"
@@ -663,9 +661,8 @@ export default function ClassRequirementPage({
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-brand-purple">
                           <ChevronRight
                             size={18}
-                            className={`transition-transform duration-300 ease-in-out ${
-                              isExpanded ? 'rotate-90' : 'rotate-0'
-                            }`}
+                            className={`transition-transform duration-300 ease-in-out ${isExpanded ? 'rotate-90' : 'rotate-0'
+                              }`}
                           />
                         </span>
                         <div className="min-w-0">
@@ -680,9 +677,8 @@ export default function ClassRequirementPage({
                     </button>
 
                     <div
-                      className={`grid transition-all duration-300 ease-in-out ${
-                        isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
-                      }`}
+                      className={`grid transition-all duration-300 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+                        }`}
                     >
                       <div className="overflow-hidden">
                         <div className="p-4 space-y-3 bg-white border-t border-gray-200">

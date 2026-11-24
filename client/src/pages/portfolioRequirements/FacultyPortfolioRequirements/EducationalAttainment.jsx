@@ -176,7 +176,7 @@ export default function EducationalAttainment() {
                   <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-gray-500">
                     <StatusBadge status={row.status} />
                     <span className="truncate max-w-[300px]" title={row.fileName || undefined}>
-                      {row.fileName || 'PDF, DOCX, JPEG, PNG · Maximum 25 MB'}
+                      {row.fileName || 'PDF, DOCX, JPEG, PNG · Maximum 10 MB'}
                     </span>
                   </div>
                 </div>
