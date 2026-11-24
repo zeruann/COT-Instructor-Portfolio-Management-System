@@ -373,10 +373,10 @@ function RequirementCell({ item, state, minH }) {
   const singleLink = validFiles[0]?.link || state.link;
 
   return (
-    <td colSpan={item.span} className={`border border-black p-1.5 align-top ${minH}`}>
-      <div className="flex flex-col h-full justify-between gap-1.5">
+    <td colSpan={item.span} className={`border border-black p-1.5 align-top overflow-hidden ${minH}`}>
+      <div className="flex flex-col h-full justify-between gap-1.5 min-w-0 w-full">
         {/* Requirement title & note with the original box in its original place */}
-        <div className="flex items-start gap-1.5">
+        <div className="flex items-start gap-1.5 min-w-0">
           <span className="mt-[2px] shrink-0">
             <Box state={state} />
           </span>
@@ -386,41 +386,30 @@ function RequirementCell({ item, state, minH }) {
           </div>
         </div>
 
-        {/* View file(s) centered below the text (only when file exists) */}
+        {/* Requirement/file link(s) centered below the text (only when file exists) */}
         {hasFile && singleLink && (
-          <div className="flex flex-col items-center justify-center gap-1 my-auto text-center w-full pt-1">
-            {validFiles.length <= 1 ? (
-              <a
-                href={singleLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-blue-700 underline hover:text-blue-900 cursor-pointer text-[11px] whitespace-nowrap print:text-black print:no-underline"
-                title="Open file in Google Drive"
-              >
-                View File
-              </a>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-1 w-full">
-                {validFiles.map((file, idx) => (
-                  <div key={file.id || idx} className="flex items-center justify-center gap-1 text-[11px] leading-tight">
-                    <a
-                      href={file.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-blue-700 underline hover:text-blue-900 cursor-pointer whitespace-nowrap print:text-black print:no-underline"
-                      title={`Open ${file.name || 'file'} in Google Drive`}
-                    >
-                      View File {validFiles.length > 1 ? `(${idx + 1})` : ''}
-                    </a>
-                    {file.name && file.name !== 'Document' && (
-                      <span className="text-[10px] text-gray-500 truncate max-w-[130px]" title={file.name}>
-                        — {file.name}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="flex flex-col items-center justify-center gap-1 my-auto text-center w-full min-w-0 pt-1">
+            {(validFiles.length > 0 ? validFiles : [{ link: singleLink, name: state.fileName || '' }]).map((file, idx, arr) => {
+              const displayLabel =
+                file.name && file.name !== 'Document'
+                  ? file.name
+                  : arr.length > 1
+                    ? `View File (${idx + 1})`
+                    : 'View File';
+
+              return (
+                <a
+                  key={file.id || idx}
+                  href={file.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-blue-700 underline hover:text-blue-900 cursor-pointer text-[10.5px] leading-tight truncate w-full max-w-full min-w-0 block px-0.5 print:text-black print:no-underline"
+                  title={file.name ? `Open ${file.name} in Google Drive` : 'Open file in Google Drive'}
+                >
+                  {displayLabel}
+                </a>
+              );
+            })}
           </div>
         )}
       </div>
