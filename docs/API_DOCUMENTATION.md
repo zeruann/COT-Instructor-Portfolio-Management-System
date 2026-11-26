@@ -109,11 +109,7 @@ Handles user sign-in (email/password and Google OAuth 2.0), logout, session hear
     ```
     > *[Screenshot Placeholder — **Figure 1.** User Login — Valid Request]*
   - **Error Responses:** `400 Bad Request` (reCAPTCHA failed), `401 Unauthorized` (`"Invalid email or password"`), `403 Forbidden` (account inactive or invalid account type), `429 Too Many Requests` (`{ "message": "...", "retryAfterSeconds": 300 }`), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 2.** User Login — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 3.** User Login — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 4.** User Login — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 5.** User Login — Too Many Requests (429)]*
-    > *[Screenshot Placeholder — **Figure 6.** User Login — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 2.** User Login — Error Response]*
 
 #### 2.1.2 Google OAuth Login
 - **Endpoint:** `http://localhost:5000/api/auth/google`
@@ -124,11 +120,9 @@ Handles user sign-in (email/password and Google OAuth 2.0), logout, session hear
   - `credential` *(string, required)*: Google Identity Services ID token.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Returns `{ "token": "<jwt_token>", "instructor": { ... } }`.
-    > *[Screenshot Placeholder — **Figure 7.** Google OAuth Login — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 3.** Google OAuth Login — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request` (missing credential), `401 Unauthorized` (`"Google authentication failed"`), `403 Forbidden` (unverified email, unregistered account, or Google Sign-In disabled).
-    > *[Screenshot Placeholder — **Figure 8.** Google OAuth Login — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 9.** Google OAuth Login — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 10.** Google OAuth Login — Forbidden (403)]*
+    > *[Screenshot Placeholder — **Figure 4.** Google OAuth Login — Error Response]*
 
 #### 2.1.3 User Logout
 - **Endpoint:** `http://localhost:5000/api/auth/logout`
@@ -138,7 +132,7 @@ Handles user sign-in (email/password and Google OAuth 2.0), logout, session hear
 - **Parameters:** `Authorization: Bearer <token>` header or `?token=<token>` query *(optional)*.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Logged out successfully" }`
-    > *[Screenshot Placeholder — **Figure 11.** User Logout — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 5.** User Logout — Valid Request (200 OK)]*
 
 #### 2.1.4 Session Heartbeat
 - **Endpoint:** `http://localhost:5000/api/auth/heartbeat`
@@ -148,10 +142,9 @@ Handles user sign-in (email/password and Google OAuth 2.0), logout, session hear
 - **Parameters:** `Authorization: Bearer <token>` header *(required)*.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "ok": true }`
-    > *[Screenshot Placeholder — **Figure 12.** Session Heartbeat — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 6.** Session Heartbeat — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 13.** Session Heartbeat — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 14.** Session Heartbeat — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 7.** Session Heartbeat — Error Response]*
 
 #### 2.1.5 Switch Active Role Mode
 - **Endpoint:** `http://localhost:5000/api/auth/switch-mode`
@@ -163,13 +156,9 @@ Handles user sign-in (email/password and Google OAuth 2.0), logout, session hear
   - `password` *(string, required)*: Current account password.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "token": "<new_jwt_token>", "activeRole": "admin", "instructor": { ... } }`
-    > *[Screenshot Placeholder — **Figure 15.** Switch Active Role Mode — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 8.** Switch Active Role Mode — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request` (invalid role, missing password, or no password set), `401 Unauthorized` (incorrect password), `403 Forbidden` (inactive account or lacks admin access), `429 Too Many Requests`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 16.** Switch Active Role Mode — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 17.** Switch Active Role Mode — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 18.** Switch Active Role Mode — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 19.** Switch Active Role Mode — Too Many Requests (429)]*
-    > *[Screenshot Placeholder — **Figure 20.** Switch Active Role Mode — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 9.** Switch Active Role Mode — Error Response]*
 
 #### 2.1.6 Forgot Password (Send OTP)
 - **Endpoint:** `http://localhost:5000/api/auth/forgot-password`
@@ -180,12 +169,9 @@ Handles user sign-in (email/password and Google OAuth 2.0), logout, session hear
   - `email` *(string, required)*: Registered account email.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "Verification code sent to your email.", "email": "..." }`
-    > *[Screenshot Placeholder — **Figure 21.** Forgot Password (Send OTP) — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 10.** Forgot Password (Send OTP) — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request` (missing email), `404 Not Found` (account not found), `429 Too Many Requests`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 22.** Forgot Password (Send OTP) — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 23.** Forgot Password (Send OTP) — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 24.** Forgot Password (Send OTP) — Too Many Requests (429)]*
-    > *[Screenshot Placeholder — **Figure 25.** Forgot Password (Send OTP) — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 11.** Forgot Password (Send OTP) — Error Response]*
 
 #### 2.1.7 Verify Password Reset OTP
 - **Endpoint:** `http://localhost:5000/api/auth/verify-reset-otp`
@@ -197,12 +183,9 @@ Handles user sign-in (email/password and Google OAuth 2.0), logout, session hear
   - `otp` *(string, required)*: 6-digit verification code.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "Code verified successfully.", "resetToken": "<hex_token>" }`
-    > *[Screenshot Placeholder — **Figure 26.** Verify Password Reset OTP — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 12.** Verify Password Reset OTP — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request` (missing/malformed/expired OTP), `401 Unauthorized` (incorrect OTP), `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 27.** Verify Password Reset OTP — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 28.** Verify Password Reset OTP — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 29.** Verify Password Reset OTP — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 30.** Verify Password Reset OTP — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 13.** Verify Password Reset OTP — Error Response]*
 
 #### 2.1.8 Reset Password
 - **Endpoint:** `http://localhost:5000/api/auth/reset-password/:token`
@@ -214,10 +197,9 @@ Handles user sign-in (email/password and Google OAuth 2.0), logout, session hear
   - `newPassword` *(string, required)*: New password meeting complexity rules.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Password reset successful" }`
-    > *[Screenshot Placeholder — **Figure 31.** Reset Password — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 14.** Reset Password — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request` (weak password or invalid/expired token), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 32.** Reset Password — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 33.** Reset Password — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 15.** Reset Password — Error Response]*
 
 ### 2.2 Profile Management API
 
@@ -243,11 +225,9 @@ Allows authenticated users to view, initialize, and update their personal/academ
 - **Parameters:** `Authorization: Bearer <token>` header *(required)*.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Returns `{ "_id", "fullName", "email", "department", "profile", "googlePhotoUrl", "accountType", "adminAccess" }`.
-    > *[Screenshot Placeholder — **Figure 34.** Get Own Profile — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 16.** Get Own Profile — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 35.** Get Own Profile — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 36.** Get Own Profile — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 37.** Get Own Profile — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 17.** Get Own Profile — Error Response]*
 
 #### 2.2.2 Get Profile by ID
 - **Endpoint:** `http://localhost:5000/api/profile/:id`
@@ -258,11 +238,9 @@ Allows authenticated users to view, initialize, and update their personal/academ
   - `id` *(path, required)*: Instructor MongoDB ObjectId.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Returns `{ "_id", "fullName", "email", "department", "profile", "accountStatus", "onlineStatus", "createdAt", "googlePhotoUrl" }`.
-    > *[Screenshot Placeholder — **Figure 38.** Get Profile by ID — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 18.** Get Profile by ID — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 39.** Get Profile by ID — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 40.** Get Profile by ID — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 41.** Get Profile by ID — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 19.** Get Profile by ID — Error Response]*
 
 #### 2.2.3 Create Initial Profile
 - **Endpoint:** `http://localhost:5000/api/profile/`
@@ -272,13 +250,9 @@ Allows authenticated users to view, initialize, and update their personal/academ
 - **Parameters:** Editable profile fields *(optional)*: `firstName`, `middleName`, `lastName`, `gender`, `civilStatus`, `birthdate`, `contactNumber`, `alternateEmail`, `address`, `education`, `position`, `rank`, `photoUrl`.
 - **Response (`application/json`):**
   - **Success (`201 Created`):** `{ "message": "Profile created successfully.", "profile": { ... } }`
-    > *[Screenshot Placeholder — **Figure 42.** Create Initial Profile — Valid Request (201 Created)]*
+    > *[Screenshot Placeholder — **Figure 20.** Create Initial Profile — Valid Request (201 Created)]*
   - **Error Responses:** `400 Bad Request` (validation error), `401 Unauthorized`, `404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 43.** Create Initial Profile — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 44.** Create Initial Profile — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 45.** Create Initial Profile — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 46.** Create Initial Profile — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 47.** Create Initial Profile — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 21.** Create Initial Profile — Error Response]*
 
 #### 2.2.4 Update Own Profile
 - **Endpoint:** `http://localhost:5000/api/profile/me`
@@ -288,12 +262,9 @@ Allows authenticated users to view, initialize, and update their personal/academ
 - **Parameters:** Any editable profile fields *(optional)* from `firstName`, `middleName`, `lastName`, `gender`, `civilStatus`, `birthdate`, `contactNumber`, `alternateEmail`, `address`, `education`, `position`, `rank`, `photoUrl`.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Returns updated `{ "_id", "fullName", "email", "department", "profile", "googlePhotoUrl" }`.
-    > *[Screenshot Placeholder — **Figure 48.** Update Own Profile — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 22.** Update Own Profile — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 49.** Update Own Profile — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 50.** Update Own Profile — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 51.** Update Own Profile — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 52.** Update Own Profile — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 23.** Update Own Profile — Error Response]*
 
 #### 2.2.5 Change Password
 - **Endpoint:** `http://localhost:5000/api/profile/change-password`
@@ -305,12 +276,9 @@ Allows authenticated users to view, initialize, and update their personal/academ
   - `newPassword` *(string, required)*: New password (min 8 chars with uppercase, lowercase, number, and special character).
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Password changed successfully." }`
-    > *[Screenshot Placeholder — **Figure 53.** Change Password — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 24.** Change Password — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request` (missing fields, wrong current password, or weak password), `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 54.** Change Password — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 55.** Change Password — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 56.** Change Password — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 57.** Change Password — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 25.** Change Password — Error Response]*
 
 ### 2.3 Requirements API
 
@@ -335,10 +303,9 @@ Exposes active faculty-level and class-level portfolio requirement definitions.
   - `card` *(query, optional)*: Filter by requirement card/category name.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Array of requirement definition objects.
-    > *[Screenshot Placeholder — **Figure 58.** List Active Requirements — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 26.** List Active Requirements — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 59.** List Active Requirements — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 60.** List Active Requirements — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 27.** List Active Requirements — Error Response]*
 
 #### 2.3.2 Get Requirement by Key
 - **Endpoint:** `http://localhost:5000/api/requirements/:key`
@@ -349,11 +316,9 @@ Exposes active faculty-level and class-level portfolio requirement definitions.
   - `key` *(path, required)*: Requirement key (e.g., `CLASS_A_LOAD_REPORT`).
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Requirement object.
-    > *[Screenshot Placeholder — **Figure 61.** Get Requirement by Key — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 28.** Get Requirement by Key — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 62.** Get Requirement by Key — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 63.** Get Requirement by Key — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 64.** Get Requirement by Key — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 29.** Get Requirement by Key — Error Response]*
 
 ### 2.4 Documents & Portfolios API (Shared View, Stream & Edit)
 
@@ -381,10 +346,9 @@ Allows document owners and administrators to list documents, view faculty summar
   - `instructorId` *(query, optional)*: Target instructor ID (Admin mode).
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Object keyed by card slug (e.g., `"educational-attainment"`, `"service-records"`).
-    > *[Screenshot Placeholder — **Figure 65.** Get Faculty Portfolio Summary — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 30.** Get Faculty Portfolio Summary — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 66.** Get Faculty Portfolio Summary — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 67.** Get Faculty Portfolio Summary — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 31.** Get Faculty Portfolio Summary — Error Response]*
 
 #### 2.4.2 List Documents
 - **Endpoint:** `http://localhost:5000/api/documents/`
@@ -399,10 +363,9 @@ Allows document owners and administrators to list documents, view faculty summar
   - `classId` *(query, optional)*: Class ID filter.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Array of document objects.
-    > *[Screenshot Placeholder — **Figure 68.** List Documents — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 32.** List Documents — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 69.** List Documents — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 70.** List Documents — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 33.** List Documents — Error Response]*
 
 #### 2.4.3 Get Document Metadata by ID
 - **Endpoint:** `http://localhost:5000/api/documents/:id`
@@ -413,12 +376,9 @@ Allows document owners and administrators to list documents, view faculty summar
   - `id` *(path, required)*: Document MongoDB ObjectId.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Document object.
-    > *[Screenshot Placeholder — **Figure 71.** Get Document Metadata by ID — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 34.** Get Document Metadata by ID — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 72.** Get Document Metadata by ID — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 73.** Get Document Metadata by ID — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 74.** Get Document Metadata by ID — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 75.** Get Document Metadata by ID — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 35.** Get Document Metadata by ID — Error Response]*
 
 #### 2.4.4 Stream Document File
 - **Endpoint:** `http://localhost:5000/api/documents/:id/file`
@@ -429,11 +389,8 @@ Allows document owners and administrators to list documents, view faculty summar
   - `id` *(path, required)*: Document MongoDB ObjectId.
   - `version` *(query, optional)*: Specific version number `n` (defaults to `currentVersion`).
 - **Response:** Binary file stream (`200 OK`) or JSON error (`401`, `403`, `404`, `500`).
-    > *[Screenshot Placeholder — **Figure 76.** Stream Document File — Valid Request (200 OK)]*
-    > *[Screenshot Placeholder — **Figure 77.** Stream Document File — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 78.** Stream Document File — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 79.** Stream Document File — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 80.** Stream Document File — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 36.** Stream Document File — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 37.** Stream Document File — Error Response]*
 
 #### 2.4.5 Update Document Metadata
 - **Endpoint:** `http://localhost:5000/api/documents/:id`
@@ -445,12 +402,9 @@ Allows document owners and administrators to list documents, view faculty summar
   - `meta` *(object, optional)*: Key-value metadata fields to merge.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Document updated successfully.", "document": { ... } }`
-    > *[Screenshot Placeholder — **Figure 81.** Update Document Metadata — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 38.** Update Document Metadata — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 82.** Update Document Metadata — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 83.** Update Document Metadata — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 84.** Update Document Metadata — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 85.** Update Document Metadata — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 39.** Update Document Metadata — Error Response]*
 
 #### 2.4.6 Delete Document
 - **Endpoint:** `http://localhost:5000/api/documents/:id`
@@ -461,13 +415,9 @@ Allows document owners and administrators to list documents, view faculty summar
   - `id` *(path, required)*: Document MongoDB ObjectId.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "Document deleted successfully." }`
-    > *[Screenshot Placeholder — **Figure 86.** Delete Document — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 40.** Delete Document — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 87.** Delete Document — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 88.** Delete Document — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 89.** Delete Document — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 90.** Delete Document — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 91.** Delete Document — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 41.** Delete Document — Error Response]*
 
 ### 2.5 Classes API (Shared View & Archive)
 
@@ -496,10 +446,9 @@ Allows instructors and administrators to view class compliance summaries and arc
   - `includeArchived` *(query, optional)*: `"true"` to include both active and archived classes.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "classes": [...], "summary": { "needsAction": 0, "awaitingReview": 0, "approved": 0, "completion": 0 } }`
-    > *[Screenshot Placeholder — **Figure 92.** List Classes — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 42.** List Classes — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 93.** List Classes — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 94.** List Classes — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 43.** List Classes — Error Response]*
 
 #### 2.5.2 Get Class by ID
 - **Endpoint:** `http://localhost:5000/api/classes/:id`
@@ -511,11 +460,9 @@ Allows instructors and administrators to view class compliance summaries and arc
   - `includeArchived` *(query, optional)*: `"true"` to allow viewing archived class records.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "class": { ... }, "counts": { "approved", "pendingReview", "rejected", "notSubmitted", "totalRequired" }, "completionPercent": 0, "requirementSummary": { ... } }`
-    > *[Screenshot Placeholder — **Figure 95.** Get Class by ID — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 44.** Get Class by ID — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 96.** Get Class by ID — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 97.** Get Class by ID — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 98.** Get Class by ID — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 45.** Get Class by ID — Error Response]*
 
 #### 2.5.3 Archive Class
 - **Endpoint:** `http://localhost:5000/api/classes/:id/archive`
@@ -526,11 +473,9 @@ Allows instructors and administrators to view class compliance summaries and arc
   - `id` *(path, required)*: Class ID.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Class archived successfully." }`
-    > *[Screenshot Placeholder — **Figure 99.** Archive Class — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 46.** Archive Class — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 100.** Archive Class — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 101.** Archive Class — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 102.** Archive Class — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 47.** Archive Class — Error Response]*
 
 #### 2.5.4 Unarchive Class
 - **Endpoint:** `http://localhost:5000/api/classes/:id/unarchive`
@@ -541,11 +486,9 @@ Allows instructors and administrators to view class compliance summaries and arc
   - `id` *(path, required)*: Class ID.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Class unarchived successfully." }`
-    > *[Screenshot Placeholder — **Figure 103.** Unarchive Class — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 48.** Unarchive Class — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 104.** Unarchive Class — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 105.** Unarchive Class — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 106.** Unarchive Class — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 49.** Unarchive Class — Error Response]*
 
 ### 2.6 Academic Periods API (Shared Read)
 
@@ -569,10 +512,9 @@ Provides read-only access to the current active period, period list, and period 
 - **Parameters:** None.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "currentPeriod": { ... }, "formatted": "AY 2026-2027 · 1st Semester" }`
-    > *[Screenshot Placeholder — **Figure 107.** Get Current Academic Period — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 50.** Get Current Academic Period — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 108.** Get Current Academic Period — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 109.** Get Current Academic Period — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 51.** Get Current Academic Period — Error Response]*
 
 #### 2.6.2 List Academic Periods
 - **Endpoint:** `http://localhost:5000/api/academic-periods/`
@@ -585,10 +527,9 @@ Provides read-only access to the current active period, period list, and period 
   - `includeArchived` *(query, optional)*: `"true"` to include archived periods.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "periods": [...], "count": 4 }`
-    > *[Screenshot Placeholder — **Figure 110.** List Academic Periods — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 52.** List Academic Periods — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 111.** List Academic Periods — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 112.** List Academic Periods — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 53.** List Academic Periods — Error Response]*
 
 #### 2.6.3 Get Academic Period Details
 - **Endpoint:** `http://localhost:5000/api/academic-periods/:id/details`
@@ -599,11 +540,9 @@ Provides read-only access to the current active period, period list, and period 
   - `id` *(path, required)*: Academic period MongoDB ObjectId.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "period": { ... }, "formatted": "...", "summary": { ... }, "subjects": [...], "sections": [...], "instructors": [...] }`
-    > *[Screenshot Placeholder — **Figure 113.** Get Academic Period Details — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 54.** Get Academic Period Details — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 114.** Get Academic Period Details — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 115.** Get Academic Period Details — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 116.** Get Academic Period Details — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 55.** Get Academic Period Details — Error Response]*
 
 ### 2.7 Notifications API
 
@@ -630,10 +569,9 @@ Delivers role-scoped (`admin` vs `instructor`) in-app notifications and allows u
   - `category` *(query, optional)*: `"all"`, `"unread"`, `"pending"`, or `"system"`.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Array of notification objects.
-    > *[Screenshot Placeholder — **Figure 117.** List Notifications — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 56.** List Notifications — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 118.** List Notifications — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 119.** List Notifications — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 57.** List Notifications — Error Response]*
 
 #### 2.7.2 Mark All Notifications as Read
 - **Endpoint:** `http://localhost:5000/api/notifications/mark-all-read`
@@ -643,10 +581,9 @@ Delivers role-scoped (`admin` vs `instructor`) in-app notifications and allows u
 - **Parameters:** None.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "All notifications marked as read." }`
-    > *[Screenshot Placeholder — **Figure 120.** Mark All Notifications as Read — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 58.** Mark All Notifications as Read — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 121.** Mark All Notifications as Read — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 122.** Mark All Notifications as Read — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 59.** Mark All Notifications as Read — Error Response]*
 
 #### 2.7.3 Mark Notification as Read
 - **Endpoint:** `http://localhost:5000/api/notifications/:id/read`
@@ -657,11 +594,9 @@ Delivers role-scoped (`admin` vs `instructor`) in-app notifications and allows u
   - `id` *(path, required)*: Notification MongoDB ObjectId.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Updated notification object.
-    > *[Screenshot Placeholder — **Figure 123.** Mark Notification as Read — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 60.** Mark Notification as Read — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 124.** Mark Notification as Read — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 125.** Mark Notification as Read — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 126.** Mark Notification as Read — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 61.** Mark Notification as Read — Error Response]*
 
 #### 2.7.4 Clear All Notifications
 - **Endpoint:** `http://localhost:5000/api/notifications/clear-all`
@@ -671,10 +606,9 @@ Delivers role-scoped (`admin` vs `instructor`) in-app notifications and allows u
 - **Parameters:** None.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "All notifications deleted.", "deletedCount": 12 }`
-    > *[Screenshot Placeholder — **Figure 127.** Clear All Notifications — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 62.** Clear All Notifications — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 128.** Clear All Notifications — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 129.** Clear All Notifications — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 63.** Clear All Notifications — Error Response]*
 
 #### 2.7.5 Delete Single Notification
 - **Endpoint:** `http://localhost:5000/api/notifications/:id`
@@ -685,11 +619,9 @@ Delivers role-scoped (`admin` vs `instructor`) in-app notifications and allows u
   - `id` *(path, required)*: Notification MongoDB ObjectId.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Notification deleted.", "id": "..." }`
-    > *[Screenshot Placeholder — **Figure 130.** Delete Single Notification — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 64.** Delete Single Notification — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 131.** Delete Single Notification — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 132.** Delete Single Notification — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 133.** Delete Single Notification — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 65.** Delete Single Notification — Error Response]*
 
 ### 2.8 Reports API
 
@@ -717,10 +649,9 @@ Assembles faculty and class compliance checklist data for previewing, downloadin
   - `semester` *(query, optional)*: Semester string (`"1st"`, `"2nd"`, `"Summer"`).
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "instructor": { ... }, "facultyChecklist": [...], "classChecklist": { ... }, "documents": [...] }`
-    > *[Screenshot Placeholder — **Figure 134.** Get Compliance Report Data — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 66.** Get Compliance Report Data — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 135.** Get Compliance Report Data — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 136.** Get Compliance Report Data — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 67.** Get Compliance Report Data — Error Response]*
 
 #### 2.8.2 Download Compliance Excel Workbook
 - **Endpoint:** `http://localhost:5000/api/reports/compliance/excel`
@@ -730,9 +661,8 @@ Assembles faculty and class compliance checklist data for previewing, downloadin
 - **Parameters:**
   - `instructorId`, `periodId`, `schoolYear`, `semester` *(query, optional)*.
 - **Response:** Binary `.xlsx` file download (`200 OK`) or JSON error (`401`, `500`).
-    > *[Screenshot Placeholder — **Figure 137.** Download Compliance Excel Workbook — Valid Request (200 OK)]*
-    > *[Screenshot Placeholder — **Figure 138.** Download Compliance Excel Workbook — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 139.** Download Compliance Excel Workbook — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 68.** Download Compliance Excel Workbook — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 69.** Download Compliance Excel Workbook — Error Response]*
 
 #### 2.8.3 Export Compliance Report to Google Sheets
 - **Endpoint:** `http://localhost:5000/api/reports/compliance/sheets`
@@ -744,11 +674,9 @@ Assembles faculty and class compliance checklist data for previewing, downloadin
   - `periodId`, `schoolYear`, `semester` *(body, optional)*.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "Google Sheet exported successfully.", "spreadsheetUrl": "...", "spreadsheetId": "..." }`
-    > *[Screenshot Placeholder — **Figure 140.** Export Compliance Report to Google Sheets — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 70.** Export Compliance Report to Google Sheets — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `503 Service Unavailable` (Google Sheets disabled), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 141.** Export Compliance Report to Google Sheets — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 142.** Export Compliance Report to Google Sheets — Service Unavailable (503)]*
-    > *[Screenshot Placeholder — **Figure 143.** Export Compliance Report to Google Sheets — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 71.** Export Compliance Report to Google Sheets — Error Response]*
 
 ### 2.9 Public Settings & Audit Logs API (Shared)
 
@@ -771,7 +699,7 @@ Provides public login-page flags (`recaptchaEnabled`, `googleAuthEnabled`) and r
 - **Parameters:** None.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "recaptchaEnabled": true, "googleAuthEnabled": true, "recaptchaSiteKey": "...", "googleClientId": "..." }`
-    > *[Screenshot Placeholder — **Figure 144.** Get Public Settings — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 72.** Get Public Settings — Valid Request (200 OK)]*
 
 #### 2.9.2 Get Audit Logs
 - **Endpoint:** `http://localhost:5000/api/settings/audit-logs`
@@ -784,10 +712,9 @@ Provides public login-page flags (`recaptchaEnabled`, `googleAuthEnabled`) and r
   - `category`, `action`, `actorRole`, `search`, `startDate`, `endDate` *(query, optional)*.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Paginated audit log list and metadata.
-    > *[Screenshot Placeholder — **Figure 145.** Get Audit Logs — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 73.** Get Audit Logs — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 146.** Get Audit Logs — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 147.** Get Audit Logs — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 74.** Get Audit Logs — Error Response]*
 
 ### 2.10 Resource Locks API
 
@@ -812,11 +739,9 @@ Provides application-level pessimistic locking (`ResourceLock`) to prevent confl
   - `resourceKey` *(string, required)*: Unique identifier of the resource being locked.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "acquired": true, "locked": true, "isOwner": true, "lockedBy": "...", "lockedByName": "...", "expiresAt": "..." }`
-    > *[Screenshot Placeholder — **Figure 148.** Acquire Resource Lock — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 75.** Acquire Resource Lock — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 149.** Acquire Resource Lock — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 150.** Acquire Resource Lock — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 151.** Acquire Resource Lock — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 76.** Acquire Resource Lock — Error Response]*
 
 #### 2.10.2 Release Resource Lock
 - **Endpoint:** `http://localhost:5000/api/locks/release`
@@ -827,11 +752,9 @@ Provides application-level pessimistic locking (`ResourceLock`) to prevent confl
   - `resourceKey` *(string, required)*: Unique identifier of the locked resource.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "released": true }`
-    > *[Screenshot Placeholder — **Figure 152.** Release Resource Lock — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 77.** Release Resource Lock — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 153.** Release Resource Lock — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 154.** Release Resource Lock — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 155.** Release Resource Lock — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 78.** Release Resource Lock — Error Response]*
 
 #### 2.10.3 Check Resource Lock Status
 - **Endpoint:** `http://localhost:5000/api/locks/status`
@@ -842,11 +765,9 @@ Provides application-level pessimistic locking (`ResourceLock`) to prevent confl
   - `resourceKey` *(query, required)*: Unique identifier of the resource.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Lock status object (`locked`, `isOwner`, `lockedBy`, `lockedByName`, `expiresAt`).
-    > *[Screenshot Placeholder — **Figure 156.** Check Resource Lock Status — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 79.** Check Resource Lock Status — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 157.** Check Resource Lock Status — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 158.** Check Resource Lock Status — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 159.** Check Resource Lock Status — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 80.** Check Resource Lock Status — Error Response]*
 
 ### 2.11 System Health Check
 
@@ -868,7 +789,7 @@ Verifies that the Express backend server is running and reachable.
 - **Parameters:** None.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Hello from the server" }`
-    > *[Screenshot Placeholder — **Figure 160.** Server Greeting / Health Check — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 81.** Server Greeting / Health Check — Valid Request (200 OK)]*
 
 ---
 
@@ -900,11 +821,9 @@ Allows invited faculty members to inspect their invitation link, accept or decli
   - `token` *(path, required)*: 64-character hex invitation token.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "fullName": "...", "email": "...", "department": "...", "invitedBy": "...", "needsSetup": false }`
-    > *[Screenshot Placeholder — **Figure 161.** Get Invitation by Token — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 82.** Get Invitation by Token — Valid Request (200 OK)]*
   - **Error Responses:** `404 Not Found` (`INVITATION_NOT_FOUND`), `410 Gone` (`INVITATION_EXPIRED` / `INVITATION_CANCELLED` / `INVITATION_REJECTED`), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 162.** Get Invitation by Token — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 163.** Get Invitation by Token — Gone (410)]*
-    > *[Screenshot Placeholder — **Figure 164.** Get Invitation by Token — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 83.** Get Invitation by Token — Error Response]*
 
 #### 2.12.2 Accept Invitation
 - **Endpoint:** `http://localhost:5000/api/invitations/:token/accept`
@@ -916,11 +835,9 @@ Allows invited faculty members to inspect their invitation link, accept or decli
   - `privacyNoticeVersion` *(string, optional)*: Acknowledged privacy notice version.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Invitation accepted.", "needsSetup": true }`
-    > *[Screenshot Placeholder — **Figure 165.** Accept Invitation — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 84.** Accept Invitation — Valid Request (200 OK)]*
   - **Error Responses:** `409 Conflict` (`INVITATION_ALREADY_ACCEPTED`), `410 Gone` (`INVITATION_INVALID`), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 166.** Accept Invitation — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 167.** Accept Invitation — Gone (410)]*
-    > *[Screenshot Placeholder — **Figure 168.** Accept Invitation — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 85.** Accept Invitation — Error Response]*
 
 #### 2.12.3 Reject Invitation
 - **Endpoint:** `http://localhost:5000/api/invitations/:token/reject`
@@ -931,11 +848,9 @@ Allows invited faculty members to inspect their invitation link, accept or decli
   - `token` *(path, required)*: Invitation token.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Invitation rejected.", "needsSetup": false }`
-    > *[Screenshot Placeholder — **Figure 169.** Reject Invitation — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 86.** Reject Invitation — Valid Request (200 OK)]*
   - **Error Responses:** `409 Conflict`, `410 Gone`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 170.** Reject Invitation — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 171.** Reject Invitation — Gone (410)]*
-    > *[Screenshot Placeholder — **Figure 172.** Reject Invitation — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 87.** Reject Invitation — Error Response]*
 
 #### 2.12.4 Complete Account Setup
 - **Endpoint:** `http://localhost:5000/api/invitations/token/:token/setup`
@@ -947,11 +862,9 @@ Allows invited faculty members to inspect their invitation link, accept or decli
   - `password` *(string, required)*: Password (minimum 8 characters).
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Account created. You can now log in." }`
-    > *[Screenshot Placeholder — **Figure 173.** Complete Account Setup — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 88.** Complete Account Setup — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request` (password too short), `410 Gone` (invalid/expired setup link), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 174.** Complete Account Setup — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 175.** Complete Account Setup — Gone (410)]*
-    > *[Screenshot Placeholder — **Figure 176.** Complete Account Setup — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 89.** Complete Account Setup — Error Response]*
 
 ### 2.13 Class Management API (Instructor Owner Actions)
 
@@ -981,12 +894,9 @@ Allows instructors to create, update, and delete their own classes within an aca
   - `academicPeriodId` *(string, optional)*: Target period ID (defaults to current/active period).
 - **Response (`application/json`):**
   - **Success (`201 Created`):** Created class summary object.
-    > *[Screenshot Placeholder — **Figure 177.** Create Class — Valid Request (201 Created)]*
+    > *[Screenshot Placeholder — **Figure 90.** Create Class — Valid Request (201 Created)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `409 Conflict` (duplicate class), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 178.** Create Class — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 179.** Create Class — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 180.** Create Class — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 181.** Create Class — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 91.** Create Class — Error Response]*
 
 #### 2.13.2 Update Class
 - **Endpoint:** `http://localhost:5000/api/classes/:id`
@@ -998,13 +908,9 @@ Allows instructors to create, update, and delete their own classes within an aca
   - `subjectCode`, `subjectName`, `sectionCode`, `sectionName`, `sectionGroup` *(body, optional)*.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Updated class document.
-    > *[Screenshot Placeholder — **Figure 182.** Update Class — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 92.** Update Class — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 183.** Update Class — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 184.** Update Class — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 185.** Update Class — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 186.** Update Class — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 187.** Update Class — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 93.** Update Class — Error Response]*
 
 #### 2.13.3 Delete Class
 - **Endpoint:** `http://localhost:5000/api/classes/:id`
@@ -1016,11 +922,9 @@ Allows instructors to create, update, and delete their own classes within an aca
   - `permanent` *(query, optional)*: Set `"false"` to archive instead of hard-deleting.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Class deleted completely." }` (or `"Class archived successfully."`).
-    > *[Screenshot Placeholder — **Figure 188.** Delete Class — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 94.** Delete Class — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 189.** Delete Class — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 190.** Delete Class — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 191.** Delete Class — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 95.** Delete Class — Error Response]*
 
 ### 2.14 Portfolio Document Upload API (Instructor Submissions)
 
@@ -1049,14 +953,9 @@ Allows instructors to upload or replace faculty and class portfolio requirement 
   - `class` / `classIds` *(form-data JSON string, optional)*: Array of linked class IDs.
 - **Response (`application/json`):**
   - **Success (`201 Created`):** `{ "message": "File uploaded successfully.", "document": { ... } }`
-    > *[Screenshot Placeholder — **Figure 192.** Upload Portfolio Document — Valid Request (201 Created)]*
+    > *[Screenshot Placeholder — **Figure 96.** Upload Portfolio Document — Valid Request (201 Created)]*
   - **Error Responses:** `400 Bad Request` (missing file or `requirementKey`), `401 Unauthorized`, `403 Forbidden` (closed/archived period), `404 Not Found`, `503 Service Unavailable` (Drive disabled), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 193.** Upload Portfolio Document — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 194.** Upload Portfolio Document — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 195.** Upload Portfolio Document — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 196.** Upload Portfolio Document — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 197.** Upload Portfolio Document — Service Unavailable (503)]*
-    > *[Screenshot Placeholder — **Figure 198.** Upload Portfolio Document — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 97.** Upload Portfolio Document — Error Response]*
 
 ---
 
@@ -1087,9 +986,10 @@ Allows administrators to list instructors, view permission metadata, toggle acco
   - `excludeSelf` *(query, optional)*: Set `"true"` or `"1"` to exclude the currently authenticated user.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Array of instructor objects.
-    > *[Screenshot Placeholder — **Figure 199.** List Instructors — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **
+    *
   - **Error Responses:** `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 200.** List Instructors — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 99.** List Instructors — Error Response]*
 
 #### 2.15.2 Get Admin Permissions Metadata
 - **Endpoint:** `http://localhost:5000/api/instructors/permissions/meta`
@@ -1099,9 +999,9 @@ Allows administrators to list instructors, view permission metadata, toggle acco
 - **Parameters:** `Authorization: Bearer <token>` header *(required)*.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "pages": [...], "facultyDocuments": [...], "classDocuments": [...] }`
-    > *[Screenshot Placeholder — **Figure 201.** Get Admin Permissions Metadata — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 100.** Get Admin Permissions Metadata — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`.
-    > *[Screenshot Placeholder — **Figure 202.** Get Admin Permissions Metadata — Unauthorized (401)]*
+    > *[Screenshot Placeholder — **Figure 101.** Get Admin Permissions Metadata — Error Response]*
 
 #### 2.15.3 Get Instructor by ID
 - **Endpoint:** `http://localhost:5000/api/instructors/:id`
@@ -1112,10 +1012,9 @@ Allows administrators to list instructors, view permission metadata, toggle acco
   - `id` *(path, required)*: Instructor MongoDB ObjectId.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Instructor object.
-    > *[Screenshot Placeholder — **Figure 203.** Get Instructor by ID — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 102.** Get Instructor by ID — Valid Request (200 OK)]*
   - **Error Responses:** `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 204.** Get Instructor by ID — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 205.** Get Instructor by ID — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 103.** Get Instructor by ID — Error Response]*
 
 #### 2.15.4 Update Instructor Account Status
 - **Endpoint:** `http://localhost:5000/api/instructors/:id/status`
@@ -1127,13 +1026,9 @@ Allows administrators to list instructors, view permission metadata, toggle acco
   - `accountStatus` *(string, required)*: `"Active"` or `"Deactivated"`.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Updated instructor object.
-    > *[Screenshot Placeholder — **Figure 206.** Update Instructor Account Status — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 104.** Update Instructor Account Status — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request` (invalid status), `401 Unauthorized`, `403 Forbidden` (self-modification or insufficient permission), `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 207.** Update Instructor Account Status — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 208.** Update Instructor Account Status — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 209.** Update Instructor Account Status — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 210.** Update Instructor Account Status — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 211.** Update Instructor Account Status — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 105.** Update Instructor Account Status — Error Response]*
 
 #### 2.15.5 Update Instructor Admin Access
 - **Endpoint:** `http://localhost:5000/api/instructors/:id/admin-access`
@@ -1148,13 +1043,9 @@ Allows administrators to list instructors, view permission metadata, toggle acco
   - `documents` *(object, optional)*: `{ "faculty": [...], "class": [...] }`.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "instructor": { ... }, "emailSent": true, "summary": "..." }`
-    > *[Screenshot Placeholder — **Figure 212.** Update Instructor Admin Access — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 106.** Update Instructor Admin Access — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 213.** Update Instructor Admin Access — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 214.** Update Instructor Admin Access — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 215.** Update Instructor Admin Access — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 216.** Update Instructor Admin Access — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 217.** Update Instructor Admin Access — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 107.** Update Instructor Admin Access — Error Response]*
 
 ### 2.16 Invitation Management API (Admin Actions)
 
@@ -1188,13 +1079,9 @@ Allows administrators to send faculty invitations, monitor invitation statuses, 
   - `adminAccess` *(object, optional)*: Initial administrator access permissions.
 - **Response (`application/json`):**
   - **Success (`201 Created`):** Created invitation/instructor object (private fields stripped).
-    > *[Screenshot Placeholder — **Figure 218.** Send Instructor Invitation — Valid Request (201 Created)]*
+    > *[Screenshot Placeholder — **Figure 108.** Send Instructor Invitation — Valid Request (201 Created)]*
   - **Error Responses:** `400 Bad Request` (missing fields or non-institutional email), `409 Conflict` (already invited/active), `502 Bad Gateway` / `503 Service Unavailable` (mail error or disabled), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 219.** Send Instructor Invitation — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 220.** Send Instructor Invitation — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 221.** Send Instructor Invitation — Bad Gateway (502)]*
-    > *[Screenshot Placeholder — **Figure 222.** Send Instructor Invitation — Service Unavailable (503)]*
-    > *[Screenshot Placeholder — **Figure 223.** Send Instructor Invitation — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 109.** Send Instructor Invitation — Error Response]*
 
 #### 2.16.2 List Invitations
 - **Endpoint:** `http://localhost:5000/api/invitations/`
@@ -1204,9 +1091,9 @@ Allows administrators to send faculty invitations, monitor invitation statuses, 
 - **Parameters:** None.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Array of invitation objects.
-    > *[Screenshot Placeholder — **Figure 224.** List Invitations — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 110.** List Invitations — Valid Request (200 OK)]*
   - **Error Responses:** `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 225.** List Invitations — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 111.** List Invitations — Error Response]*
 
 #### 2.16.3 List Accepted Invitations
 - **Endpoint:** `http://localhost:5000/api/invitations/accepted`
@@ -1216,9 +1103,9 @@ Allows administrators to send faculty invitations, monitor invitation statuses, 
 - **Parameters:** None.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Array of accepted invitation objects.
-    > *[Screenshot Placeholder — **Figure 226.** List Accepted Invitations — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 112.** List Accepted Invitations — Valid Request (200 OK)]*
   - **Error Responses:** `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 227.** List Accepted Invitations — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 113.** List Accepted Invitations — Error Response]*
 
 #### 2.16.4 List Active/Inactive Instructors
 - **Endpoint:** `http://localhost:5000/api/invitations/active`
@@ -1228,9 +1115,9 @@ Allows administrators to send faculty invitations, monitor invitation statuses, 
 - **Parameters:** None.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Array of instructor objects.
-    > *[Screenshot Placeholder — **Figure 228.** List Active/Inactive Instructors — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 114.** List Active/Inactive Instructors — Valid Request (200 OK)]*
   - **Error Responses:** `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 229.** List Active/Inactive Instructors — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 115.** List Active/Inactive Instructors — Error Response]*
 
 #### 2.16.5 Get Invited Instructor by ID
 - **Endpoint:** `http://localhost:5000/api/invitations/:id`
@@ -1241,11 +1128,9 @@ Allows administrators to send faculty invitations, monitor invitation statuses, 
   - `id` *(path, required)*: Instructor MongoDB ObjectId.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Instructor object.
-    > *[Screenshot Placeholder — **Figure 230.** Get Invited Instructor by ID — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 116.** Get Invited Instructor by ID — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request` (invalid ID), `404 Not Found`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 231.** Get Invited Instructor by ID — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 232.** Get Invited Instructor by ID — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 233.** Get Invited Instructor by ID — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 117.** Get Invited Instructor by ID — Error Response]*
 
 #### 2.16.6 Resend Invitation
 - **Endpoint:** `http://localhost:5000/api/invitations/:id/resend`
@@ -1256,14 +1141,9 @@ Allows administrators to send faculty invitations, monitor invitation statuses, 
   - `id` *(path, required)*: Invitation/Instructor MongoDB ObjectId.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Updated invitation object (private fields stripped).
-    > *[Screenshot Placeholder — **Figure 234.** Resend Invitation — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 118.** Resend Invitation — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request` (invalid ID or email policy), `404 Not Found`, `409 Conflict` (not rejected/expired), `502`/`503` (mail failure), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 235.** Resend Invitation — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 236.** Resend Invitation — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 237.** Resend Invitation — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 238.** Resend Invitation — Bad Gateway (502)]*
-    > *[Screenshot Placeholder — **Figure 239.** Resend Invitation — Service Unavailable (503)]*
-    > *[Screenshot Placeholder — **Figure 240.** Resend Invitation — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 119.** Resend Invitation — Error Response]*
 
 #### 2.16.7 Cancel Invitation
 - **Endpoint:** `http://localhost:5000/api/invitations/:id/cancel`
@@ -1274,12 +1154,9 @@ Allows administrators to send faculty invitations, monitor invitation statuses, 
   - `id` *(path, required)*: Invitation MongoDB ObjectId.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Updated cancelled invitation object.
-    > *[Screenshot Placeholder — **Figure 241.** Cancel Invitation — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 120.** Cancel Invitation — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `404 Not Found`, `409 Conflict` (already accepted/rejected/expired/cancelled), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 242.** Cancel Invitation — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 243.** Cancel Invitation — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 244.** Cancel Invitation — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 245.** Cancel Invitation — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 121.** Cancel Invitation — Error Response]*
 
 ### 2.17 Document Review API (Admin Approval / Rejection)
 
@@ -1305,14 +1182,9 @@ Allows administrators with document review access to approve or reject submitted
   - `expectedVersion` *(number, optional)*: Expected `__v` for optimistic concurrency control.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "message": "Document successfully approved.", "document": { ... } }`
-    > *[Screenshot Placeholder — **Figure 246.** Review Document (Approve / Reject) — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 122.** Review Document (Approve / Reject) — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `409 Conflict` (lock conflict or `VERSION_CONFLICT`), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 247.** Review Document (Approve / Reject) — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 248.** Review Document (Approve / Reject) — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 249.** Review Document (Approve / Reject) — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 250.** Review Document (Approve / Reject) — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 251.** Review Document (Approve / Reject) — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 252.** Review Document (Approve / Reject) — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 123.** Review Document (Approve / Reject) — Error Response]*
 
 ### 2.18 Academic Period Lifecycle API (Admin Management)
 
@@ -1346,13 +1218,9 @@ Allows administrators to create, edit, activate, close, archive, reopen, and del
   - `setActive` *(boolean, optional)*: Set `true` to make this period the active default.
 - **Response (`application/json`):**
   - **Success (`201 Created`):** `{ "success": true, "message": "...", "period": { ... } }`
-    > *[Screenshot Placeholder — **Figure 253.** Create Academic Period — Valid Request (201 Created)]*
+    > *[Screenshot Placeholder — **Figure 124.** Create Academic Period — Valid Request (201 Created)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `409 Conflict` (duplicate period), `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 254.** Create Academic Period — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 255.** Create Academic Period — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 256.** Create Academic Period — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 257.** Create Academic Period — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 258.** Create Academic Period — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 125.** Create Academic Period — Error Response]*
 
 #### 2.18.2 Update Academic Period
 - **Endpoint:** `http://localhost:5000/api/academic-periods/:id`
@@ -1364,14 +1232,9 @@ Allows administrators to create, edit, activate, close, archive, reopen, and del
   - `schoolYear`, `semester`, `startDate`, `endDate`, `status`, `expectedUpdatedAt` *(body, optional)*.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "Academic period updated successfully.", "period": { ... } }`
-    > *[Screenshot Placeholder — **Figure 259.** Update Academic Period — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 126.** Update Academic Period — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 260.** Update Academic Period — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 261.** Update Academic Period — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 262.** Update Academic Period — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 263.** Update Academic Period — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 264.** Update Academic Period — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 265.** Update Academic Period — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 127.** Update Academic Period — Error Response]*
 
 #### 2.18.3 Activate Academic Period
 - **Endpoint:** `http://localhost:5000/api/academic-periods/:id/activate`
@@ -1382,14 +1245,9 @@ Allows administrators to create, edit, activate, close, archive, reopen, and del
   - `id` *(path, required)*: Academic period ID.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "...", "period": { ... } }`
-    > *[Screenshot Placeholder — **Figure 266.** Activate Academic Period — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 128.** Activate Academic Period — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 267.** Activate Academic Period — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 268.** Activate Academic Period — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 269.** Activate Academic Period — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 270.** Activate Academic Period — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 271.** Activate Academic Period — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 272.** Activate Academic Period — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 129.** Activate Academic Period — Error Response]*
 
 #### 2.18.4 Close Academic Period
 - **Endpoint:** `http://localhost:5000/api/academic-periods/:id/close`
@@ -1400,14 +1258,9 @@ Allows administrators to create, edit, activate, close, archive, reopen, and del
   - `id` *(path, required)*: Academic period ID.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "...", "period": { ... } }`
-    > *[Screenshot Placeholder — **Figure 273.** Close Academic Period — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 130.** Close Academic Period — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 274.** Close Academic Period — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 275.** Close Academic Period — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 276.** Close Academic Period — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 277.** Close Academic Period — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 278.** Close Academic Period — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 279.** Close Academic Period — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 131.** Close Academic Period — Error Response]*
 
 #### 2.18.5 Archive Academic Period
 - **Endpoint:** `http://localhost:5000/api/academic-periods/:id/archive`
@@ -1418,13 +1271,9 @@ Allows administrators to create, edit, activate, close, archive, reopen, and del
   - `id` *(path, required)*: Academic period ID.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "...", "period": { ... } }`
-    > *[Screenshot Placeholder — **Figure 280.** Archive Academic Period — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 132.** Archive Academic Period — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 281.** Archive Academic Period — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 282.** Archive Academic Period — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 283.** Archive Academic Period — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 284.** Archive Academic Period — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 285.** Archive Academic Period — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 133.** Archive Academic Period — Error Response]*
 
 #### 2.18.6 Unarchive Academic Period
 - **Endpoint:** `http://localhost:5000/api/academic-periods/:id/unarchive`
@@ -1435,13 +1284,9 @@ Allows administrators to create, edit, activate, close, archive, reopen, and del
   - `id` *(path, required)*: Academic period ID.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "...", "period": { ... } }`
-    > *[Screenshot Placeholder — **Figure 286.** Unarchive Academic Period — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 134.** Unarchive Academic Period — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 287.** Unarchive Academic Period — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 288.** Unarchive Academic Period — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 289.** Unarchive Academic Period — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 290.** Unarchive Academic Period — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 291.** Unarchive Academic Period — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 135.** Unarchive Academic Period — Error Response]*
 
 #### 2.18.7 Delete Academic Period
 - **Endpoint:** `http://localhost:5000/api/academic-periods/:id`
@@ -1452,14 +1297,9 @@ Allows administrators to create, edit, activate, close, archive, reopen, and del
   - `id` *(path, required)*: Academic period ID.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "..." }`
-    > *[Screenshot Placeholder — **Figure 292.** Delete Academic Period — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 136.** Delete Academic Period — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request` (active or has linked data), `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `409 Conflict`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 293.** Delete Academic Period — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 294.** Delete Academic Period — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 295.** Delete Academic Period — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 296.** Delete Academic Period — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 297.** Delete Academic Period — Conflict (409)]*
-    > *[Screenshot Placeholder — **Figure 298.** Delete Academic Period — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 137.** Delete Academic Period — Error Response]*
 
 ### 2.19 API & System Settings Management API (Admin Configuration)
 
@@ -1488,11 +1328,9 @@ Allows administrators to view/update external API credentials, switch `default`/
 - **Parameters:** None.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Settings object with toggles, `apiModes`, and masked credentials.
-    > *[Screenshot Placeholder — **Figure 299.** Get System & API Settings — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 138.** Get System & API Settings — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `403 Forbidden`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 300.** Get System & API Settings — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 301.** Get System & API Settings — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 302.** Get System & API Settings — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 139.** Get System & API Settings — Error Response]*
 
 #### 2.19.2 Update System & API Settings
 - **Endpoint:** `http://localhost:5000/api/settings/`
@@ -1502,12 +1340,9 @@ Allows administrators to view/update external API credentials, switch `default`/
 - **Parameters:** Feature toggle keys and/or credential key-value pairs *(body, optional)*.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** Updated settings summary.
-    > *[Screenshot Placeholder — **Figure 303.** Update System & API Settings — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 140.** Update System & API Settings — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 304.** Update System & API Settings — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 305.** Update System & API Settings — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 306.** Update System & API Settings — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 307.** Update System & API Settings — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 141.** Update System & API Settings — Error Response]*
 
 #### 2.19.3 Update Active API Modes
 - **Endpoint:** `http://localhost:5000/api/settings/modes`
@@ -1519,12 +1354,9 @@ Allows administrators to view/update external API credentials, switch `default`/
   - `modes` *(object, optional)*: Map of `{ [group]: "default" | "custom" }`.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "Active API mode updated successfully.", "apiModes": { ... } }`
-    > *[Screenshot Placeholder — **Figure 308.** Update Active API Modes — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 142.** Update Active API Modes — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 309.** Update Active API Modes — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 310.** Update Active API Modes — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 311.** Update Active API Modes — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 312.** Update Active API Modes — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 143.** Update Active API Modes — Error Response]*
 
 #### 2.19.4 Restore Default APIs
 - **Endpoint:** `http://localhost:5000/api/settings/restore-defaults`
@@ -1534,11 +1366,9 @@ Allows administrators to view/update external API credentials, switch `default`/
 - **Parameters:** None.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "...", "apiModes": { ... } }`
-    > *[Screenshot Placeholder — **Figure 313.** Restore Default APIs — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 144.** Restore Default APIs — Valid Request (200 OK)]*
   - **Error Responses:** `401 Unauthorized`, `403 Forbidden`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 314.** Restore Default APIs — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 315.** Restore Default APIs — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 316.** Restore Default APIs — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 145.** Restore Default APIs — Error Response]*
 
 #### 2.19.5 Test External API Connection
 - **Endpoint:** `http://localhost:5000/api/settings/test-connection`
@@ -1550,12 +1380,9 @@ Allows administrators to view/update external API credentials, switch `default`/
   - `credentials` *(object, optional)*: Unsaved credential fields to test.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "..." }`
-    > *[Screenshot Placeholder — **Figure 317.** Test External API Connection — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 146.** Test External API Connection — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 318.** Test External API Connection — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 319.** Test External API Connection — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 320.** Test External API Connection — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 321.** Test External API Connection — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 147.** Test External API Connection — Error Response]*
 
 #### 2.19.6 Verify Admin Password for Settings
 - **Endpoint:** `http://localhost:5000/api/settings/verify-password`
@@ -1566,14 +1393,9 @@ Allows administrators to view/update external API credentials, switch `default`/
   - `password` *(string, required)*: Administrator account password.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "unmaskedCustomCredentials": { ... }, "unmaskedDefaultCredentials": { ... }, "unmaskedCredentials": { ... } }`
-    > *[Screenshot Placeholder — **Figure 322.** Verify Admin Password for Settings — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 148.** Verify Admin Password for Settings — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `404 Not Found`, `429 Too Many Requests`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 323.** Verify Admin Password for Settings — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 324.** Verify Admin Password for Settings — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 325.** Verify Admin Password for Settings — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 326.** Verify Admin Password for Settings — Not Found (404)]*
-    > *[Screenshot Placeholder — **Figure 327.** Verify Admin Password for Settings — Too Many Requests (429)]*
-    > *[Screenshot Placeholder — **Figure 328.** Verify Admin Password for Settings — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 149.** Verify Admin Password for Settings — Error Response]*
 
 #### 2.19.7 Send Settings Verification OTP
 - **Endpoint:** `http://localhost:5000/api/settings/send-otp`
@@ -1583,13 +1405,9 @@ Allows administrators to view/update external API credentials, switch `default`/
 - **Parameters:** None.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "message": "Verification code sent to your email.", "email": "...", "adminProfile": { ... } }`
-    > *[Screenshot Placeholder — **Figure 329.** Send Settings Verification OTP — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 150.** Send Settings Verification OTP — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `429 Too Many Requests`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 330.** Send Settings Verification OTP — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 331.** Send Settings Verification OTP — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 332.** Send Settings Verification OTP — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 333.** Send Settings Verification OTP — Too Many Requests (429)]*
-    > *[Screenshot Placeholder — **Figure 334.** Send Settings Verification OTP — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 151.** Send Settings Verification OTP — Error Response]*
 
 #### 2.19.8 Verify Settings OTP
 - **Endpoint:** `http://localhost:5000/api/settings/verify-otp`
@@ -1600,13 +1418,9 @@ Allows administrators to view/update external API credentials, switch `default`/
   - `otp` *(string, required)*: 6-digit numeric verification code.
 - **Response (`application/json`):**
   - **Success (`200 OK`):** `{ "success": true, "unmaskedCustomCredentials": { ... }, "unmaskedDefaultCredentials": { ... }, "unmaskedCredentials": { ... } }`
-    > *[Screenshot Placeholder — **Figure 335.** Verify Settings OTP — Valid Request (200 OK)]*
+    > *[Screenshot Placeholder — **Figure 152.** Verify Settings OTP — Valid Request (200 OK)]*
   - **Error Responses:** `400 Bad Request`, `401 Unauthorized`, `403 Forbidden`, `429 Too Many Requests`, `500 Internal Server Error`.
-    > *[Screenshot Placeholder — **Figure 336.** Verify Settings OTP — Invalid Request (400 Bad Request)]*
-    > *[Screenshot Placeholder — **Figure 337.** Verify Settings OTP — Unauthorized (401)]*
-    > *[Screenshot Placeholder — **Figure 338.** Verify Settings OTP — Forbidden (403)]*
-    > *[Screenshot Placeholder — **Figure 339.** Verify Settings OTP — Too Many Requests (429)]*
-    > *[Screenshot Placeholder — **Figure 340.** Verify Settings OTP — Internal Server Error (500)]*
+    > *[Screenshot Placeholder — **Figure 153.** Verify Settings OTP — Error Response]*
 
 ---
 
