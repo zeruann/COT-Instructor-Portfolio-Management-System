@@ -7,7 +7,11 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
     "dev": "nodemon index.js",
-    "backup": "node scripts/backupDb.js"
+    "backup": "node scripts/backupDb.js",
+    "seed:test": "node scripts/seedTestDb.js",
+    "tokens:test": "node scripts/getTestTokens.js",
+    "dev:test": "nodemon scripts/runTestServer.js",
+    "drop:test": "node scripts/dropTestDb.js"
   },
   "keywords": [],
   "author": "",

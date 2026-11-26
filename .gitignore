@@ -5,3 +5,4 @@ node_modules
 backups/
 *.gz
 .openclaude
+test-session-info.txt

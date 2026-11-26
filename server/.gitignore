@@ -3,4 +3,5 @@ google-credentials.json
 .env
 backups/
 *.gz
+scripts/test-session-info.txt
 
