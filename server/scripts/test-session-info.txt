@@ -1,0 +1,18 @@
+====================================================================
+FRESH BEARER TOKENS FOR ISOLATED TEST DB: cotportfolio_test (valid 24h)
+Test Password for all accounts: TestPass@123
+====================================================================
+
+ADMIN_TOKEN (admin.test@buksu.edu.ph, id: 6b08458d4b2f5c4df8c22c33):
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZiMDg0NThkNGIyZjVjNGRmOGMyMmMzMyIsImFjY291bnRUeXBlIjoiQWRtaW5pc3RyYXRvciIsImFjdGl2ZVJvbGUiOiJhZG1pbiIsIm5hbWUiOiJUZXN0IEFkbWluIEFjY291bnQiLCJpYXQiOjE3OTU3MDcyODYsImV4cCI6MTc5NTc5MzY4Nn0.sX8_k75jOyONrMQXkq4wqXHZor2N3GaqX1ot1s65XdM
+
+INSTRUCTOR_TOKEN (instructor.test@buksu.edu.ph, id: 6b08458d4b2f5c4df8c22c34):
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZiMDg0NThkNGIyZjVjNGRmOGMyMmMzNCIsImFjY291bnRUeXBlIjoiSW5zdHJ1Y3RvciIsImFjdGl2ZVJvbGUiOiJpbnN0cnVjdG9yIiwibmFtZSI6IlRlc3QgSW5zdHJ1Y3RvciBBY2NvdW50IiwiaWF0IjoxNzk1NzA3Mjg2LCJleHAiOjE3OTU3OTM2ODZ9.3c0GKb605XN1bzwTFvpXoAiAZkLsiLBuuK6NLmv2fII
+
+REGULAR_INSTRUCTOR_TOKEN (regular.test@buksu.edu.ph, id: 6b08458d4b2f5c4df8c22c36):
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZiMDg0NThkNGIyZjVjNGRmOGMyMmMzNiIsImFjY291bnRUeXBlIjoiSW5zdHJ1Y3RvciIsImFjdGl2ZVJvbGUiOiJpbnN0cnVjdG9yIiwibmFtZSI6IlJlZ3VsYXIgVGVzdCBJbnN0cnVjdG9yIiwiaWF0IjoxNzk1NzA3Mjg2LCJleHAiOjE3OTU3OTM2ODZ9.PhrtgF3u4IxUReqct-F-380HMZaE7Qu1bwGudY8iaMo
+
+EMPTY_PROFILE_TOKEN (emptyprofile.test@buksu.edu.ph, id: 6b08458d4b2f5c4df8c22c37):
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjZiMDg0NThkNGIyZjVjNGRmOGMyMmMzNyIsImFjY291bnRUeXBlIjoiSW5zdHJ1Y3RvciIsImFjdGl2ZVJvbGUiOiJpbnN0cnVjdG9yIiwibmFtZSI6IkVtcHR5IFByb2ZpbGUgVXNlciIsImlhdCI6MTc5NTcwNzI4NiwiZXhwIjoxNzk1NzkzNjg2fQ.udR5zfuTR2l1T9m6J-fNwfaZVVf0rOMpjWX78-DjyhE
+
+====================================================================

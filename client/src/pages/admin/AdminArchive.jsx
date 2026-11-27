@@ -30,6 +30,7 @@ import { fetchClasses, unarchiveClass } from '../../api/classes';
 import { fetchFacultySummary } from '../../api/documents';
 import { downloadComplianceExcel } from '../../api/reports';
 import { API_BASE } from '../../api/config';
+import InstructorAvatar from '../../components/InstructorAvatar';
 
 const API_INSTRUCTORS_URL = `${API_BASE}/instructors`;
 const API_PERIODS_URL = `${API_BASE}/academic-periods`;
@@ -865,7 +866,6 @@ export default function AdminArchive() {
                 const approvedCount = completion?.counts?.approved ?? 0;
                 const pendingCount = completion?.counts?.pending ?? 0;
                 const rejectedCount = completion?.counts?.rejected ?? 0;
-                const photo = inst.profile?.photoUrl || inst.googlePhotoUrl;
                 const isDownloading = downloadingExcelId === id;
 
                 return (
@@ -876,17 +876,14 @@ export default function AdminArchive() {
                     {/* Header Row: Instructor Info + Actions */}
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                       <div className="flex items-center gap-3.5 min-w-0">
-                        {photo ? (
-                          <img
-                            src={photo}
-                            alt={inst.fullName}
-                            className="w-12 h-12 rounded-full object-cover border border-gray-200 shrink-0"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-brand-orange text-white font-bold text-sm flex items-center justify-center shrink-0">
-                            {getInitials(inst.fullName)}
-                          </div>
-                        )}
+                        <InstructorAvatar
+                          src={inst.profile?.photoUrl}
+                          googlePhotoUrl={inst.googlePhotoUrl}
+                          alt={inst.fullName}
+                          size="w-12 h-12"
+                          className="bg-brand-orange text-white font-bold text-sm border border-gray-200"
+                          fallback={<span>{getInitials(inst.fullName)}</span>}
+                        />
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-base sm:text-lg font-bold text-gray-900 truncate">
@@ -1122,23 +1119,19 @@ export default function AdminArchive() {
                       const instClasses = classes.filter(
                         (c) => c.ownerId?._id === id || c.ownerId === id
                       );
-                      const photo = inst.profile?.photoUrl || inst.googlePhotoUrl;
 
                       return (
                         <tr key={id} className="hover:bg-gray-50/70 transition-colors">
                           <td className="py-3.5 px-5">
                             <div className="flex items-center gap-3">
-                              {photo ? (
-                                <img
-                                  src={photo}
-                                  alt={inst.fullName}
-                                  className="w-9 h-9 rounded-full object-cover border border-gray-200"
-                                />
-                              ) : (
-                                <div className="w-9 h-9 rounded-full bg-brand-orange text-white font-bold text-xs flex items-center justify-center">
-                                  {getInitials(inst.fullName)}
-                                </div>
-                              )}
+                              <InstructorAvatar
+                                src={inst.profile?.photoUrl}
+                                googlePhotoUrl={inst.googlePhotoUrl}
+                                alt={inst.fullName}
+                                size="w-9 h-9"
+                                className="bg-brand-orange text-white font-bold text-xs border border-gray-200"
+                                fallback={<span>{getInitials(inst.fullName)}</span>}
+                              />
                               <div className="min-w-0">
                                 <p className="font-bold text-gray-900 truncate">{inst.fullName}</p>
                                 <p className="text-xs text-gray-400 truncate">{inst.email}</p>

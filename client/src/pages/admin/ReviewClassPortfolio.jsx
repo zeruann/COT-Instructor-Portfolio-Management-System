@@ -17,6 +17,7 @@ import {
 import { fetchClasses } from '../../api/classes';
 import { API_BASE } from '../../api/config';
 import { isSelfUser } from '../../config/adminPermissions';
+import InstructorAvatar from '../../components/InstructorAvatar';
 
 export default function ReviewClassPortfolio() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -448,7 +449,6 @@ export default function ReviewClassPortfolio() {
                   const name = getDisplayName(inst) || 'Instructor';
                   const email = inst.email || '';
                   const department = inst.department || 'IT Department';
-                  const photoUrl = inst.profile?.photoUrl || inst.googlePhotoUrl;
                   const classCount = classCounts[String(id)];
                   const displayId =
                     inst.instructorId || inst.employeeId || String(id).slice(-8).toUpperCase();
@@ -467,31 +467,14 @@ export default function ReviewClassPortfolio() {
                       {/* INSTRUCTOR (Avatar + Name + Email) */}
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center shrink-0 overflow-hidden border border-orange-100">
-                            {photoUrl ? (
-                              <img
-                                src={photoUrl}
-                                alt={name}
-                                referrerPolicy="no-referrer"
-                                className="w-full h-full object-cover rounded-full"
-                              />
-                            ) : (
-                              <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="#fb923c"
-                                strokeWidth="1.8"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="h-5 w-5"
-                                aria-hidden="true"
-                              >
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                              </svg>
-                            )}
-                          </div>
+                          <InstructorAvatar
+                            src={inst.profile?.photoUrl}
+                            googlePhotoUrl={inst.googlePhotoUrl}
+                            alt={name}
+                            size="w-10 h-10"
+                            iconSize={20}
+                            className="bg-orange-50 border border-orange-100"
+                          />
                           <div className="min-w-0">
                             <p className="text-[16px] font-semibold text-gray-800 leading-tight group-hover:text-brand-orange transition-colors truncate">
                               {name}
@@ -547,7 +530,6 @@ export default function ReviewClassPortfolio() {
             const rank =
               inst.profile?.rank || inst.profile?.position || 'Assistant Professor IV';
             const department = inst.department || 'IT Department';
-            const photoUrl = inst.profile?.photoUrl;
             const classCount = classCounts[String(id)];
 
             return (
@@ -557,26 +539,13 @@ export default function ReviewClassPortfolio() {
                 className="group flex min-w-0 cursor-pointer items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs transition-all hover:border-orange-300 hover:shadow-md sm:gap-5 sm:p-5"
               >
                 {/* Left: Avatar */}
-                <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 sm:h-24 sm:w-24">
-                  {photoUrl ? (
-                    <img src={photoUrl} alt={name} className="h-full w-full object-cover" />
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="#fb923c"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-10 w-10 sm:h-12 sm:w-12"
-                      aria-hidden="true"
-                    >
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                  )}
-                </div>
+                <InstructorAvatar
+                  src={inst.profile?.photoUrl}
+                  googlePhotoUrl={inst.googlePhotoUrl}
+                  alt={name}
+                  size="h-20 w-20 sm:h-24 sm:w-24"
+                  iconClassName="h-10 w-10 text-orange-400 sm:h-12 sm:w-12"
+                />
 
                 {/* Right: Info + View button */}
                 <div className="flex min-w-0 flex-1 flex-col justify-between">

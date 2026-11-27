@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { fetchClasses } from '../../api/classes';
 import AdminViewClassPortfolio from './AdminViewClassPortfolio';
+import InstructorAvatar from '../../components/InstructorAvatar';
 import ClassRequirementDetail from '../instructors/ClassRequirementDetail';
 import ReviewFacultyPortfolio from './ReviewFacultyPortfolio';
 import { PortfolioContext } from '../../context/portfolioContextDef';
@@ -531,17 +532,13 @@ export default function AdminArchiveRecordDetail() {
                 {/* Top Row: Avatar, Info, Action Buttons */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-center gap-3.5 min-w-0">
-                    {inst.photoUrl ? (
-                      <img
-                        src={inst.photoUrl}
-                        alt={inst.fullName}
-                        className="h-11 w-11 rounded-full object-cover border border-gray-200 shrink-0"
-                      />
-                    ) : (
-                      <div className="h-11 w-11 rounded-full bg-brand-orange text-white font-bold text-sm flex items-center justify-center shrink-0">
-                        {getInitials(inst.fullName)}
-                      </div>
-                    )}
+                    <InstructorAvatar
+                      src={inst.photoUrl}
+                      alt={inst.fullName}
+                      size="h-11 w-11"
+                      className="bg-brand-orange text-white font-bold text-sm border border-gray-200"
+                      fallback={<span>{getInitials(inst.fullName)}</span>}
+                    />
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
