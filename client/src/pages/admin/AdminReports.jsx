@@ -1,7 +1,7 @@
 // client/src/pages/admin/AdminReports.jsx
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, ChevronDown, LayoutGrid, List } from 'lucide-react';
+import { Search, ChevronDown, LayoutGrid, List, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchFacultySummary } from '../../api/documents';
 import InstructorReports from '../instructors/InstructorReports';
 import { API_BASE } from '../../api/config';
@@ -65,6 +65,8 @@ export default function AdminReports() {
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [viewBy, setViewBy] = useState('all');
   const [displayMode, setDisplayMode] = useState('grid'); // 'grid' | 'table'
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 8;
 
   // Load list of instructors
   useEffect(() => {
@@ -199,8 +201,19 @@ export default function AdminReports() {
     });
   }, [instructors, searchQuery, departmentFilter, viewBy, summariesById]);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, departmentFilter, viewBy]);
+
   const instructorGridClass =
     'grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-4 sm:gap-6';
+
+  const totalPages = Math.ceil(filteredInstructors.length / pageSize) || 1;
+  const paginatedInstructors = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredInstructors.slice(start, start + pageSize);
+  }, [filteredInstructors, currentPage, pageSize]);
 
   // ─────────────── Step 2: Redirected to the Instructor's Reports Page ───────────────
   if (instructorId) {
@@ -357,7 +370,7 @@ export default function AdminReports() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 text-sm">
-                {filteredInstructors.map((inst) => {
+                {paginatedInstructors.map((inst) => {
                   const id = inst._id || inst.id;
                   const name = getDisplayName(inst) || 'Instructor';
                   const email = inst.email || '';
@@ -380,7 +393,7 @@ export default function AdminReports() {
                       <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
                           <InstructorAvatar
-                            src={inst.profile?.photoUrl}
+                            src={inst.profile?.photoUrl || inst.photoUrl}
                             googlePhotoUrl={inst.googlePhotoUrl}
                             alt={name}
                             size="w-10 h-10"
@@ -444,7 +457,7 @@ export default function AdminReports() {
         </div>
       ) : (
         <div className={instructorGridClass}>
-          {filteredInstructors.map((inst) => {
+          {paginatedInstructors.map((inst) => {
             const id = inst._id || inst.id;
             const name = getDisplayName(inst) || 'Instructor';
             const rank =
@@ -461,7 +474,7 @@ export default function AdminReports() {
               >
                 {/* Left: Avatar */}
                 <InstructorAvatar
-                  src={inst.profile?.photoUrl}
+                  src={inst.profile?.photoUrl || inst.photoUrl}
                   googlePhotoUrl={inst.googlePhotoUrl}
                   alt={name}
                   size="h-20 w-20 sm:h-24 sm:w-24"
@@ -536,6 +549,55 @@ export default function AdminReports() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination Footer */}
+      {!loading && filteredInstructors.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gray-100 text-[13px] text-gray-500">
+          <span>
+            Showing {(currentPage - 1) * pageSize + 1}–
+            {Math.min(currentPage * pageSize, filteredInstructors.length)} of{' '}
+            {filteredInstructors.length} instructors
+          </span>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                aria-label="Previous page"
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+              >
+                <ChevronLeft className="w-4 h-4 inline" />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setCurrentPage(p)}
+                  className={`w-8 h-8 rounded-lg text-xs font-medium border transition cursor-pointer ${p === currentPage
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                    }`}
+                >
+                  {p}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                aria-label="Next page"
+                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-30 disabled:pointer-events-none transition cursor-pointer"
+              >
+                <ChevronRight className="w-4 h-4 inline" />
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

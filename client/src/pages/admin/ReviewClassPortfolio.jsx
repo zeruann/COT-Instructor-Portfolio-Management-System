@@ -540,7 +540,7 @@ export default function ReviewClassPortfolio() {
               >
                 {/* Left: Avatar */}
                 <InstructorAvatar
-                  src={inst.profile?.photoUrl}
+                  src={inst.profile?.photoUrl || inst.photoUrl}
                   googlePhotoUrl={inst.googlePhotoUrl}
                   alt={name}
                   size="h-20 w-20 sm:h-24 sm:w-24"

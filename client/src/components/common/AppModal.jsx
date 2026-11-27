@@ -67,7 +67,7 @@ export function AppModal({ modal, onClose }) {
     >
       {/* Scrim */}
       <div
-        className={`absolute inset-0 bg-gray-900/40 ${backdropAnim}`}
+        className={`absolute inset-0 bg-gray-900/40 backdrop-blur-xs ${backdropAnim}`}
         onClick={isConfirm ? undefined : onClose}
       />
 
