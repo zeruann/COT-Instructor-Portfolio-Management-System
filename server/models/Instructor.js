@@ -13,8 +13,7 @@ const educationSchema = new mongoose.Schema({
   school: { type: String, trim: true },
   yearGraduated: { type: Number, min: 1950, max: new Date().getFullYear() + 8 },
 });
-
-
+  
 const instructorSchema = new mongoose.Schema({
   fullName: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
