@@ -2,13 +2,11 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  FileSpreadsheet,
   Download,
   ExternalLink,
   CheckCircle2,
   AlertCircle,
   Loader2,
-  FileText,
   RotateCw,
   Printer,
   ChevronDown,
@@ -17,80 +15,36 @@ import {
 } from 'lucide-react';
 import {
   fetchComplianceReportData,
-  downloadComplianceExcel,
   exportComplianceGoogleSheet,
 } from '../../api/reports';
+import { downloadCompliancePdf } from '../../utils/compliancePdf';
+import {
+  FACULTY_ROWS,
+  CLASS_ROWS,
+  FOOTER_ROWS,
+  SUBJECT_COLUMNS,
+  computeCompletion,
+  findApiRow,
+  readBox,
+  stateOf,
+  isDone,
+  isPending,
+} from '../../utils/complianceChecklistSchema';
+import { readStoredUserRecord } from '../../config/adminPermissions';
 import { fetchFacultySummary } from '../../api/documents';
+import InstructorAvatar from '../../components/InstructorAvatar';
 // Logos extracted from Faculty-Checklist-v13.xlsx. Adjust the path to your assets folder.
 import bukSuLogo from '../../assets/buksu-logo.png';
 import collegeLogo from '../../assets/college-logo.png';
 import googleSheetsIcon from '../../assets/google-sheets.svg';
 
-const CATEGORY_PATHS = [
-  'educational-attainment',
-  'service-records',
-  'seminars-and-workshops',
-  'achievements',
-  'research',
-  'extension-involvement',
-  'production',
-  'professional-organization-membership',
-  'passed-licensure-examinations',
-  'ipcr',
-];
-
-const computeCompletion = (summaries) => {
-  const categoryCount = CATEGORY_PATHS.length;
-  let approvedShare = 0;
-  let pendingShare = 0;
-  let rejectedShare = 0;
-  const counts = { approved: 0, pending: 0, rejected: 0 };
-
-  CATEGORY_PATHS.forEach((path) => {
-    const s = summaries?.[path] || {};
-    const approved = s.approved || 0;
-    const pending = s.pendingReview || 0;
-    const rejected = s.rejected || 0;
-    const total = Math.max(s.totalFiles || 0, approved + pending + rejected);
-    if (total === 0) return;
-
-    approvedShare += approved / total;
-    pendingShare += pending / total;
-    rejectedShare += rejected / total;
-    counts.approved += approved;
-    counts.pending += pending;
-    counts.rejected += rejected;
-  });
-
-  const toPct = (share) => (share / categoryCount) * 100;
-  return {
-    percent: Math.round(toPct(approvedShare)),
-    approvedPct: toPct(approvedShare),
-    pendingPct: toPct(pendingShare),
-    rejectedPct: toPct(rejectedShare),
-    counts,
-  };
-};
-
-/* -----------------------------------------------------------------------------
- * WHAT THIS PAGE DOES
- * The "paper" is a faithful copy of the official Faculty Compliance Checklist
- * (Faculty-Checklist-v13.xlsx): same header, same boxes, same wording, same
- * 9-column grid (1 label column + 8 subject columns), same grey section bars,
- * red guidance text, and the O–R block at the bottom.
- * The live data only fills the checkboxes. The wording comes from the
- * constants below, so the printout always matches the official form.
- * --------------------------------------------------------------------------- */
-
 const SHOW_PERIOD_ON_FORM = true; // the official form has no School Year field; set false to match it exactly
-const SUBJECT_COLUMNS = 8; // the official form has exactly 8 subject columns
 
 const focusRing =
   'focus-visible:ring-2 focus-visible:ring-brand-orange focus-visible:ring-offset-1 focus:outline-none';
 
 const PRINT_CSS = `
 @page { size: A4 portrait; margin: 10mm; }
-@page docs { size: A4 landscape; margin: 12mm; }
 
 @media print {
   html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
@@ -102,206 +56,11 @@ const PRINT_CSS = `
   .form-table { font-size: 8.5pt; line-height: 1.25; }
   .report-sheet thead { display: table-header-group; }
   .report-sheet tr, .avoid-break { break-inside: avoid; page-break-inside: avoid; }
-  .docs-sheet { page: docs; break-before: page; page-break-before: always; }
   .report-sheet a { color: #000 !important; text-decoration: none !important; }
 }
 `;
 
-/* -------------------------------------------------------------------------- */
-/* OFFICIAL FORM CONTENT (verbatim from Faculty-Checklist-v13.xlsx)            */
-/* -------------------------------------------------------------------------- */
-
-// Faculty Portfolio: 3 rows on a 9-column grid. `span` = columns used.
-const FACULTY_ROWS = [
-  [
-    { code: 'A', span: 1, title: 'A. 1.0 Faculty Profile', note: '(Updated PDS)' },
-    {
-      code: 'B',
-      span: 2,
-      title: 'B 1.0 Educational Attainment',
-      note: '(TOR, Diploma or Certificate of Unit earned of Bachelors, Masters and PhD )',
-    },
-    { code: 'C', span: 2, title: 'C 1.0 Service Records' },
-    {
-      code: 'D',
-      span: 4,
-      title: 'D 1.0 List of Seminar, Workshop and sample copies',
-      note: '( Updated list from PDS and Certificates of seminar workshops from August 2019- present) (Log all your Seminars, Workshops moving forward)',
-    },
-  ],
-  [
-    {
-      code: 'E',
-      span: 1,
-      title: 'E 1.0 Grants, Awards, Certification of commendation (Speakership) -',
-      note: '(Arrange from Late to present)',
-    },
-    {
-      code: 'F',
-      span: 2,
-      title: 'F 1.0 Research proposals, and finished/ Published',
-      note: '(Arrange from Late to present and Certificate of publication and abstract)',
-    },
-    {
-      code: 'G',
-      span: 3,
-      title: 'G 1.0 Extension Involvement',
-      note: '( Certificates of extensions involvement, project leaders training designs etc. or any related documents that proof of extension involvements )',
-    },
-    {
-      code: 'H',
-      span: 3,
-      title: 'H 1.0 Production (Published IM’s, Copyrighted, Patent and Utility Models)',
-      note: '(Certificates of Copyrighted IM’s, Patent or utility model approved application 1st or 2nd certificate.)',
-    },
-  ],
-  [
-    {
-      code: 'I',
-      span: 2,
-      title: 'I 1.0 Membership to professional organization',
-      note: '(Sample copy of professional membership form present)',
-    },
-    {
-      code: 'J',
-      span: 2,
-      title: 'J. 1.0 Passed Licensure Examinations',
-      note: '(Sample copy of PRC ID)',
-    },
-    {
-      code: 'L',
-      span: 5,
-      title: 'L 1.0 IPCR',
-      note: '(Photocopy of IPCR from (1st and 2nd sem, current school year))',
-    },
-  ],
-];
-
-const TERMS = ['Midterm', 'Finalterm'];
-const COS = ['CO 1', 'CO 2', 'CO 3', 'CO 4', 'CO 5'];
-
-// Class Portfolio body. type: row | section | spacer
-const CLASS_ROWS = [
-  { type: 'row', code: 'A', title: 'A 1.0 Instructional Load Report' },
-  { type: 'row', code: 'B', title: 'B 1.0 Official Class list', note: '(SIAS and Google Classroom)' },
-  { type: 'row', code: 'C', title: 'C 1.0 Syllabus', note: '(with Form 17 and 18 include draft)' },
-  { type: 'row', code: 'D', title: 'D 1.0 Instructional Materials' },
-  { type: 'row', code: 'E', title: 'E 1.0 Classroom Policies Acknowledgement Receipt' },
-  { type: 'row', code: 'F', title: 'F 1.0 Syllabus Acknowledgement Receipt' },
-  { type: 'row', code: 'G', title: 'G 1.0 Seat Plan' },
-  { type: 'row', code: 'H', title: 'H 1.0 Classroom Officers', note: '(with Signatures)' },
-  { type: 'row', code: 'I', title: 'I 1.0 Attendance' },
-  { type: 'row', code: 'J', title: 'J 1.0 Preliminary Test - Test Checker and Item Analyzer' },
-  { type: 'row', code: 'K', title: 'K 1.0 Signed TOS', subs: TERMS },
-  { type: 'row', code: 'L', title: 'L 1.0 Test Questionaire', subs: TERMS },
-  { type: 'section', title: 'L 1.0 Sample Checked Activities' },
-  { type: 'row', title: 'Instruction of the Activities', note: '(per Course Outcome)', subs: COS, stack: true },
-  {
-    type: 'row',
-    title: 'Sample of Checked Student Output',
-    note: '(3 students with highest, middle and lowest score)',
-    subs: COS,
-    stack: true,
-  },
-  { type: 'row', title: 'Answer Key or Rated Rubrics', subs: COS, stack: true },
-  { type: 'row', title: 'Return Output Receipt', empty: true },
-  { type: 'spacer' },
-  { type: 'section', title: 'M 1.0 Class record and official grade' },
-  { type: 'row', title: 'Raw score (class record) attached some (samples from LMS)' },
-  { type: 'row', title: 'Grade sheet (class record) signed.' },
-  { type: 'row', title: 'Official Grade sheet (Registrar)' },
-  { type: 'row', title: 'Google Classroom Classwork Score' },
-  { type: 'spacer' },
-  { type: 'section', title: 'N 1.0 Student consultation forms' },
-  { type: 'row', title: 'Student Consultation Forms' },
-  { type: 'row', title: 'Samples Screen shots of online consultation platforms (with section code)' },
-  { type: 'row', title: 'Evidence of addressing the student concerns (with section code)' },
-  { type: 'spacer' },
-];
-
-// Bottom block (O to R): single boxes, not per subject.
-const FOOTER_ROWS = [
-  [
-    {
-      code: 'O',
-      span: 5,
-      title: 'O 1.0 INC Completion requirement outputs',
-      note: '(Sample Activity of the students attached the assessment tools and accomplished INC Form.)',
-    },
-    {
-      code: 'P',
-      span: 4,
-      title: 'P 1.0 Supervisory class observation result',
-      note: '(Class observation rating of supervisors (chair/Dean))',
-    },
-  ],
-  [
-    {
-      code: 'Q',
-      span: 4,
-      title: 'Q 1.0 Summary of student evaluation',
-      note: '(QAMIS Ratings screen shots and Sample of comments (optional) and corrective actions if needed)',
-    },
-    { code: 'R', span: 2, title: 'R 1.0 Learning Contract' },
-    { span: 3, blank: true },
-  ],
-];
-
-/* -------------------------------------------------------------------------- */
-/* DATA HELPERS: turn whatever the API returns into checkbox states            */
-/* -------------------------------------------------------------------------- */
-
-const norm = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
-const isDone = (s = '') => String(s).startsWith('☑');
-const isPending = (s = '') => String(s).includes('Pending');
 const toApiYear = (y) => y.replace('–', '-');
-
-// -> { checked, pending, link, files, docStatus }
-function stateOf(x) {
-  if (x == null) return { checked: false, pending: false, link: '', files: [] };
-  if (typeof x === 'boolean') return { checked: x, pending: false, link: '', files: [] };
-  if (typeof x === 'string') return { checked: isDone(x), pending: isPending(x), link: '', files: [] };
-  const checked = isDone(x.status) || x.docStatus === 'approved';
-  const pending = isPending(x.status) || x.docStatus === 'pending_review';
-  const link = x.link || '';
-  const files = Array.isArray(x.files) && x.files.length > 0
-    ? x.files
-    : link
-      ? [{ link, status: x.docStatus || (checked ? 'approved' : 'pending_review'), name: x.name || 'Document' }]
-      : [];
-  return { checked, pending, link, files, docStatus: x.docStatus };
-}
-
-// Find the API row that corresponds to a row of the official form.
-function findApiRow(apiRows, tpl) {
-  if (!Array.isArray(apiRows)) return undefined;
-  const t = norm(tpl.title).replace(/^[a-z]10/, '');
-  const bare = (r) => norm(r.label).replace(/^[a-z]10/, '');
-  return (
-    apiRows.find((r) => bare(r) && bare(r) === t) ||
-    (tpl.code
-      ? apiRows.find(
-        (r) => r.code && norm(r.code).startsWith(norm(tpl.code)) && norm(r.code).length <= 4
-      )
-      : undefined) ||
-    apiRows.find((r) => {
-      const l = bare(r);
-      return l && t && (l.includes(t) || t.includes(l));
-    })
-  );
-}
-
-// Read one checkbox of a cell. `sub` is "Midterm", "CO 3", etc.
-// ADAPTER: if your API shapes sub-items differently, change only this function.
-function readBox(cell, sub) {
-  if (!cell) return stateOf(null);
-  if (!sub) return stateOf(cell);
-  const hit =
-    cell.items?.find?.((i) => norm(i.label) === norm(sub)) ?? cell.subs?.[sub] ?? cell[sub];
-  // No per-box detail from the API: apply the cell's single status to every box in it
-  // (same rule as the Excel export in complianceWorkbook.js)
-  return stateOf(hit !== undefined ? hit : cell);
-}
 
 /* -------------------------------------------------------------------------- */
 /* PRESENTATIONAL PIECES                                                       */
@@ -317,21 +76,6 @@ function Box({ state }) {
     >
       {checked ? '✓' : pending ? '…' : ''}
     </span>
-  );
-}
-
-function StatusDot({ status }) {
-  const isApproved = status === 'approved';
-  const isPending = status === 'pending_review' || status === 'pending';
-  const bg = isApproved ? 'bg-emerald-600' : isPending ? 'bg-amber-500' : 'bg-gray-400';
-  const label = isApproved ? 'Approved' : isPending ? 'Pending review' : 'Uploaded';
-
-  return (
-    <span
-      className={`inline-block h-2 w-2 rounded-full shrink-0 ${bg} print:border print:border-black`}
-      title={label}
-      aria-label={label}
-    />
   );
 }
 
@@ -506,13 +250,12 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('checklist'); // 'checklist' | 'documents'
 
   const [schoolYear, setSchoolYear] = useState('');
   const [semester, setSemester] = useState('');
   const [availablePeriods, setAvailablePeriods] = useState([]);
 
-  const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isExportingSheets, setIsExportingSheets] = useState(false);
   const [error, setError] = useState(null); // { message, retry }
   const [toast, setToast] = useState(null); // { message, tone }
@@ -641,22 +384,30 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
     };
   }, []);
 
-  const handleDownloadExcel = async () => {
-    setIsGeneratingExcel(true);
+  const handleDownloadPdf = async () => {
+    setIsGeneratingPdf(true);
     setError(null);
     try {
-      const params = { schoolYear: toApiYear(schoolYear), semester };
-      if (effectiveInstructorId) params.instructorId = effectiveInstructorId;
-      await downloadComplianceExcel(params);
-      setToast({ message: 'Checklist downloaded', tone: 'success' });
+      const currentUser = readStoredUserRecord();
+      await downloadCompliancePdf({
+        data,
+        schoolYear: toApiYear(schoolYear),
+        semester,
+        generatedOn,
+        exportedByName: currentUser?.fullName || data?.instructorName || instructorName,
+        singleState,
+        subjects,
+        classRows,
+      });
+      setToast({ message: 'Checklist PDF downloaded', tone: 'success' });
     } catch (err) {
-      console.error('Download Excel error:', err);
+      console.error('Download PDF error:', err);
       setError({
-        message: err.message || "We couldn't create the Excel file. Try again.",
-        retry: handleDownloadExcel,
+        message: err.message || "We couldn't create the PDF file. Try again.",
+        retry: handleDownloadPdf,
       });
     } finally {
-      setIsGeneratingExcel(false);
+      setIsGeneratingPdf(false);
     }
   };
 
@@ -773,50 +524,15 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
               : 'Reports'}
           </h1>
           <p className="mt-1 text-sm font-medium text-gray-500">
-            Review the Faculty Compliance Checklist, then print it or download it as Excel.
+            Review the Faculty Compliance Checklist, then print it or download it as PDF.
           </p>
         </div>
       </div>
 
       {/* ============================ TWO-COLUMN LAYOUT ============================ */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_500px] lg:items-start print:block">
-        {/* ---------------------- LEFT: PREVIEW (sheet tabs + paper) ---------------------- */}
+        {/* ---------------------- LEFT: PREVIEW (paper) ---------------------- */}
         <div className="order-2 min-w-0 lg:order-1">
-          {/* ============================ EXCEL-STYLE SHEET TABS ============================ */}
-          <div
-            role="tablist"
-            aria-label="Report sheets"
-            className="print:hidden flex items-end gap-1 px-3 sm:px-6"
-          >
-            {[
-              { id: 'checklist', label: 'Checklist', Icon: FileSpreadsheet },
-              { id: 'documents', label: 'Documents', Icon: FileText, count: docList.length },
-            ].map(({ id, label, Icon, count }) => {
-              const active = activeTab === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => setActiveTab(id)}
-                  className={`inline-flex items-center gap-2 rounded-t-lg border border-b-0 px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${focusRing} ${active
-                    ? 'border-gray-300 bg-white text-brand-purple shadow-sm'
-                    : 'border-transparent bg-gray-100 text-gray-500 hover:text-gray-800'
-                    }`}
-                >
-                  <Icon size={15} aria-hidden="true" />
-                  {label}
-                  {count !== undefined && (
-                    <span className="rounded-full bg-gray-200 px-1.5 text-[11px] font-semibold text-gray-700">
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
           {/* ================================== PAPER =================================== */}
           <div className="overflow-x-auto overflow-y-auto max-h-[calc(100dvh-13.5rem)] rounded-xl bg-gray-200/70 p-3 sm:p-6 print:overflow-visible print:bg-transparent print:p-0 print:max-h-none shadow-inner">
             <div
@@ -832,12 +548,10 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
                   <p className="text-sm font-medium">Loading compliance records…</p>
                 </div>
               ) : (
-                <>
-                  {/* ------------------------ SHEET 1: OFFICIAL CHECKLIST ------------------------ */}
-                  <section
-                    aria-label="Checklist sheet"
-                    className={`${activeTab === 'checklist' ? 'block' : 'hidden'} p-6 print:block print:p-0`}
-                  >
+                <section
+                  aria-label="Checklist sheet"
+                  className="p-6 print:p-0"
+                >
                     <table
                       className="form-table w-full table-fixed border-collapse border border-black text-[12px] leading-snug"
                       style={{ fontFamily: 'Cambria, "Cambria Math", Georgia, serif' }}
@@ -996,75 +710,6 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
                       </tbody>
                     </table>
                   </section>
-
-                  {/* ---------------------------- SHEET 2: DOCUMENTS ---------------------------- */}
-                  <section
-                    aria-label="Documents sheet"
-                    className={`docs-sheet ${activeTab === 'documents' ? 'block' : 'hidden'} space-y-3 p-6 print:block print:p-0`}
-                  >
-                    <div className="flex items-baseline justify-between border-b-2 border-black pb-1">
-                      <h3 className="text-sm font-bold">
-                        Uploaded Documents · {schoolYear}, {semester}
-                      </h3>
-                      <span className="text-xs text-gray-700">
-                        {docList.length} {docList.length === 1 ? 'file' : 'files'}
-                      </span>
-                    </div>
-
-                    {docList.length === 0 ? (
-                      <div className="py-16 text-center text-gray-500">
-                        <FileText size={36} className="mx-auto mb-2 text-gray-300 print:hidden" aria-hidden="true" />
-                        <p className="text-sm font-semibold text-gray-700">No uploaded documents yet</p>
-                        <p className="mx-auto mt-1 max-w-sm text-xs text-gray-500">
-                          Files you upload under Faculty Portfolio or Class Portfolio appear here.
-                        </p>
-                      </div>
-                    ) : (
-                      <table className="w-full border-collapse border border-black text-xs">
-                        <thead>
-                          <tr className="bg-[#d9d9d9] text-left">
-                            {['Requirement', 'Title', 'Date', 'File name', 'Status', 'Link'].map((h) => (
-                              <th key={h} className="border border-black p-1.5 font-bold">
-                                {h}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {docList.map((doc, idx) => (
-                            <tr key={doc.id || idx} className="align-top">
-                              <td className="border border-black p-1.5 font-medium">{doc.requirement}</td>
-                              <td className="border border-black p-1.5">{doc.title}</td>
-                              <td className="whitespace-nowrap border border-black p-1.5">{doc.date}</td>
-                              <td className="max-w-[180px] break-all border border-black p-1.5 font-mono text-[11px]">
-                                {doc.filename}
-                              </td>
-                              <td className="whitespace-nowrap border border-black p-1.5 font-semibold">
-                                {doc.status === 'Approved' ? '✓ ' : doc.status === 'Rejected' ? '✕ ' : '… '}
-                                {doc.status}
-                              </td>
-                              <td className="whitespace-nowrap border border-black p-1.5 text-center">
-                                {doc.link ? (
-                                  <a
-                                    href={doc.link}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="inline-flex items-center gap-1 font-semibold text-blue-700 hover:underline"
-                                  >
-                                    Open
-                                    <ExternalLink size={12} className="print:hidden" aria-hidden="true" />
-                                  </a>
-                                ) : (
-                                  <span className="text-gray-400">—</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </section>
-                </>
               )}
             </div>
           </div>
@@ -1092,30 +737,13 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
             {/* Instructor Status Progress Card (without button) */}
             <div className="flex min-w-0 items-center gap-3.5 rounded-xl border border-gray-200/90 bg-white p-3 shadow-2xs">
               {/* Left: Avatar */}
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-50 border border-orange-100 sm:h-16 sm:w-16">
-                {instructorPhoto ? (
-                  <img
-                    src={instructorPhoto}
-                    alt={instructorName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#fb923c"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-8 w-8 sm:h-9 sm:w-9"
-                    aria-hidden="true"
-                  >
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
-                )}
-              </div>
+              <InstructorAvatar
+                src={instructorPhoto}
+                alt={instructorName}
+                size="h-14 w-14 sm:h-16 sm:w-16"
+                className="bg-orange-50 border border-orange-100"
+                iconClassName="h-8 w-8 text-orange-400 sm:h-9 sm:w-9"
+              />
 
               {/* Right: Info + Progress */}
               <div className="min-w-0 flex-1">
@@ -1277,17 +905,17 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
                 </span>
               </button>
 
-              {/* Row 2: Download Excel + Print */}
+              {/* Row 2: Download PDF + Print */}
               <div className="grid grid-cols-[1.6fr_0.8fr] gap-2">
 
-                {/* Download Excel - Wider */}
+                {/* Download PDF - Wider */}
                 <button
                   type="button"
-                  onClick={handleDownloadExcel}
-                  disabled={isGeneratingExcel || busy}
+                  onClick={handleDownloadPdf}
+                  disabled={isGeneratingPdf || busy}
                   className={`flex h-10.5 w-full items-center justify-center gap-2 rounded-lg bg-brand-orange px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
                 >
-                  {isGeneratingExcel ? (
+                  {isGeneratingPdf ? (
                     <Loader2
                       size={15}
                       className="animate-spin shrink-0"
@@ -1302,7 +930,7 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
                   )}
 
                   <span className="truncate">
-                    {isGeneratingExcel ? 'Creating…' : 'Download Excel'}
+                    {isGeneratingPdf ? 'Creating PDF…' : 'Download PDF'}
                   </span>
                 </button>
 
@@ -1324,7 +952,7 @@ export default function InstructorReports({ instructorId: propInstructorId, onBa
             <p className="text-center text-[11px] leading-tight text-gray-400">
               {hasNoDocs
                 ? 'You have no uploaded documents yet, so every box is empty.'
-                : 'Print gives you the official one-page form, then the document list.'}
+                : 'Print gives you the official Faculty Compliance Checklist.'}
             </p>
 
             {/* Box Guide */}

@@ -48,8 +48,6 @@ async function getGoogleClients() {
     sheets: google.sheets({ version: 'v4', auth: sheetsAuth }),
     sheetsAuth,
     driveAuth,
-    projectId,
-    sheetsClientId,
     rootFolderId,
   };
 }

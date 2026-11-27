@@ -5,7 +5,7 @@ const Requirement = require('../models/Requirement');
 const Class = require('../models/Class');
 const AcademicPeriod = require('../models/AcademicPeriod');
 const { isFeatureEnabled } = require('./settingController');
-const { buildComplianceWorkbook, uploadAsGoogleSheet } = require('../reports/complianceWorkbook');
+const { buildComplianceWorkbook, buildComplianceWorkbookWithLinks, uploadAsGoogleSheet } = require('../reports/complianceWorkbook');
 const { getGoogleClients } = require('../utils/sheetsService');
 const storageService = require('../utils/storageService');
 const driveNaming = require('../utils/driveNaming');
@@ -567,12 +567,12 @@ exports.exportComplianceGoogleSheet = async (req, res) => {
 
     const data = await assembleCompliancePayload(ownerId, { periodId, schoolYear, semester });
 
-    const buffer = await buildComplianceWorkbook(data, {
+    const { buffer, richLinkCells } = await buildComplianceWorkbookWithLinks(data, {
       schoolYear: data.schoolYear,
       semester: data.semester,
     });
 
-    const { drive, rootFolderId } = await getGoogleClients();
+    const { drive, sheets, rootFolderId } = await getGoogleClients();
 
     let targetFolderId = rootFolderId;
     try {
@@ -591,7 +591,9 @@ exports.exportComplianceGoogleSheet = async (req, res) => {
     const result = await uploadAsGoogleSheet(buffer, {
       name,
       auth: drive.context._options.auth,
+      sheetsAuth: sheets?.context?._options?.auth,
       rootFolderId: targetFolderId,
+      richLinkCells,
     });
 
     return res.json({

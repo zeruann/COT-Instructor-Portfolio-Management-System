@@ -2,10 +2,9 @@
 //
 // Builds the Faculty Compliance Checklist workbook from the OFFICIAL template
 // (Faculty-Checklist-v13.xlsx or sample-export.xlsx). The template is opened,
-// the boxes are ticked and the header is filled in, preserving the official
-// layout, logos, merged cells, fonts, and print setup. A second "Documents"
-// sheet lists every file with its link. The same buffer is used for the
-// .xlsx download AND the Google Sheets export.
+// the boxes are ticked, document links are embedded, and the header is filled
+// in while preserving the official layout, logos, merged cells, and fonts.
+// The redundant "Documents" worksheet is removed so only "Checklist" remains.
 
 const fs = require('fs');
 const path = require('path');
@@ -28,6 +27,26 @@ const SUBJECT_COLS = ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I']; // 8 subject colu
 
 const SYMBOL_FONT = { name: 'Segoe UI Symbol', size: 10, color: { argb: 'FF000000' } };
 const TEXT_FONT = { name: 'Cambria', size: 10, color: { argb: 'FF000000' } };
+const LINK_FONT = { name: 'Cambria', size: 9, color: { argb: 'FF0563C1' }, underline: true };
+
+function toValidLink(raw) {
+  const s = String(raw || '').trim();
+  return /^https?:\/\//i.test(s) ? s : '';
+}
+
+function colLetterToNumber(col) {
+  let num = 0;
+  for (let i = 0; i < col.length; i += 1) {
+    num = num * 26 + (col.charCodeAt(i) - 64);
+  }
+  return num;
+}
+
+function parseCellAddress(addr) {
+  const m = /^([A-Z]+)(\d+)$/i.exec(String(addr || '').trim());
+  if (!m) return null;
+  return { col: colLetterToNumber(m[1].toUpperCase()), row: Number(m[2]) };
+}
 
 /* ------------------------------ TEMPLATE MAP ------------------------------- */
 const SINGLE_CELLS = {
@@ -124,9 +143,9 @@ function tickLeadingBox(cell, ticked) {
       ...r,
       font: r.font
         ? {
-            ...r.font,
-            color: r.font.color?.argb ? r.font.color : { argb: 'FF000000' },
-          }
+          ...r.font,
+          color: r.font.color?.argb ? r.font.color : { argb: 'FF000000' },
+        }
         : TEXT_FONT,
     }));
 
@@ -151,10 +170,71 @@ function tickLeadingBox(cell, ticked) {
   }
 }
 
-function tickSubBoxes(cell, subs, ticks) {
+function cellToRuns(cell) {
+  const v = cell.value;
+  if (v && typeof v === 'object' && Array.isArray(v.richText)) {
+    return v.richText.map((r) => ({
+      font: r.font ? { ...r.font } : { ...TEXT_FONT },
+      text: String(r.text ?? ''),
+    }));
+  }
+  if (typeof v === 'string' && v.length > 0) {
+    return [{ font: cell.font ? { ...cell.font } : { ...TEXT_FONT }, text: v }];
+  }
+  return [];
+}
+
+function trimTrailingNewlines(runs) {
+  const copy = runs.map((r) => ({ ...r }));
+  for (let i = copy.length - 1; i >= 0; i -= 1) {
+    copy[i].text = copy[i].text.replace(/\s+$/, '');
+    if (copy[i].text.length > 0) break;
+    copy.pop();
+  }
+  return copy;
+}
+
+function collectSingleBoxLinks(item) {
+  if (!item) return [];
+  const validFiles = (item.files || []).filter((f) => Boolean(toValidLink(f?.link)));
+  const fallbackLink = toValidLink(item.link);
+
+  if (validFiles.length > 0) {
+    const visible = validFiles.slice(0, 3).map((f, idx) => ({
+      label:
+        f.name && f.name !== 'Document'
+          ? String(f.name).trim()
+          : validFiles.length > 1
+            ? `View File (${idx + 1})`
+            : 'View File',
+      uri: toValidLink(f.link),
+    }));
+    if (validFiles.length > 3) {
+      visible.push({
+        label: `+${validFiles.length - 3} more (${fallbackLink ? 'Open Folder' : 'View More'})`,
+        uri: fallbackLink || toValidLink(validFiles[3].link),
+      });
+    }
+    return visible;
+  }
+
+  if (fallbackLink) {
+    return [
+      {
+        label: item.name && item.name !== 'Document' ? String(item.name).trim() : 'View File',
+        uri: fallbackLink,
+      },
+    ];
+  }
+
+  return [];
+}
+
+function buildSubBoxRuns(subs, ticks, links) {
   const runs = [];
   subs.forEach((sub, i) => {
     const mark = ticks[i] ? CHECKED : EMPTY;
+    const subLink = links?.[i] || '';
     runs.push({
       font: TEXT_FONT,
       text: `${i > 0 ? '\n' : ''}${sub} `,
@@ -163,13 +243,20 @@ function tickSubBoxes(cell, subs, ticks) {
       font: SYMBOL_FONT,
       text: mark,
     });
+    if (subLink) {
+      runs.push({ font: TEXT_FONT, text: ' ' });
+      runs.push({
+        font: { ...LINK_FONT, size: 8.5 },
+        text: 'View',
+        link: subLink,
+      });
+    }
   });
-  cell.value = { richText: runs };
-  cell.font = TEXT_FONT;
+  return runs;
 }
 
 /* -------------------------------- MAIN API --------------------------------- */
-async function buildComplianceWorkbook(data, { schoolYear, semester } = {}) {
+async function buildComplianceWorkbookWithLinks(data, { schoolYear, semester } = {}) {
   const wb = new ExcelJS.Workbook();
   const templatePath = resolveTemplatePath();
   await wb.xlsx.readFile(templatePath);
@@ -195,7 +282,7 @@ async function buildComplianceWorkbook(data, { schoolYear, semester } = {}) {
   const faculty = data?.facultyChecklist || [];
   const subjects = data?.classChecklist?.subjects || [];
   const classRows = data?.classChecklist?.rows || [];
-  const docs = data?.documents || [];
+  const richLinkCells = [];
 
   /* Header block */
   ws.getCell('B2').value = data?.instructorName || '';
@@ -210,19 +297,47 @@ async function buildComplianceWorkbook(data, { schoolYear, semester } = {}) {
   faculty.forEach((i) => {
     byLetter[String(i.code || '').trim().charAt(0).toUpperCase()] = i;
   });
+  const rowLinkCounts = new Map();
+
   for (const [letter, addr] of Object.entries(SINGLE_CELLS)) {
     let item = byLetter[letter];
     let ticked = isChecked(item);
-    if (!ticked && !byLetter[letter]) {
+    if (!byLetter[letter]) {
       const apiRow = classRows.find((r) => norm(r.code).startsWith(letter.toLowerCase()) && norm(r.code).length <= 4);
-      ticked = isChecked(apiRow) || Boolean(apiRow?.values?.some((v) => isChecked(v)));
-      if (ticked) item = apiRow;
+      if (apiRow) {
+        item = apiRow;
+        ticked = isChecked(apiRow) || Boolean(apiRow?.values?.some((v) => isChecked(v)));
+      }
     }
     const cell = ws.getCell(addr);
     tickLeadingBox(cell, ticked);
-    const link = item?.link || item?.files?.[0]?.link;
-    if (ticked && link) {
-      cell.hyperlink = link;
+
+    const linkEntries = collectSingleBoxLinks(item);
+    if (linkEntries.length > 0) {
+      const baseRuns = trimTrailingNewlines(cellToRuns(cell));
+      const allRuns = [...baseRuns];
+      linkEntries.forEach((entry, idx) => {
+        allRuns.push({ font: TEXT_FONT, text: idx === 0 ? '\n' : '\n' });
+        allRuns.push({ font: LINK_FONT, text: entry.label, link: entry.uri });
+      });
+      cell.value = { richText: allRuns.map(({ font, text }) => ({ font, text })) };
+      const pos = parseCellAddress(addr);
+      if (pos) {
+        richLinkCells.push({ row: pos.row, col: pos.col, runs: allRuns });
+        rowLinkCounts.set(pos.row, Math.max(rowLinkCounts.get(pos.row) || 0, linkEntries.length));
+      }
+    }
+  }
+
+  // Ensure rows 40-41 (footer O-R) have enough room when file links are added
+  for (const [rowNum, maxLinks] of rowLinkCounts.entries()) {
+    const r = ws.getRow(rowNum);
+    if (rowNum === 40 || rowNum === 41) {
+      r.height = Math.max(r.height || 26, 28 + maxLinks * 13);
+    } else if (rowNum === 7 && maxLinks >= 2) {
+      r.height = Math.max(r.height || 57, 57 + (maxLinks - 1) * 13);
+    } else if ((rowNum === 5 || rowNum === 6) && maxLinks >= 3) {
+      r.height = Math.max(r.height || 82, (r.height || 82) + (maxLinks - 2) * 12);
     }
   }
 
@@ -239,15 +354,25 @@ async function buildComplianceWorkbook(data, { schoolYear, semester } = {}) {
       const cell = ws.getCell(`${col}${tpl.row}`);
       const apiCell = subjects[i] ? apiRow?.values?.[i] : undefined;
       if (tpl.subs) {
-        tickSubBoxes(cell, tpl.subs, tpl.subs.map((s) => readBox(apiCell, s)));
-        const firstLink = tpl.subs.map((s) => readBoxLink(apiCell, s)).find(Boolean);
-        if (firstLink) cell.hyperlink = firstLink;
+        const ticks = tpl.subs.map((s) => readBox(apiCell, s));
+        const links = tpl.subs.map((s) => toValidLink(readBoxLink(apiCell, s)));
+        const runs = buildSubBoxRuns(tpl.subs, ticks, links);
+        cell.value = { richText: runs.map(({ font, text }) => ({ font, text })) };
+        cell.font = TEXT_FONT;
+        if (links.some(Boolean)) {
+          richLinkCells.push({
+            row: tpl.row,
+            col: colLetterToNumber(col),
+            runs,
+          });
+        }
       } else {
         const ticked = readBox(apiCell);
-        const cellLink = readBoxLink(apiCell);
-        if (ticked && cellLink) {
-          cell.value = { text: 'View file', hyperlink: cellLink };
-          cell.font = { name: 'Cambria', size: 9, color: { argb: 'FF0563C1' }, underline: true };
+        const cellLink = toValidLink(readBoxLink(apiCell));
+        if (cellLink) {
+          const mark = ticked ? CHECKED : EMPTY;
+          cell.value = { text: `${mark} View File`, hyperlink: cellLink };
+          cell.font = LINK_FONT;
           cell.alignment = { horizontal: 'center', vertical: 'middle' };
         } else {
           tickLeadingBox(cell, ticked);
@@ -256,81 +381,127 @@ async function buildComplianceWorkbook(data, { schoolYear, semester } = {}) {
     });
   }
 
-  /* Second sheet: every uploaded file with its link */
-  addDocumentsSheet(wb, docs, { schoolYear, semester });
-
-  return wb.xlsx.writeBuffer();
-}
-
-function addDocumentsSheet(wb, docs, { schoolYear, semester }) {
-  // If a Documents sheet already exists in the template, remove or re-use it
-  let ds = wb.getWorksheet('Documents');
-  if (ds) {
-    wb.removeWorksheet(ds.id);
+  // Ensure no redundant "Documents" worksheet from the template remains
+  const existingDocsSheet = wb.getWorksheet('Documents');
+  if (existingDocsSheet) {
+    wb.removeWorksheet(existingDocsSheet.id);
   }
 
-  ds = wb.addWorksheet('Documents', {
-    views: [{ state: 'frozen', ySplit: 3 }],
-    pageSetup: {
-      paperSize: 9,
-      orientation: 'landscape',
-      fitToPage: true,
-      fitToWidth: 1,
-      fitToHeight: 0,
-      margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 },
-      printTitlesRow: '3:3',
-    },
-  });
-  const font = { name: 'Cambria', size: 10 };
-  const thin = { style: 'thin', color: { argb: 'FF000000' } };
-  const border = { top: thin, left: thin, bottom: thin, right: thin };
+  const buffer = await wb.xlsx.writeBuffer();
+  return { buffer, richLinkCells };
+}
 
-  ds.columns = [
-    { width: 44 }, { width: 34 }, { width: 14 }, { width: 38 }, { width: 18 }, { width: 18 },
-  ];
+async function buildComplianceWorkbook(data, options = {}) {
+  const { buffer } = await buildComplianceWorkbookWithLinks(data, options);
+  return buffer;
+}
 
-  ds.mergeCells('A1:F1');
-  ds.getCell('A1').value = `Uploaded Documents${schoolYear ? ` · ${schoolYear}, ${semester}` : ''}`;
-  ds.getCell('A1').font = { ...font, size: 12, bold: true };
+function buildGoogleTextFormatRuns(runs) {
+  const out = [];
+  let offset = 0;
 
-  const headers = ['Requirement', 'Title', 'Date', 'File Name', 'Status', 'Link'];
-  const head = ds.getRow(3);
-  headers.forEach((h, i) => {
-    const c = head.getCell(i + 1);
-    c.value = h;
-    c.font = { ...font, bold: true };
-    c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9D9D9' } };
-    c.border = border;
-    c.alignment = { vertical: 'middle' };
-  });
+  for (const run of runs) {
+    const text = String(run?.text ?? '');
+    if (text.length === 0) continue;
 
-  (docs || []).forEach((d, idx) => {
-    const r = ds.getRow(4 + idx);
-    [d.requirement, d.title, d.date, d.filename, d.status].forEach((v, i) => {
-      const c = r.getCell(i + 1);
-      c.value = v ?? '';
-      c.font = font;
-      c.border = border;
-      c.alignment = { vertical: 'top', wrapText: true };
-    });
-    const link = r.getCell(6);
-    link.value = d.link ? { text: 'View Document', hyperlink: d.link } : '—';
-    link.font = d.link ? { ...font, color: { argb: 'FF0563C1' }, underline: true } : font;
-    link.border = border;
-    link.alignment = { vertical: 'top' };
-  });
+    const format = {};
+    if (run.font?.name) format.fontFamily = run.font.name;
+    if (run.font?.size) format.fontSize = run.font.size;
+    if (typeof run.font?.bold === 'boolean') format.bold = run.font.bold;
+    if (typeof run.font?.underline === 'boolean') format.underline = run.font.underline;
 
-  if (!docs || docs.length === 0) {
-    ds.mergeCells('A4:F4');
-    ds.getCell('A4').value = 'No uploaded documents yet.';
-    ds.getCell('A4').font = { ...font, italic: true };
-  } else {
-    ds.autoFilter = { from: 'A3', to: `F${3 + docs.length}` };
+    const argb = run.font?.color?.argb;
+    if (typeof argb === 'string' && argb.length === 8) {
+      format.foregroundColorStyle = {
+        rgbColor: {
+          red: parseInt(argb.slice(2, 4), 16) / 255,
+          green: parseInt(argb.slice(4, 6), 16) / 255,
+          blue: parseInt(argb.slice(6, 8), 16) / 255,
+        },
+      };
+    }
+
+    if (run.link) {
+      format.link = { uri: run.link };
+      format.underline = true;
+      format.foregroundColorStyle = {
+        rgbColor: { red: 0.02, green: 0.39, blue: 0.76 },
+      };
+    }
+
+    out.push({ startIndex: offset, format });
+    offset += text.length;
+  }
+
+  return { fullText: runs.map((r) => String(r?.text ?? '')).join(''), textFormatRuns: out };
+}
+
+async function applyRichLinksToGoogleSheet(spreadsheetId, richLinkCells, authCandidates) {
+  if (!spreadsheetId || !Array.isArray(richLinkCells) || richLinkCells.length === 0) return;
+  const auths = (authCandidates || []).filter(Boolean);
+  if (auths.length === 0) return;
+
+  let lastErr = null;
+  for (const candidateAuth of auths) {
+    try {
+      const sheets = google.sheets({ version: 'v4', auth: candidateAuth });
+      const meta = await sheets.spreadsheets.get({
+        spreadsheetId,
+        fields: 'sheets.properties(sheetId,title)',
+      });
+      const checklistSheet =
+        meta.data?.sheets?.find((s) => s.properties?.title === 'Checklist') ||
+        meta.data?.sheets?.[0];
+      const sheetId = checklistSheet?.properties?.sheetId ?? 0;
+
+      const requests = richLinkCells
+        .map(({ row, col, runs }) => {
+          const { fullText, textFormatRuns } = buildGoogleTextFormatRuns(runs);
+          if (!fullText || textFormatRuns.length === 0) return null;
+          return {
+            updateCells: {
+              range: {
+                sheetId,
+                startRowIndex: row - 1,
+                endRowIndex: row,
+                startColumnIndex: col - 1,
+                endColumnIndex: col,
+              },
+              rows: [
+                {
+                  values: [
+                    {
+                      userEnteredValue: { stringValue: fullText },
+                      textFormatRuns,
+                    },
+                  ],
+                },
+              ],
+              fields: 'userEnteredValue,textFormatRuns',
+            },
+          };
+        })
+        .filter(Boolean);
+
+      if (requests.length > 0) {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: { requests },
+        });
+      }
+      return;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+
+  if (lastErr) {
+    console.warn('Could not apply rich-text links to exported Google Sheet:', lastErr.message);
   }
 }
 
 /* ------------------------- GOOGLE SHEETS ------------------------ */
-async function uploadAsGoogleSheet(buffer, { name, auth, rootFolderId }) {
+async function uploadAsGoogleSheet(buffer, { name, auth, sheetsAuth, rootFolderId, richLinkCells } = {}) {
   const drive = google.drive({ version: 'v3', auth });
   const res = await drive.files.create({
     requestBody: {
@@ -344,6 +515,9 @@ async function uploadAsGoogleSheet(buffer, { name, auth, rootFolderId }) {
     },
     fields: 'id, webViewLink',
   });
+
+  await applyRichLinksToGoogleSheet(res.data.id, richLinkCells, [auth, sheetsAuth]);
+
   return {
     spreadsheetId: res.data.id,
     spreadsheetUrl: res.data.webViewLink || `https://docs.google.com/spreadsheets/d/${res.data.id}/edit`,
@@ -352,5 +526,6 @@ async function uploadAsGoogleSheet(buffer, { name, auth, rootFolderId }) {
 
 module.exports = {
   buildComplianceWorkbook,
+  buildComplianceWorkbookWithLinks,
   uploadAsGoogleSheet,
 };
